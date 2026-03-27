@@ -111,6 +111,8 @@ For full protocol and component spec: `docs/superpowers/specs/2026-03-27-server-
 
 ## Staleness — Keeping This File Current
 
+**`CLAUDE.md` is a symlink to `AGENTS.md`. Always edit `AGENTS.md` directly — never `CLAUDE.md`.**
+
 **Update this file in the same commit as the code change it documents.**
 
 The Handoff State section is the first thing a new agent reads. Write it as if you are handing off to someone with zero context about this conversation:
