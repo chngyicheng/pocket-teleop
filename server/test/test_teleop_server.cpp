@@ -192,6 +192,29 @@ TEST_F(TeleopServerTest, MalformedMessageReturnsErrorCallbackNotFired) {
   EXPECT_TRUE(got_error);
 }
 
+TEST_F(TeleopServerTest, WatchdogFiresZeroVelocityOnTimeout) {
+  // Connect (resets watchdog), then go silent for longer than timeout_ms (300ms)
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19091/teleop?token=testtoken", ec);
+  client.connect(con);
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  // Watchdog should have fired with (0,0,0)
+  EXPECT_GE(callback_count_, 1);
+  EXPECT_DOUBLE_EQ(last_lx_, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly_, 0.0);
+  EXPECT_DOUBLE_EQ(last_az_, 0.0);
+}
+
 TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
   // First client stays connected in background
   WsClient client1;

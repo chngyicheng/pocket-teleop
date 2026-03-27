@@ -133,8 +133,33 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
 }
 
 void TeleopServer::watchdog_loop() {
-  // Implemented in Task 9
   while (running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    bool client_connected;
+    {
+      std::lock_guard<std::mutex> lock(client_mutex_);
+      client_connected = has_client_;
+    }
+
+    if (!client_connected || timed_out_) continue;
+
+    const auto now_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count();
+
+    if (now_ms - last_message_ms_.load() > timeout_ms_) {
+      timed_out_ = true;
+      // Post to io_service so close() runs on the correct thread
+      ws_server_.get_io_service().post([this]() {
+        publish_callback_(0.0, 0.0, 0.0);
+        std::lock_guard<std::mutex> lock(client_mutex_);
+        if (has_client_) {
+          websocketpp::lib::error_code ec;
+          ws_server_.close(active_client_,
+            websocketpp::close::status::normal, "timeout", ec);
+          has_client_ = false;
+        }
+      });
+    }
   }
 }
