@@ -432,6 +432,10 @@ This file describes a system that is actively being built. It will drift from re
 - Git history or who changed what (use `git log`)
 - Anything already in the spec or plan documents
 
+### Execution rhythm
+
+**Stop after every task and wait for the user to confirm before starting the next one.** This gives the user a chance to review, adjust scope, or refresh context. Do not auto-advance.
+
 ### How to update
 
 1. **At task completion** — before committing, check whether any document (AGENTS.md, README.md, spec, plan) needs updating to reflect what you just built. If yes, update it in the same commit.
