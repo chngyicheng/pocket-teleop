@@ -85,8 +85,25 @@ bool TeleopServer::on_validate(ConnectionHdl hdl) {
 }
 
 void TeleopServer::on_open(ConnectionHdl hdl) {
-  // Implemented in Task 7
-  (void)hdl;
+  std::lock_guard<std::mutex> lock(client_mutex_);
+
+  if (has_client_) {
+    nlohmann::json err = {{"type", "error"}, {"message", "already connected"}};
+    ws_server_.send(hdl, err.dump(), websocketpp::frame::opcode::text);
+    ws_server_.close(hdl, websocketpp::close::status::normal, "already connected");
+    return;
+  }
+
+  active_client_ = hdl;
+  has_client_ = true;
+  reset_watchdog();
+
+  nlohmann::json status = {
+    {"type", "status"},
+    {"connected", true},
+    {"robot_type", robot_type_}
+  };
+  ws_server_.send(hdl, status.dump(), websocketpp::frame::opcode::text);
 }
 
 void TeleopServer::on_close(ConnectionHdl hdl) {

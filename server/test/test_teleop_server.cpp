@@ -83,3 +83,73 @@ TEST_F(TeleopServerTest, MissingTokenRejectedWith401) {
   int code = attempt_connect("ws://localhost:19091/teleop");
   EXPECT_EQ(code, 401);
 }
+
+// Helper: connect, collect messages for up to wait_ms, then close
+static std::vector<std::string> connect_and_collect(
+    const std::string& uri, int wait_ms = 200) {
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  std::vector<std::string> messages;
+  client.set_message_handler(
+    [&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+      messages.push_back(msg->get_payload());
+    });
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection(uri, ec);
+  client.connect(con);
+
+  // Run async for wait_ms then stop
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+    client.stop();
+  });
+  client.run();
+  t.join();
+  return messages;
+}
+
+TEST_F(TeleopServerTest, ConnectReceivesStatusMessage) {
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop?token=testtoken");
+  ASSERT_FALSE(msgs.empty());
+  auto j = nlohmann::json::parse(msgs[0]);
+  EXPECT_EQ(j["type"], "status");
+  EXPECT_EQ(j["connected"], true);
+  EXPECT_EQ(j["robot_type"], "diff_drive");
+}
+
+TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
+  // First client stays connected in background
+  WsClient client1;
+  client1.set_access_channels(websocketpp::log::alevel::none);
+  client1.set_error_channels(websocketpp::log::elevel::none);
+  client1.init_asio();
+  client1.set_open_handler([](websocketpp::connection_hdl) {});
+  websocketpp::lib::error_code ec1;
+  auto con1 = client1.get_connection("ws://localhost:19091/teleop?token=testtoken", ec1);
+  client1.connect(con1);
+  std::thread t1([&]() { client1.run(); });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Second client
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop?token=testtoken", 300);
+
+  client1.stop();
+  t1.join();
+
+  bool found_error = false;
+  for (auto& m : msgs) {
+    try {
+      auto j = nlohmann::json::parse(m);
+      if (j.value("type", "") == "error" &&
+          j.value("message", "").find("already connected") != std::string::npos) {
+        found_error = true;
+      }
+    } catch (...) {}
+  }
+  EXPECT_TRUE(found_error);
+}
