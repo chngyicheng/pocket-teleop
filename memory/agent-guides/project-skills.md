@@ -2,9 +2,12 @@
 
 ## TDD and code quality standards
 
+- **Testing trophy philosophy:** heavy on integration tests, light on unit tests. Tests must survive a refactor without needing to be rewritten. Do not write tests that assert specific function return values on internal helpers.
 - **TDD order is mandatory:** write failing test → run to confirm failure → implement → run to confirm pass → commit. Never write implementation before the test.
-- **All three test targets must pass** before any commit: `test_command_handler`, `test_teleop_server`, `test_teleop_node`.
-- `CommandHandler` and `TeleopServer` tests must run **without ROS2** — if a test in those targets links against `rclcpp`, that is a bug.
+- **`test_command_handler.cpp` — minimal or empty.** `CommandHandler` parsing behavior is covered through `test_teleop_server` (real WebSocket messages, real parsing). Avoid unit tests that pin return types of `parse()`.
+- **`test_teleop_server.cpp` — primary test target.** Real WebSocket connections, real JSON messages, mock ROS2 callback. This is where most test coverage lives.
+- **`test_teleop_node.cpp` — crown jewel.** Full ROS2 pipeline: WebSocket message → `/cmd_vel` Twist published. Covers auth, parsing, and publish in one shot.
+- `CommandHandler` and `TeleopServer` test targets must run **without ROS2** — if a test in those targets links against `rclcpp`, that is a bug.
 - No test may pass by mocking the behaviour it is supposed to verify. Tests must exercise real code paths.
 - Code quality bar: no magic numbers, no silent fallbacks, names match what things do (not how).
 
@@ -41,8 +44,8 @@ The table below is a navigation aid — what each task creates and what must pas
 |---|---|---|
 | 1 — Docker scaffolding | `Dockerfile`, `docker-compose.yml`, `.dockerignore` | `docker build --target builder` succeeds |
 | 2 — ROS2 package scaffolding | `server/package.xml`, `server/CMakeLists.txt`, stubs | `colcon build` does not hard-fail |
-| 3 — CommandHandler types + header | `command_handler.hpp/.cpp`, `test_command_handler.cpp` | `MissingTypeReturnsParseError`, `MalformedJsonReturnsParseError` |
-| 4 — CommandHandler ping/twist/range | `command_handler.cpp`, `test_command_handler.cpp` | All 8 tests in `test_command_handler` |
+| 3 — CommandHandler types + header | `command_handler.hpp/.cpp` | `colcon build` succeeds; `test_command_handler` compiles (may be empty) |
+| 4 — CommandHandler ping/twist/range | `command_handler.cpp` | `colcon build` succeeds; parsing behavior verified via `test_teleop_server` in Tasks 5–9 |
 | 5 — TeleopServer skeleton | `teleop_server.hpp/.cpp`, `test_teleop_server.cpp` | `ServerStartsAndStops` |
 | 6 — TeleopServer token validation | `teleop_server.cpp`, `test_teleop_server.cpp` | `ValidTokenAccepted`, `InvalidTokenRejectedWith401`, `MissingTokenRejectedWith401` |
 | 7 — TeleopServer single-client + status | `teleop_server.cpp`, `test_teleop_server.cpp` | `ConnectReceivesStatusMessage`, `SecondClientReceivesAlreadyConnectedError` |
