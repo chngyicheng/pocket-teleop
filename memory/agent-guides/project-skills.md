@@ -14,6 +14,7 @@
 ## Execution rules
 
 - **Stop after every task** and wait for the user to confirm before starting the next one.
+- **Tests must pass before every commit** — run `colcon test` inside the builder image and confirm 0 failures before committing any code change.
 - **Update docs at task completion** — check AGENTS.md, README, spec, and plan before committing.
 - Run all docker commands with `--network=host` (or use `docker compose` which has it in the build config).
 

@@ -6,6 +6,14 @@
 - `feat/<feature>` — new work (e.g. `feat/server-implementation`)
 - `fix/<issue>` — bug fixes
 
+## Pre-commit checklist
+
+Before every commit:
+
+1. `docker build --target builder --network=host` — build must succeed
+2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
+3. Docs updated (see table below)
+
 ## Commit conventions
 
 - **One commit per completed task**
