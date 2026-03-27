@@ -113,9 +113,23 @@ void TeleopServer::on_close(ConnectionHdl hdl) {
 }
 
 void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
-  // Implemented in Task 8
-  (void)hdl;
-  (void)msg;
+  auto result = command_handler_.parse(msg->get_payload());
+
+  if (std::holds_alternative<TwistCommand>(result)) {
+    reset_watchdog();
+    auto cmd = std::get<TwistCommand>(result);
+    publish_callback_(cmd.linear_x, cmd.linear_y, cmd.angular_z);
+
+  } else if (std::holds_alternative<PingCommand>(result)) {
+    reset_watchdog();
+    nlohmann::json pong = {{"type", "pong"}};
+    ws_server_.send(hdl, pong.dump(), websocketpp::frame::opcode::text);
+
+  } else {
+    auto err = std::get<ParseError>(result);
+    nlohmann::json error = {{"type", "error"}, {"message", err.message}};
+    ws_server_.send(hdl, error.dump(), websocketpp::frame::opcode::text);
+  }
 }
 
 void TeleopServer::watchdog_loop() {

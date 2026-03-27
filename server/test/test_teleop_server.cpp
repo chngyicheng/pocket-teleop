@@ -121,6 +121,77 @@ TEST_F(TeleopServerTest, ConnectReceivesStatusMessage) {
   EXPECT_EQ(j["robot_type"], "diff_drive");
 }
 
+// Helper: connect, send a message, collect responses for wait_ms
+static std::vector<std::string> connect_send_collect(
+    const std::string& uri, const std::string& payload, int wait_ms = 200) {
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  std::vector<std::string> messages;
+  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
+    client.send(hdl, payload, websocketpp::frame::opcode::text);
+  });
+  client.set_message_handler(
+    [&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+      messages.push_back(msg->get_payload());
+    });
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection(uri, ec);
+  client.connect(con);
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+    client.stop();
+  });
+  client.run();
+  t.join();
+  return messages;
+}
+
+TEST_F(TeleopServerTest, TwistFiresCallback) {
+  auto msgs = connect_send_collect(
+    "ws://localhost:19091/teleop?token=testtoken",
+    R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":-0.3})");
+  EXPECT_GE(callback_count_, 1);
+  EXPECT_DOUBLE_EQ(last_lx_, 0.5);
+  EXPECT_DOUBLE_EQ(last_ly_, 0.0);
+  EXPECT_DOUBLE_EQ(last_az_, -0.3);
+}
+
+TEST_F(TeleopServerTest, PingReturnsPongCallbackNotFired) {
+  int before = callback_count_;
+  auto msgs = connect_send_collect(
+    "ws://localhost:19091/teleop?token=testtoken",
+    R"({"type":"ping"})");
+  EXPECT_EQ(callback_count_, before);
+  bool got_pong = false;
+  for (auto& m : msgs) {
+    try {
+      auto j = nlohmann::json::parse(m);
+      if (j.value("type", "") == "pong") got_pong = true;
+    } catch (...) {}
+  }
+  EXPECT_TRUE(got_pong);
+}
+
+TEST_F(TeleopServerTest, MalformedMessageReturnsErrorCallbackNotFired) {
+  int before = callback_count_;
+  auto msgs = connect_send_collect(
+    "ws://localhost:19091/teleop?token=testtoken",
+    "not json at all");
+  EXPECT_EQ(callback_count_, before);
+  bool got_error = false;
+  for (auto& m : msgs) {
+    try {
+      auto j = nlohmann::json::parse(m);
+      if (j.value("type", "") == "error") got_error = true;
+    } catch (...) {}
+  }
+  EXPECT_TRUE(got_error);
+}
+
 TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
   // First client stays connected in background
   WsClient client1;
