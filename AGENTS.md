@@ -4,6 +4,23 @@
 
 ---
 
+## Document Map
+
+Find the right level of detail without reading everything.
+
+| What you need | Where to look |
+|---|---|
+| Run the server now | Level 1 (this file) |
+| Build, test, git workflow | Level 2 (this file) |
+| How the system works | Level 3 (this file) + [design spec] |
+| How to implement a specific task | Level 4 (this file) + [implementation plan] |
+| Full protocol and component spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
+| Step-by-step implementation plan | `docs/superpowers/plans/2026-03-27-server-implementation.md` |
+
+**When to go deeper:** If a task guide (Level 4) doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
+
+---
+
 ## Level 1 — What Is This and How Do I Run It?
 
 **pocket-teleop** lets you drive a ROS2 robot from your phone browser via WebSocket. A token-authenticated WebSocket server on the robot receives velocity commands and publishes them to `/cmd_vel`.
@@ -55,6 +72,34 @@ docker run --rm \
 # 2. Re-run the test command above (volume mount picks up changes instantly)
 # 3. Commit when tests pass
 ```
+
+### Test and code quality standards
+
+- **TDD order is mandatory:** write failing test → run it to confirm failure → implement → run to confirm pass → commit. Never write implementation before the test.
+- **All three test targets must pass** before any commit: `test_command_handler`, `test_teleop_server`, `test_teleop_node`.
+- `CommandHandler` and `TeleopServer` tests must run **without ROS2** — if a test in those targets links against `rclcpp`, that is a bug.
+- No test may pass by mocking the behaviour it is supposed to verify. Tests must exercise real code paths.
+- Port **19091** is reserved for `test_teleop_server`. Port **19092** is reserved for `test_teleop_node`. Never use port 9091 in tests — it may be occupied by a running container.
+- Code quality bar: no magic numbers, no silent fallbacks, names match what things do (not how).
+
+### Git workflow
+
+```bash
+# Implementation branch (created from main by worktree setup)
+git checkout -b feat/server-implementation
+
+# One commit per completed task, prefix feat:
+git commit -m "feat: add Docker scaffolding for ROS2 server"
+
+# After all tasks pass review, merge back to main
+git checkout main
+git merge --no-ff feat/server-implementation
+git tag v0.1.0-server
+```
+
+**Branch naming:** `feat/<feature>` for new work, `fix/<issue>` for bug fixes.
+**Commit messages:** imperative mood, `feat:`/`fix:`/`docs:` prefix, one logical change per commit.
+**Never commit to main directly** while implementation is in progress — use the feature branch.
 
 ### Environment variables
 
@@ -343,6 +388,55 @@ docker run --rm \
 ```bash
 git tag v0.1.0-server
 ```
+
+---
+
+## Critical Guardrails
+
+Violations here are bugs, not style issues. Do not work around them.
+
+| Guardrail | Why |
+|---|---|
+| **C++17 only — no C++20** | `ros:humble` ships GCC 11; C++20 features silently break the build |
+| **No ROS2 in `CommandHandler` or `TeleopServer`** | These layers must compile and test without `rclcpp` — isolation is the design |
+| **No default token anywhere** | A missing token must cause a hard failure, not a fallback |
+| **Never skip token validation** | Any WebSocket upgrade without token check is a security hole |
+| **Watchdog fires only once per session** | Use `timed_out_` flag — repeated zero-velocity publishes on an already-stopped robot mask real bugs |
+| **`ws_server_.close()` must run on the io_service thread** | Calling it from the watchdog thread directly is undefined behaviour with websocketpp |
+| **Test ports 19091 / 19092 only** | Port 9091 may be in use by a running container on the host |
+| **One active client at a time** | Two simultaneous operators on one robot is a safety hazard |
+| **Token never in source or image** | Always injected via `TELEOP_TOKEN` environment variable at runtime |
+
+---
+
+## Staleness — Keeping This File Current
+
+This file describes a system that is actively being built. It will drift from reality as implementation progresses. **If you change something that contradicts a statement in this file, update the file in the same commit.**
+
+### What to update and when
+
+| Change | Update here |
+|---|---|
+| New ROS2 parameter added | Configuration table in Level 3 |
+| Message type added or changed | Protocol tables in Level 3 |
+| Port number changed | Both Level 2 dev workflow and Level 3 key behaviours |
+| New file added to `server/` | File map in Level 3 |
+| Task completed | Remove from Level 4 or mark as done |
+| New task added | Add task guide to Level 4 |
+| New guardrail identified | Critical Guardrails table |
+| New document created | Document Map table |
+
+### What not to update here
+
+- Code patterns already visible in the source files
+- Git history or who changed what (use `git log`)
+- Anything already in the spec or plan documents
+
+### How to update
+
+1. Edit the relevant section in place — do not append a "changelog" at the bottom
+2. Keep the progressive disclosure structure intact — Level 1 stays terse
+3. Commit the AGENTS.md change alongside the code change it documents
 
 ---
 
