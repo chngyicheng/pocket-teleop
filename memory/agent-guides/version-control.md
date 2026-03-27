@@ -40,6 +40,14 @@ After committing, ask the user to review the commit before pushing. Do not push 
 
 Only push after explicit confirmation.
 
+After pushing, ask for confirmation before moving to the next task.
+
+```
+"Pushed. Ready to move on to Task N — shall I?"
+```
+
+Do not start the next task until the user confirms.
+
 ## Merge and tag
 
 ```bash
