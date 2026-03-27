@@ -14,8 +14,7 @@
 ## Execution rules
 
 - **Stop after every task** and wait for the user to confirm before starting the next one.
-- **Tests must pass before every commit** — run `colcon test` inside the builder image and confirm 0 failures before committing any code change.
-- **Update docs at task completion** — check AGENTS.md, README, spec, and plan before committing.
+- **Pre-commit order: build → test → docs → commit.** Run the full pre-commit checklist in `version-control.md` before every `git commit`. Tests must pass (0 failures) and all docs must be verified fresh — including `.worktrees/feat-server/CLAUDE.md` and `AGENTS.md` — before committing.
 - Run all docker commands with `--network=host` (or use `docker compose` which has it in the build config).
 
 ## Critical guardrails

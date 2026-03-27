@@ -8,11 +8,16 @@
 
 ## Pre-commit checklist
 
-Before every commit:
+Before every commit, in this order:
 
 1. `docker build --target builder --network=host` — build must succeed
 2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
-3. Docs updated (see table below)
+3. **Doc freshness check** — read the "Keeping docs current" table below and update every entry that applies to this change. Also verify:
+   - `.worktrees/feat-server/CLAUDE.md` handoff table matches actual task state
+   - `AGENTS.md` handoff table matches `.worktrees/feat-server/CLAUDE.md`
+   - Both head SHAs are correct
+
+All three steps must complete before `git commit`.
 
 ## Commit conventions
 
