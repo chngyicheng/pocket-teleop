@@ -23,8 +23,8 @@
 | 5 — TeleopServer skeleton | ✅ Done | `teleop_server.hpp/.cpp` start/stop skeleton + ServerStartsAndStops test |
 | 6 — TeleopServer token validation | ✅ Done | `on_validate` with query-string token check; 3 tests pass |
 | 7 — TeleopServer single-client + status | ✅ Done | `on_open` sends status JSON, rejects second client; 2 tests pass |
-| 8 — TeleopServer message handling | ⬜ Next | |
-| 9 — TeleopServer safety watchdog | ⬜ Pending | |
+| 8 — TeleopServer message handling | ✅ Done | `on_message` twist/ping/error; 3 new tests pass |
+| 9 — TeleopServer safety watchdog | ⬜ Next | |
 | 10 — TeleopNode ROS2 wrapper | ⬜ Pending | |
 | 11 — main.cpp + launch file | ⬜ Pending | |
 | 12 — Full test suite verification | ⬜ Pending | |
@@ -111,6 +111,13 @@ For full protocol and component spec: `docs/superpowers/specs/2026-03-27-server-
 
 ## Staleness — Keeping This File Current
 
-**If you change something that contradicts a statement in this file or a guide file, update the file in the same commit.**
+**Update this file in the same commit as the code change it documents.**
+
+The Handoff State section is the first thing a new agent reads. Write it as if you are handing off to someone with zero context about this conversation:
+
+- **Head SHA** — update to the commit you are about to make (run `git rev-parse --short HEAD` after staging, before committing)
+- **Task table** — mark the task ✅ Done; move ⬜ Next to the following task; update Notes with what was created or the key test names that now pass
+- **Known deviations** — add a row for any deviation from the plan, with a concrete "Why accepted" that would satisfy a skeptical reviewer reading it cold
+- **No pronouns or "we" / "I" / "our"** — write in third person so it reads as documentation, not a conversation
 
 See [version-control.md](memory/agent-guides/version-control.md) for the full table of what to update and when.
