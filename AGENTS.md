@@ -434,9 +434,10 @@ This file describes a system that is actively being built. It will drift from re
 
 ### How to update
 
-1. Edit the relevant section in place — do not append a "changelog" at the bottom
-2. Keep the progressive disclosure structure intact — Level 1 stays terse
-3. Commit the AGENTS.md change alongside the code change it documents
+1. **At task completion** — before committing, check whether any document (AGENTS.md, README.md, spec, plan) needs updating to reflect what you just built. If yes, update it in the same commit.
+2. Edit the relevant section in place — do not append a "changelog" at the bottom
+3. Keep the progressive disclosure structure intact — Level 1 stays terse
+4. Commit the AGENTS.md change alongside the code change it documents
 
 ---
 
