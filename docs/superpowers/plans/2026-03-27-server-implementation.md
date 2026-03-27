@@ -278,148 +278,35 @@ ament_package()
 
 ---
 
-## Task 3: CommandHandler — data types and header ⬅ RESUME HERE
+## Task 3: CommandHandler — data types and header ✅ DONE (commits adf3133 + 00301e0)
 
-> **First step before writing any code:** Add these two lines to `server/CMakeLists.txt` immediately after `set(CMAKE_CXX_STANDARD 17)`:
-> ```cmake
-> set(CMAKE_CXX_STANDARD_REQUIRED ON)
-> set(CMAKE_CXX_EXTENSIONS OFF)
-> ```
-> Commit as: `fix: require C++17 and disable GNU extensions in CMakeLists`
+> **Deviations:** Testing trophy philosophy adopted — `test_command_handler.cpp` left empty. Parsing behavior will be covered by `test_teleop_server` integration tests in Tasks 5–9. CMakeLists C++17 fix committed separately (adf3133).
 
 **Files:**
-- Modify: `server/src/command_handler.hpp`
-- Modify: `server/src/command_handler.cpp`
-- Modify: `server/test/test_command_handler.cpp`
+- Modified: `server/src/command_handler.hpp`
+- Modified: `server/src/command_handler.cpp`
+- `server/test/test_command_handler.cpp` — intentionally left empty (see deviation above)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Apply CMakeLists fix** — add `CMAKE_CXX_STANDARD_REQUIRED ON` and `CMAKE_CXX_EXTENSIONS OFF`
 
-`server/test/test_command_handler.cpp`:
-```cpp
-#include <gtest/gtest.h>
-#include "command_handler.hpp"
+- [x] **Step 2: Write `command_handler.hpp`**
 
-TEST(CommandHandlerTest, MissingTypeReturnsParseError) {
-  CommandHandler handler;
-  auto result = handler.parse(R"({"linear_x": 0.5})");
-  ASSERT_TRUE(std::holds_alternative<ParseError>(result));
-  EXPECT_FALSE(std::get<ParseError>(result).message.empty());
-}
+- [x] **Step 3: Write stub `command_handler.cpp`** — returns `ParseError{"not implemented"}` after type check; JSON exceptions caught
 
-TEST(CommandHandlerTest, MalformedJsonReturnsParseError) {
-  CommandHandler handler;
-  auto result = handler.parse("not json");
-  ASSERT_TRUE(std::holds_alternative<ParseError>(result));
-}
-```
+- [x] **Step 4: Build verification** — `docker build --target builder` passed; `colcon build` clean
 
-- [ ] **Step 2: Write `command_handler.hpp`**
-
-```cpp
-#pragma once
-#include <string>
-#include <variant>
-
-struct TwistCommand {
-  double linear_x;
-  double linear_y;
-  double angular_z;
-};
-
-struct PingCommand {};
-
-struct ParseError {
-  std::string message;
-};
-
-using ParseResult = std::variant<TwistCommand, PingCommand, ParseError>;
-
-class CommandHandler {
-public:
-  ParseResult parse(const std::string& json_message);
-};
-```
-
-- [ ] **Step 3: Write stub `command_handler.cpp` (returns ParseError always)**
-
-```cpp
-#include "command_handler.hpp"
-#include <nlohmann/json.hpp>
-#include <sstream>
-
-ParseResult CommandHandler::parse(const std::string& json_message) {
-  try {
-    auto j = nlohmann::json::parse(json_message);
-    if (!j.contains("type") || !j["type"].is_string()) {
-      return ParseError{"missing or invalid 'type' field"};
-    }
-    return ParseError{"not implemented"};
-  } catch (const nlohmann::json::exception& e) {
-    return ParseError{std::string("JSON parse error: ") + e.what()};
-  }
-}
-```
-
-- [ ] **Step 4: Run tests inside Docker**
-
-```bash
-docker run --rm \
-  -v $(pwd)/server:/ros2_ws/src/pocket_teleop \
-  $(docker build --target builder -q .) \
-  /bin/bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --packages-select pocket_teleop --event-handlers console_direct+ 2>&1 | grep -E 'test_command_handler|PASSED|FAILED'"
-```
-Expected: `MissingTypeReturnsParseError` PASSED, `MalformedJsonReturnsParseError` PASSED.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add server/src/command_handler.hpp server/src/command_handler.cpp server/test/test_command_handler.cpp
-git commit -m "feat: add CommandHandler types and header with stub implementation"
-```
+- [x] **Step 5: Commit** — `feat: add CommandHandler types and header with stub implementation`
 
 ---
 
-## Task 4: CommandHandler — ping and twist parsing
+## Task 4: CommandHandler — ping and twist parsing ⬅ RESUME HERE
+
+> **Testing trophy deviation:** No unit tests written for this task. Parsing correctness is verified end-to-end via `test_teleop_server` in Tasks 5–9 (real WebSocket messages → real parse paths). Only `command_handler.cpp` is modified here.
 
 **Files:**
 - Modify: `server/src/command_handler.cpp`
-- Modify: `server/test/test_command_handler.cpp`
 
-- [ ] **Step 1: Write failing tests**
-
-Append to `server/test/test_command_handler.cpp`:
-```cpp
-TEST(CommandHandlerTest, PingReturnsPingCommand) {
-  CommandHandler handler;
-  auto result = handler.parse(R"({"type": "ping"})");
-  ASSERT_TRUE(std::holds_alternative<PingCommand>(result));
-}
-
-TEST(CommandHandlerTest, ValidTwistReturnsTwistCommand) {
-  CommandHandler handler;
-  auto result = handler.parse(
-    R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":-0.3})");
-  ASSERT_TRUE(std::holds_alternative<TwistCommand>(result));
-  auto cmd = std::get<TwistCommand>(result);
-  EXPECT_DOUBLE_EQ(cmd.linear_x, 0.5);
-  EXPECT_DOUBLE_EQ(cmd.linear_y, 0.0);
-  EXPECT_DOUBLE_EQ(cmd.angular_z, -0.3);
-}
-
-TEST(CommandHandlerTest, TwistMissingFieldReturnsParseError) {
-  CommandHandler handler;
-  auto result = handler.parse(R"({"type":"twist","linear_x":0.5})");
-  ASSERT_TRUE(std::holds_alternative<ParseError>(result));
-}
-
-TEST(CommandHandlerTest, UnknownTypeReturnsParseError) {
-  CommandHandler handler;
-  auto result = handler.parse(R"({"type":"fly"})");
-  ASSERT_TRUE(std::holds_alternative<ParseError>(result));
-}
-```
-
-- [ ] **Step 2: Implement full parsing in `command_handler.cpp`**
+- [ ] **Step 1: Implement full parsing in `command_handler.cpp`**
 
 ```cpp
 #include "command_handler.hpp"
@@ -466,40 +353,12 @@ ParseResult CommandHandler::parse(const std::string& json_message) {
 }
 ```
 
-- [ ] **Step 3: Write range validation tests**
+- [ ] **Step 2: Build verification** — `docker build --target builder` must pass
 
-Append to `server/test/test_command_handler.cpp`:
-```cpp
-TEST(CommandHandlerTest, TwistOutOfRangeReturnsParseError) {
-  CommandHandler handler;
-  auto result = handler.parse(
-    R"({"type":"twist","linear_x":1.5,"linear_y":0.0,"angular_z":0.0})");
-  ASSERT_TRUE(std::holds_alternative<ParseError>(result));
-  EXPECT_NE(std::get<ParseError>(result).message.find("linear_x"), std::string::npos);
-}
-
-TEST(CommandHandlerTest, TwistAtBoundaryIsValid) {
-  CommandHandler handler;
-  auto result = handler.parse(
-    R"({"type":"twist","linear_x":1.0,"linear_y":-1.0,"angular_z":1.0})");
-  ASSERT_TRUE(std::holds_alternative<TwistCommand>(result));
-}
-```
-
-- [ ] **Step 4: Run tests**
+- [ ] **Step 3: Commit**
 
 ```bash
-docker run --rm \
-  -v $(pwd)/server:/ros2_ws/src/pocket_teleop \
-  $(docker build --target builder -q .) \
-  /bin/bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon build --packages-select pocket_teleop && colcon test --packages-select pocket_teleop --event-handlers console_direct+ 2>&1 | grep -E 'test_command_handler|PASSED|FAILED|error'"
-```
-Expected: all 8 `test_command_handler` tests PASSED.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add server/src/command_handler.cpp server/test/test_command_handler.cpp
+git add server/src/command_handler.cpp
 git commit -m "feat: implement CommandHandler ping/twist parsing and range validation"
 ```
 
