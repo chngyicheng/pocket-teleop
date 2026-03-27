@@ -56,14 +56,16 @@
 
 ---
 
-## Task 1: Docker scaffolding
+## Task 1: Docker scaffolding ✅ DONE (commit c3ad6e2 + d240a20)
+
+> **Deviations:** `TELEOP_TOKEN:?Error:...` guard added (hardening). `--network=host` added to build (Pi5 DNS fix, commit ed6a33f). See AGENTS.md Handoff State for details.
 
 **Files:**
 - Create: `Dockerfile`
 - Create: `docker-compose.yml`
 - Create: `.dockerignore`
 
-- [ ] **Step 1: Create `.dockerignore`**
+- [x] **Step 1: Create `.dockerignore`**
 
 ```
 .git
@@ -72,7 +74,7 @@ docs/
 *.md
 ```
 
-- [ ] **Step 2: Create `Dockerfile`**
+- [x] **Step 2: Create `Dockerfile`**
 
 ```dockerfile
 # ---- builder stage ----
@@ -115,7 +117,7 @@ CMD ["/bin/bash", "-c", \
      -p robot_type:=${ROBOT_TYPE:-diff_drive}"]
 ```
 
-- [ ] **Step 3: Create `docker-compose.yml`**
+- [x] **Step 3: Create `docker-compose.yml`**
 
 ```yaml
 services:
@@ -129,23 +131,16 @@ services:
     restart: unless-stopped
 ```
 
-- [ ] **Step 4: Verify `.dockerignore`, `Dockerfile`, and `docker-compose.yml` are present**
+- [x] **Step 4: Verify `.dockerignore`, `Dockerfile`, and `docker-compose.yml` are present**
 
-```bash
-ls -1 Dockerfile docker-compose.yml .dockerignore
-```
-Expected output: all three files listed.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add Dockerfile docker-compose.yml .dockerignore
-git commit -m "feat: add Docker scaffolding for ROS2 server"
-```
+- [x] **Step 5: Commit**
 
 ---
 
-## Task 2: ROS2 package scaffolding
+## Task 2: ROS2 package scaffolding ✅ DONE (commit a11a3cf)
+
+> **Note:** `main.cpp` stub contains `int main() { return 0; }` (not empty — linker requires it). All other stubs are empty. Docker build verified with `--network=host`.
+> **Pending fix for Task 3 start:** Add `CMAKE_CXX_STANDARD_REQUIRED ON` and `CMAKE_CXX_EXTENSIONS OFF` to `CMakeLists.txt`.
 
 **Files:**
 - Create: `server/package.xml`
@@ -154,7 +149,7 @@ git commit -m "feat: add Docker scaffolding for ROS2 server"
 - Create: `server/test/` (directory placeholder)
 - Create: `server/launch/` (directory placeholder)
 
-- [ ] **Step 1: Create `server/package.xml`**
+- [x] **Step 1: Create `server/package.xml`**
 
 ```xml
 <?xml version="1.0"?>
@@ -275,39 +270,22 @@ endif()
 ament_package()
 ```
 
-- [ ] **Step 3: Create stub source files so the package compiles**
+- [x] **Step 3: Create stub source files so the package compiles**
 
-```bash
-touch server/src/main.cpp \
-      server/src/command_handler.hpp \
-      server/src/command_handler.cpp \
-      server/src/teleop_server.hpp \
-      server/src/teleop_server.cpp \
-      server/src/teleop_node.hpp \
-      server/src/teleop_node.cpp \
-      server/test/test_command_handler.cpp \
-      server/test/test_teleop_server.cpp \
-      server/test/test_teleop_node.cpp \
-      server/launch/teleop.launch.py
-```
+- [x] **Step 4: Verify the Docker image builds (package scaffolding compiles)**
 
-- [ ] **Step 4: Verify the Docker image builds (package scaffolding compiles)**
-
-```bash
-docker build --target builder -t pocket-teleop-test .
-```
-Expected: build completes. Colcon will warn about empty source files but should not hard-fail.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add server/
-git commit -m "feat: add ROS2 package scaffolding (package.xml, CMakeLists.txt)"
-```
+- [x] **Step 5: Commit**
 
 ---
 
-## Task 3: CommandHandler — data types and header
+## Task 3: CommandHandler — data types and header ⬅ RESUME HERE
+
+> **First step before writing any code:** Add these two lines to `server/CMakeLists.txt` immediately after `set(CMAKE_CXX_STANDARD 17)`:
+> ```cmake
+> set(CMAKE_CXX_STANDARD_REQUIRED ON)
+> set(CMAKE_CXX_EXTENSIONS OFF)
+> ```
+> Commit as: `fix: require C++17 and disable GNU extensions in CMakeLists`
 
 **Files:**
 - Modify: `server/src/command_handler.hpp`
