@@ -44,11 +44,14 @@ Phone connects to: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
 ### Build
 
 ```bash
+# Note: --network=host is required on this Pi5 host — Docker's default
+# bridge network cannot resolve external DNS for apt-get.
+
 # Build the Docker image
-docker build -t pocket-teleop .
+docker build --network=host -t pocket-teleop .
 
 # Build only (no run) inside the builder stage
-docker build --target builder -t pocket-teleop-dev .
+docker build --network=host --target builder -t pocket-teleop-dev .
 ```
 
 ### Run tests
