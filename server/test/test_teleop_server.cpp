@@ -42,3 +42,44 @@ TEST_F(TeleopServerTest, ServerStartsAndStops) {
   // If we reach here, start/stop worked
   SUCCEED();
 }
+
+// Helper: attempt a WebSocket connection and return the HTTP status code
+// Returns 101 on successful upgrade, 401/503 on rejection
+static int attempt_connect(const std::string& uri) {
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  int status_code = 0;
+  client.set_fail_handler([&](websocketpp::connection_hdl hdl) {
+    auto con = client.get_con_from_hdl(hdl);
+    status_code = con->get_response_code();
+  });
+  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
+    status_code = 101;
+    client.close(hdl, websocketpp::close::status::normal, "");
+  });
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection(uri, ec);
+  if (ec) return -1;
+  client.connect(con);
+  client.run();
+  return status_code;
+}
+
+TEST_F(TeleopServerTest, ValidTokenAccepted) {
+  int code = attempt_connect("ws://localhost:19091/teleop?token=testtoken");
+  EXPECT_EQ(code, 101);
+}
+
+TEST_F(TeleopServerTest, InvalidTokenRejectedWith401) {
+  int code = attempt_connect("ws://localhost:19091/teleop?token=wrongtoken");
+  EXPECT_EQ(code, 401);
+}
+
+TEST_F(TeleopServerTest, MissingTokenRejectedWith401) {
+  int code = attempt_connect("ws://localhost:19091/teleop");
+  EXPECT_EQ(code, 401);
+}

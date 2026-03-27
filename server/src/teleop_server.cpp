@@ -58,8 +58,29 @@ void TeleopServer::reset_watchdog() {
 }
 
 bool TeleopServer::on_validate(ConnectionHdl hdl) {
-  // Implemented in Task 6
-  (void)hdl;
+  auto con = ws_server_.get_con_from_hdl(hdl);
+  const std::string resource = con->get_resource();
+
+  // Extract token from query string (/teleop?token=xxx)
+  std::string token;
+  const auto q = resource.find('?');
+  if (q != std::string::npos) {
+    std::istringstream ss(resource.substr(q + 1));
+    std::string pair;
+    while (std::getline(ss, pair, '&')) {
+      const auto eq = pair.find('=');
+      if (eq != std::string::npos && pair.substr(0, eq) == "token") {
+        token = pair.substr(eq + 1);
+        break;
+      }
+    }
+  }
+
+  if (token != token_) {
+    con->set_status(websocketpp::http::status_code::unauthorized);
+    return false;
+  }
+
   return true;
 }
 
