@@ -10,7 +10,7 @@
 
 **Implementation branch:** `feat/server-implementation`
 **Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `dcf976c` (as of 2026-03-27)
+**Head SHA:** `0edb2a8` (as of 2026-03-27)
 
 ### Task progress
 
@@ -25,8 +25,8 @@
 | 7 — TeleopServer single-client + status | ✅ Done | `on_open` sends status JSON, rejects second client; 2 tests pass |
 | 8 — TeleopServer message handling | ✅ Done | `on_message` twist/ping/error; 3 new tests pass |
 | 9 — TeleopServer safety watchdog | ✅ Done | `watchdog_loop` implemented; WatchdogFiresZeroVelocityOnTimeout passes |
-| 10 — TeleopNode ROS2 wrapper | ⬜ Next | |
-| 11 — main.cpp + launch file | ⬜ Pending | |
+| 10 — TeleopNode ROS2 wrapper | ✅ Done | `teleop_node.hpp/.cpp`; TwistPublishedToCmdVel + DisconnectPublishesZeroVelocity pass |
+| 11 — main.cpp + launch file | ⬜ Next | |
 | 12 — Full test suite verification | ⬜ Pending | |
 
 ### Known deviations from the plan (accepted)
