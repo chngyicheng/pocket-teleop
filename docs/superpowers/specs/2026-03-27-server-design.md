@@ -214,7 +214,35 @@ Using `ament_cmake` test infrastructure with `gtest`.
 
 ---
 
-## 8. Out of Scope (this spec)
+## 8. Containerisation
+
+ROS2 is not installed on the host (Raspberry Pi 5, Debian Bookworm). The server runs entirely inside a Docker container. The host only needs Docker and Docker Compose.
+
+**Base image:** `ros:humble` (ROS2 LTS, official multi-arch image, supports `linux/arm64`)
+
+**Container responsibilities:**
+- Install system dependencies (`libwebsocketpp-dev`, `libboost-system-dev`, `nlohmann-json3-dev`)
+- Build the `pocket_teleop` colcon workspace
+- Expose port 9091 to the host
+- Run `teleop_node` as the container entrypoint
+
+**Files at project root:**
+- `Dockerfile` — multi-stage: `builder` stage compiles the workspace, `runtime` stage runs it
+- `docker-compose.yml` — defines the `teleop-server` service, maps port 9091, injects `TELEOP_TOKEN` from environment
+- `.dockerignore` — excludes `.git`, `web-client/`, docs
+
+**Token handling:** `TELEOP_TOKEN` is passed as an environment variable to the container and read by the node as the `token` ROS2 parameter. Never hard-coded in any file.
+
+**Development workflow:**
+- `docker compose up --build` — build and start the server
+- `docker compose run --rm teleop-server colcon test` — run the test suite
+- `docker compose exec teleop-server bash` — interactive shell for debugging
+
+**Networking:** Port `9091` is published to `0.0.0.0:9091` on the host so the phone can reach it over the local network or VPN.
+
+---
+
+## 9. Out of Scope (this spec)
 
 - Web client / frontend UI
 - Android native app
