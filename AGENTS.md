@@ -10,7 +10,7 @@
 
 **Implementation branch:** `feat/server-implementation`
 **Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `ed6a33f` (as of 2026-03-27)
+**Head SHA:** `da3893d` (as of 2026-03-27)
 
 ### Task progress
 
@@ -18,9 +18,9 @@
 |---|---|---|
 | 1 — Docker scaffolding | ✅ Done | `Dockerfile`, `docker-compose.yml`, `.dockerignore` |
 | 2 — ROS2 package scaffolding | ✅ Done | `package.xml`, `CMakeLists.txt`, stub source files |
-| 3 — CommandHandler types + header | ⬜ Next | **Start here** — apply fix below first |
-| 4 — CommandHandler ping/twist parsing | ⬜ Pending | |
-| 5 — TeleopServer skeleton | ⬜ Pending | |
+| 3 — CommandHandler types + header | ✅ Done | `command_handler.hpp/.cpp` stub; CMakeLists C++17 fix applied |
+| 4 — CommandHandler ping/twist parsing | ✅ Done | `command_handler.cpp` full parsing + range validation |
+| 5 — TeleopServer skeleton | ⬜ Next | |
 | 6 — TeleopServer token validation | ⬜ Pending | |
 | 7 — TeleopServer single-client + status | ⬜ Pending | |
 | 8 — TeleopServer message handling | ⬜ Pending | |
@@ -28,18 +28,6 @@
 | 10 — TeleopNode ROS2 wrapper | ⬜ Pending | |
 | 11 — main.cpp + launch file | ⬜ Pending | |
 | 12 — Full test suite verification | ⬜ Pending | |
-
-### Before starting Task 3 — apply this fix
-
-The code reviewer flagged that `server/CMakeLists.txt` is missing two lines that prevent silent C++ standard degradation. Add them immediately after the existing `set(CMAKE_CXX_STANDARD 17)` line:
-
-```cmake
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)   # add this
-set(CMAKE_CXX_EXTENSIONS OFF)          # add this
-```
-
-Commit as: `fix: require C++17 and disable GNU extensions in CMakeLists`
 
 ### Known deviations from the plan (accepted)
 
@@ -49,6 +37,7 @@ Commit as: `fix: require C++17 and disable GNU extensions in CMakeLists`
 | `TELEOP_TOKEN:?Error:...` guard | `docker-compose.yml` | Positive hardening — fails loud if token unset |
 | `ament_add_gtest` used for "no ROS2" test targets | `CMakeLists.txt` | Tests always run inside Docker (ROS2 present); "no ROS2" means no ROS2 *code*, not no ROS2 *environment* |
 | `ament_lint_auto` declared but not wired | `package.xml` + `CMakeLists.txt` | Linting not a stated requirement; accepted for now |
+| `test_command_handler.cpp` left empty | `server/test/` | Testing trophy philosophy: parsing behavior covered by `test_teleop_server` integration tests |
 
 ---
 
