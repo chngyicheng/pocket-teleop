@@ -13,8 +13,16 @@
 
 ## Execution rules
 
-- **Stop after every task** and wait for the user to confirm before starting the next one.
-- **Pre-commit order: build → test → docs → commit.** Run the full pre-commit checklist in `version-control.md` before every `git commit`. Tests must pass (0 failures) and all docs must be verified fresh — including `.worktrees/feat-server/CLAUDE.md` and `AGENTS.md` — before committing.
+**Task completion sequence — follow in this exact order:**
+
+1. Implement the task
+2. Run tests (0 failures required)
+3. Run pre-commit checklist: build → test → docs (see `version-control.md`)
+4. Commit
+5. **Ask "Committed as `<hash>`. Ready to push — shall I?"** and wait for confirmation
+6. Push after explicit confirmation
+7. **STOP. Do not begin the next task.** Wait for the user to say "continue" (or equivalent)
+
 - Run all docker commands with `--network=host` (or use `docker compose` which has it in the build config).
 
 ## Critical guardrails
