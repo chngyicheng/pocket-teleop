@@ -1,0 +1,9 @@
+services:
+  teleop-server:
+    build: .
+    ports:
+      - "9091:9091"
+    environment:
+      - TELEOP_TOKEN=${TELEOP_TOKEN}
+      - ROBOT_TYPE=${ROBOT_TYPE:-diff_drive}
+    restart: unless-stopped
