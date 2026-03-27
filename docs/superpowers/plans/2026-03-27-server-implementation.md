@@ -299,14 +299,14 @@ ament_package()
 
 ---
 
-## Task 4: CommandHandler — ping and twist parsing ⬅ RESUME HERE
+## Task 4: CommandHandler — ping and twist parsing ✅ DONE (commit da3893d)
 
 > **Testing trophy deviation:** No unit tests written for this task. Parsing correctness is verified end-to-end via `test_teleop_server` in Tasks 5–9 (real WebSocket messages → real parse paths). Only `command_handler.cpp` is modified here.
 
 **Files:**
 - Modify: `server/src/command_handler.cpp`
 
-- [ ] **Step 1: Implement full parsing in `command_handler.cpp`**
+- [x] **Step 1: Implement full parsing in `command_handler.cpp`**
 
 ```cpp
 #include "command_handler.hpp"
@@ -353,9 +353,9 @@ ParseResult CommandHandler::parse(const std::string& json_message) {
 }
 ```
 
-- [ ] **Step 2: Build verification** — `docker build --target builder` must pass
+- [x] **Step 2: Build verification** — `docker build --target builder` must pass
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add server/src/command_handler.cpp
@@ -364,14 +364,14 @@ git commit -m "feat: implement CommandHandler ping/twist parsing and range valid
 
 ---
 
-## Task 5: TeleopServer — skeleton and start/stop
+## Task 5: TeleopServer — skeleton and start/stop ✅ DONE (commit a97d4bb)
 
 **Files:**
 - Modify: `server/src/teleop_server.hpp`
 - Modify: `server/src/teleop_server.cpp`
 - Modify: `server/test/test_teleop_server.cpp`
 
-- [ ] **Step 1: Write `server/src/teleop_server.hpp`**
+- [x] **Step 1: Write `server/src/teleop_server.hpp`**
 
 ```cpp
 #pragma once
@@ -433,7 +433,7 @@ private:
 };
 ```
 
-- [ ] **Step 2: Write `server/src/teleop_server.cpp` (start/stop only)**
+- [x] **Step 2: Write `server/src/teleop_server.cpp` (start/stop only)**
 
 ```cpp
 #include "teleop_server.hpp"
@@ -526,7 +526,7 @@ void TeleopServer::watchdog_loop() {
 }
 ```
 
-- [ ] **Step 3: Write failing start/stop test**
+- [x] **Step 3: Write failing start/stop test**
 
 `server/test/test_teleop_server.cpp`:
 ```cpp
@@ -577,7 +577,7 @@ TEST_F(TeleopServerTest, ServerStartsAndStops) {
 }
 ```
 
-- [ ] **Step 4: Run test**
+- [x] **Step 4: Run test**
 
 ```bash
 docker run --rm \
@@ -587,7 +587,7 @@ docker run --rm \
 ```
 Expected: `ServerStartsAndStops` PASSED.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/src/teleop_server.hpp server/src/teleop_server.cpp server/test/test_teleop_server.cpp
@@ -596,13 +596,13 @@ git commit -m "feat: add TeleopServer skeleton with start/stop"
 
 ---
 
-## Task 6: TeleopServer — token validation
+## Task 6: TeleopServer — token validation ✅ DONE (commit f6325de)
 
 **Files:**
 - Modify: `server/src/teleop_server.cpp`
 - Modify: `server/test/test_teleop_server.cpp`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Append to `server/test/test_teleop_server.cpp`:
 ```cpp
@@ -648,7 +648,7 @@ TEST_F(TeleopServerTest, MissingTokenRejectedWith401) {
 }
 ```
 
-- [ ] **Step 2: Implement `on_validate` in `teleop_server.cpp`**
+- [x] **Step 2: Implement `on_validate` in `teleop_server.cpp`**
 
 Replace the stub `on_validate`:
 ```cpp
@@ -680,7 +680,7 @@ bool TeleopServer::on_validate(ConnectionHdl hdl) {
 }
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 docker run --rm \
@@ -690,7 +690,7 @@ docker run --rm \
 ```
 Expected: `ValidTokenAccepted`, `InvalidTokenRejectedWith401`, `MissingTokenRejectedWith401` all PASSED.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/src/teleop_server.cpp server/test/test_teleop_server.cpp
@@ -699,13 +699,13 @@ git commit -m "feat: implement token validation on WebSocket handshake"
 
 ---
 
-## Task 7: TeleopServer — single-client enforcement and status message
+## Task 7: TeleopServer — single-client enforcement and status message ✅ DONE (commit 49b4621)
 
 **Files:**
 - Modify: `server/src/teleop_server.cpp`
 - Modify: `server/test/test_teleop_server.cpp`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Append to `server/test/test_teleop_server.cpp`:
 ```cpp
@@ -780,7 +780,7 @@ TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
 }
 ```
 
-- [ ] **Step 2: Implement `on_open` in `teleop_server.cpp`**
+- [x] **Step 2: Implement `on_open` in `teleop_server.cpp`**
 
 Replace the stub `on_open`:
 ```cpp
@@ -807,7 +807,7 @@ void TeleopServer::on_open(ConnectionHdl hdl) {
 }
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 ```bash
 docker run --rm \
@@ -817,7 +817,7 @@ docker run --rm \
 ```
 Expected: `ConnectReceivesStatusMessage`, `SecondClientReceivesAlreadyConnectedError` PASSED.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add server/src/teleop_server.cpp server/test/test_teleop_server.cpp
