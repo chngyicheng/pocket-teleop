@@ -26,7 +26,7 @@ add_executable(teleop_node
 )
 
 target_include_directories(teleop_node PRIVATE
-  src/
+  include/
   ${WEBSOCKETPP_INCLUDE_DIR}
 )
 
@@ -49,7 +49,7 @@ if(BUILD_TESTING)
     test/test_command_handler.cpp
     src/command_handler.cpp
   )
-  target_include_directories(test_command_handler PRIVATE src/)
+  target_include_directories(test_command_handler PRIVATE include/)
   target_link_libraries(test_command_handler nlohmann_json::nlohmann_json)
 
   # test_teleop_server — WebSocket + mock callback, no ROS2
@@ -59,7 +59,7 @@ if(BUILD_TESTING)
     src/command_handler.cpp
   )
   target_include_directories(test_teleop_server PRIVATE
-    src/
+    include/
     ${WEBSOCKETPP_INCLUDE_DIR}
   )
   target_link_libraries(test_teleop_server
@@ -75,7 +75,7 @@ if(BUILD_TESTING)
     src/command_handler.cpp
   )
   target_include_directories(test_teleop_node PRIVATE
-    src/
+    include/
     ${WEBSOCKETPP_INCLUDE_DIR}
   )
   target_link_libraries(test_teleop_node

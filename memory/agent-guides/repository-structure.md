@@ -31,9 +31,12 @@ Phone browser
 | `.dockerignore` | Excludes build artefacts and worktrees from image context |
 | `server/package.xml` | ROS2 package manifest (`pocket_teleop`) |
 | `server/CMakeLists.txt` | Build targets, test targets, dependency resolution |
-| `server/src/command_handler.hpp/.cpp` | JSON parse + validate; no I/O, no ROS2 |
-| `server/src/teleop_server.hpp/.cpp` | WebSocket server, auth, single-client, watchdog |
-| `server/src/teleop_node.hpp/.cpp` | ROS2 wrapper; owns TeleopServer, publishes Twist |
+| `server/include/command_handler.hpp` | CommandHandler types and interface |
+| `server/include/teleop_server.hpp` | TeleopServer types and interface |
+| `server/include/teleop_node.hpp` | TeleopNode types and interface |
+| `server/src/command_handler.cpp` | JSON parse + validate; no I/O, no ROS2 |
+| `server/src/teleop_server.cpp` | WebSocket server, auth, single-client, watchdog |
+| `server/src/teleop_node.cpp` | ROS2 wrapper; owns TeleopServer, publishes Twist |
 | `server/src/main.cpp` | Entry point; catches constructor exceptions |
 | `server/launch/teleop.launch.py` | ROS2 launch file for production use |
 | `server/test/test_command_handler.cpp` | Unit tests — no ROS2, no WebSocket |
