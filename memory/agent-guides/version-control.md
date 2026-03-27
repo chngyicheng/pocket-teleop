@@ -13,8 +13,9 @@ Before every commit, in this order:
 1. `docker build --target builder --network=host` — build must succeed
 2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
 3. **Doc freshness check** — read the "Keeping docs current" table below and update every entry that applies to this change. Also verify:
-   - `.worktrees/feat-server/CLAUDE.md` handoff table matches actual task state and is written for a new agent (see "Writing the handoff state for a new agent" below)
-   - Head SHA in `.worktrees/feat-server/CLAUDE.md` matches the commit just made
+   - `AGENTS.md` handoff table matches actual task state and is written for a new agent (see "Writing the handoff state for a new agent" below)
+   - Head SHA in `AGENTS.md` matches the commit just made
+   - **Do not edit `CLAUDE.md` directly** — it is a symlink to `AGENTS.md`; editing `AGENTS.md` is sufficient
 
 All three steps must complete before `git commit`.
 
@@ -58,10 +59,10 @@ git tag v0.1.0-server
 | Message type added or changed | `data-schema.md` protocol tables |
 | Port number changed | `repository-structure.md` port table + `data-schema.md` |
 | New file added to `server/` | `repository-structure.md` file map |
-| Task completed | `.worktrees/feat-server/CLAUDE.md` handoff table (see below) |
-| New task added | `project-skills.md` task guides + `.worktrees/feat-server/CLAUDE.md` handoff table |
+| Task completed | `AGENTS.md` handoff table (see below) — `CLAUDE.md` is a symlink, do not edit it directly |
+| New task added | `project-skills.md` task guides + `AGENTS.md` handoff table |
 | New guardrail identified | `project-skills.md` guardrails table |
-| New document created | `.worktrees/feat-server/CLAUDE.md` document map |
+| New document created | `AGENTS.md` document map |
 
 Do not append changelogs at the bottom of files. Edit the relevant section in place.
 
