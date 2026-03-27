@@ -13,9 +13,8 @@ Before every commit, in this order:
 1. `docker build --target builder --network=host` — build must succeed
 2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
 3. **Doc freshness check** — read the "Keeping docs current" table below and update every entry that applies to this change. Also verify:
-   - `.worktrees/feat-server/CLAUDE.md` handoff table matches actual task state
-   - `AGENTS.md` handoff table matches `.worktrees/feat-server/CLAUDE.md`
-   - Both head SHAs are correct
+   - `.worktrees/feat-server/CLAUDE.md` handoff table matches actual task state and is written for a new agent (see "Writing the handoff state for a new agent" below)
+   - Head SHA in `.worktrees/feat-server/CLAUDE.md` matches the commit just made
 
 All three steps must complete before `git commit`.
 
@@ -59,12 +58,27 @@ git tag v0.1.0-server
 | Message type added or changed | `data-schema.md` protocol tables |
 | Port number changed | `repository-structure.md` port table + `data-schema.md` |
 | New file added to `server/` | `repository-structure.md` file map |
-| Task completed | `AGENTS.md` handoff table |
-| New task added | `project-skills.md` task guides + `AGENTS.md` handoff table |
+| Task completed | `.worktrees/feat-server/CLAUDE.md` handoff table (see below) |
+| New task added | `project-skills.md` task guides + `.worktrees/feat-server/CLAUDE.md` handoff table |
 | New guardrail identified | `project-skills.md` guardrails table |
-| New document created | `AGENTS.md` document map |
+| New document created | `.worktrees/feat-server/CLAUDE.md` document map |
 
 Do not append changelogs at the bottom of files. Edit the relevant section in place.
+
+### Writing the handoff state for a new agent
+
+The Handoff State in `CLAUDE.md` is the first thing the next agent reads. It must be self-contained — assume the reader has no knowledge of this conversation.
+
+**Head SHA:** After staging all files but before running `git commit`, run `git rev-parse --short HEAD` to get the current HEAD. The commit you are about to create will extend this — use `--short HEAD` *after* committing and update the SHA field accordingly (or use `$(git rev-parse --short HEAD)` in a post-commit edit).
+
+**Task table rows:**
+- Completed task → `✅ Done` with a Notes entry naming what was created or the key test names that now pass
+- Next task → `⬜ Next` (exactly one row)
+- All others → `⬜ Pending`
+
+**Known deviations:** Add a row for any deviation from the plan. The "Why accepted" column must be concrete enough that a new agent reading it cold would not second-guess or revert the decision.
+
+**Voice:** Write in third person ("the token guard fails loud" not "we added this so it fails loud"). No pronouns that assume shared context.
 
 ## Worktrees
 
