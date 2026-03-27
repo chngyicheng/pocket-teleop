@@ -10,7 +10,7 @@
 
 **Implementation branch:** `feat/server-implementation`
 **Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `da3893d` (as of 2026-03-27)
+**Head SHA:** `49b4621` (as of 2026-03-27)
 
 ### Task progress
 
@@ -20,10 +20,10 @@
 | 2 — ROS2 package scaffolding | ✅ Done | `package.xml`, `CMakeLists.txt`, stub source files |
 | 3 — CommandHandler types + header | ✅ Done | `command_handler.hpp/.cpp` stub; CMakeLists C++17 fix applied |
 | 4 — CommandHandler ping/twist parsing | ✅ Done | `command_handler.cpp` full parsing + range validation |
-| 5 — TeleopServer skeleton | ⬜ Next | |
-| 6 — TeleopServer token validation | ⬜ Pending | |
-| 7 — TeleopServer single-client + status | ⬜ Pending | |
-| 8 — TeleopServer message handling | ⬜ Pending | |
+| 5 — TeleopServer skeleton | ✅ Done | `teleop_server.hpp/.cpp` start/stop skeleton + ServerStartsAndStops test |
+| 6 — TeleopServer token validation | ✅ Done | `on_validate` with query-string token check; 3 tests pass |
+| 7 — TeleopServer single-client + status | ✅ Done | `on_open` sends status JSON, rejects second client; 2 tests pass |
+| 8 — TeleopServer message handling | ⬜ Next | |
 | 9 — TeleopServer safety watchdog | ⬜ Pending | |
 | 10 — TeleopNode ROS2 wrapper | ⬜ Pending | |
 | 11 — main.cpp + launch file | ⬜ Pending | |
@@ -38,6 +38,7 @@
 | `ament_add_gtest` used for "no ROS2" test targets | `CMakeLists.txt` | Tests always run inside Docker (ROS2 present); "no ROS2" means no ROS2 *code*, not no ROS2 *environment* |
 | `ament_lint_auto` declared but not wired | `package.xml` + `CMakeLists.txt` | Linting not a stated requirement; accepted for now |
 | `test_command_handler.cpp` left empty | `server/test/` | Testing trophy philosophy: parsing behavior covered by `test_teleop_server` integration tests |
+| `#define ASIO_STANDALONE` removed from all WebSocket code | `teleop_server.hpp`, `test_teleop_server.cpp`, and future `test_teleop_node.cpp` | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed. Boost ASIO is correct for this environment. |
 
 ---
 
