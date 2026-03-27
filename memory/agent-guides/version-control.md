@@ -17,6 +17,16 @@
 git commit -m "feat: add Docker scaffolding for ROS2 server"
 ```
 
+## Push workflow
+
+After committing, ask the user to review the commit before pushing. Do not push automatically.
+
+```
+"Committed as <hash>. Ready to push — shall I?"
+```
+
+Only push after explicit confirmation.
+
 ## Merge and tag
 
 ```bash
