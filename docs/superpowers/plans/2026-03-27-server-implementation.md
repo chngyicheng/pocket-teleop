@@ -1249,13 +1249,15 @@ git commit -m "feat: implement TeleopNode ROS2 wrapper"
 
 ---
 
-## Task 11: main.cpp and launch file
+## Task 11: main.cpp and launch file ✅ DONE (commit 18bba31)
+
+> **Deviation:** `docker-compose.yml` environment value quoted to fix Docker Compose v2.35 YAML parse error on `:?` error message containing a colon.
 
 **Files:**
 - Modify: `server/src/main.cpp`
 - Modify: `server/launch/teleop.launch.py`
 
-- [ ] **Step 1: Write `server/src/main.cpp`**
+- [x] **Step 1: Write `server/src/main.cpp`**
 
 ```cpp
 #include <rclcpp/rclcpp.hpp>
@@ -1275,7 +1277,7 @@ int main(int argc, char* argv[]) {
 }
 ```
 
-- [ ] **Step 2: Write `server/launch/teleop.launch.py`**
+- [x] **Step 2: Write `server/launch/teleop.launch.py`**
 
 ```python
 from launch import LaunchDescription
@@ -1307,14 +1309,14 @@ def generate_launch_description():
     ])
 ```
 
-- [ ] **Step 3: Do a full build inside Docker to verify everything compiles**
+- [x] **Step 3: Do a full build inside Docker to verify everything compiles**
 
 ```bash
 docker build -t pocket-teleop:latest .
 ```
 Expected: build completes with no errors.
 
-- [ ] **Step 4: Smoke-test the container (token required)**
+- [x] **Step 4: Smoke-test the container (token required)**
 
 ```bash
 TELEOP_TOKEN=mytoken docker compose up -d
@@ -1326,7 +1328,7 @@ Expected: log line `Teleop server listening on port 9091`.
 docker compose down
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add server/src/main.cpp server/launch/teleop.launch.py
