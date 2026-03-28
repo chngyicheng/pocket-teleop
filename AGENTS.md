@@ -6,10 +6,10 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client implementation is in progress on `feat/client-implementation`. Client Task 1 (project scaffolding) is done; Task 2 (`protocol.ts`) is next. Server implementation is complete — 15 tests, 0 failures; tag `v0.1.0-server`.
+> **For the next agent:** Web client implementation is in progress on `feat/client-implementation`. Client Tasks 1–2 done; Task 3 (`connection.ts`) is next. Server implementation is complete — 15 tests, 0 failures; tag `v0.1.0-server`.
 
 **Implementation branch:** `feat/client-implementation`
-**Head SHA:** `88ec4bb` (as of 2026-03-28)
+**Head SHA:** `675d049` (as of 2026-03-28)
 
 ### Server tasks (complete)
 
@@ -20,7 +20,8 @@ All 12 server tasks done. 15 tests, 0 failures. Tag `v0.1.0-server` applied. See
 | Task | Status | Notes |
 |---|---|---|
 | 1 — Project scaffolding | ✅ Done | `web-client/` dir, `package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, placeholder `index.html`, stub `teleop_client.ts`; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
-| 2 — `protocol.ts` | ⬜ Next | |
+| 2 — `protocol.ts` | ✅ Done | `web-client/src/protocol.ts`; `InboundMessage` discriminated union, `buildTwist`, `buildPing`, `parseMessage`; compiles clean with tsc |
+| 3 — `connection.ts` | ⬜ Next | |
 | 3 — `connection.ts` | ⬜ Pending | |
 | 4 — `gamepad_handler.ts` | ⬜ Pending | |
 | 5 — `teleop_client.ts` + connection tests | ⬜ Pending | |
