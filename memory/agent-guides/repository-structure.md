@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** Server and web client v0.1.0 both complete. Practical gaps Tasks 1–3 complete (17 tests, `main`). Tags: `v0.1.0-server`, `v0.1.0-client`. Task 4 (index.html UI) and Task 5 (v0.2.0 tag) still pending.
+> **Scope note:** Server and web client v0.1.0 both complete. Practical gaps Tasks 1–5 all complete (38 tests, `main`). Tags: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
 
 ## Component layers (server)
 
