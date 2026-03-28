@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Tasks 1–3 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 4 — update `index.html` with reconnect button and calibration UI, then Task 5 — verify and tag `v0.2.0`. See `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md` for step-by-step code. All implementation is web-client only — no server changes.
 
-**Head SHA:** `1ad318c` (as of 2026-03-28)
+**Head SHA:** `aea549b` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
