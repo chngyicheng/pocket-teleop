@@ -176,6 +176,43 @@ describe('Safety', () => {
     expect(errorReceived).toBe(true);
   });
 
+  it('TeleopClient routes server error response to onError callback', async () => {
+    // Sends malformed JSON via TeleopClient so the error flows through
+    // TeleopClient.handleMessage → error branch → options.onError
+    const errorMessage = await new Promise<string>((resolve, reject) => {
+      const client = new TeleopClient({
+        onStatus: () => {
+          // Once connected, send garbage directly through the underlying connection.
+          // TeleopClient has no public raw-send, so we use sendTwist with extreme
+          // values that the server rejects as out-of-range.
+          // Instead, reach the error path by connecting a second time via a separate
+          // Connection and letting TeleopClient stay as the active client, then having
+          // TeleopClient itself receive the "already connected" error by connecting a
+          // second TeleopClient while this one is active.
+          resolve('skip'); // handled below
+        },
+        onError: (msg) => resolve(msg),
+        onClose: () => {},
+      });
+
+      // Connect a first raw Connection to occupy the slot, then connect TeleopClient.
+      // TeleopClient will receive the "already connected" error → onError fires.
+      const occupier = new Connection({
+        onMessage: () => {},
+        onOpen: () => {
+          client.connect(VALID_URL);
+          setTimeout(() => { occupier.disconnect(); client.disconnect(); reject(new Error('timeout')); }, 3000);
+        },
+        onClose: () => {},
+        onError: () => reject(new Error('occupier error')),
+      });
+      occupier.connect(VALID_URL);
+    });
+
+    expect(errorMessage).toBeTruthy();
+    expect(errorMessage).not.toBe('skip');
+  });
+
   it('second client is rejected while first is connected', async () => {
     // Connect first client and wait for status confirmation
     let firstClient: TeleopClient | null = null;
