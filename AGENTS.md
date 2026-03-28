@@ -6,22 +6,22 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client Task 1 (project scaffolding) is complete. `docker compose up --build webclient` serves a placeholder page at port 8080. Next task is Task 2: `protocol.ts`.
+> **For the next agent:** Web client Tasks 1–5 complete. Two connection integration tests pass (`valid token receives status message`, `invalid token is rejected without opening`). Next task is Task 6: keepalive and twist integration tests.
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `a5649b6` (as of 2026-03-28)
+**Head SHA:** `eae654a` (as of 2026-03-28)
 
 ### Task progress (web client)
 
 | Task | Status | Notes |
 |---|---|---|
 | 1 — Project scaffolding | ✅ Done | `web-client/package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, `index.html`, `src/teleop_client.ts` stub; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
-| 2 — protocol.ts | ⬜ Next | `web-client/src/protocol.ts` — covered by integration tests, no separate test file |
-| 3 — connection.ts | ⬜ | |
-| 4 — gamepad_handler.ts | ⬜ | |
-| 5 — teleop_client.ts + connection tests | ⬜ | |
-| 6 — Keepalive and twist integration tests | ⬜ | |
+| 2 — protocol.ts | ✅ Done | `web-client/src/protocol.ts` — `buildTwist`, `buildPing`, `parseMessage`; `InboundMessage` discriminated union |
+| 3 — connection.ts | ✅ Done | `web-client/src/connection.ts` — `Connection` class with `connect`, `disconnect`, `send`; uses `globalThis.WebSocket` for Node compat |
+| 4 — gamepad_handler.ts | ✅ Done | `web-client/src/gamepad_handler.ts` — `GamepadHandler` class; polls `navigator.getGamepads()` every 200ms; no-ops in Node (no `navigator`) |
+| 5 — teleop_client.ts + connection tests | ✅ Done | `web-client/src/teleop_client.ts` full implementation; `test/integration.test.ts` connection describe block; 2 tests pass |
+| 6 — Keepalive and twist integration tests | ⬜ Next | |
 | 7 — Safety integration tests | ⬜ | |
 | 8 — Wire index.html | ⬜ | |
 | 9 — Full suite verification | ⬜ | |
@@ -38,6 +38,8 @@
 | `#define ASIO_STANDALONE` removed from all WebSocket code | `teleop_server.hpp`, `test_teleop_server.cpp`, and future `test_teleop_node.cpp` | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed. Boost ASIO is correct for this environment. |
 | `docker-compose.yml` environment value quoted | `docker-compose.yml` line 9 | Docker Compose v2.35+ fails to parse `${VAR:?msg: with colon}` in unquoted YAML strings; wrapping in double quotes fixes the YAML parse error. |
 | `moduleResolution` changed from `bundler` to `node16` | `web-client/tsconfig.json` | `bundler` permits extensionless imports that 404 in browsers without a bundler; `node16` enforces `.js` extensions on all relative imports, which is correct for nginx-served native ES modules. |
+| `node:20-slim` changed to `node:22-slim` | `web-client/Dockerfile.webclient` | Node 20 has no native `WebSocket` global; `globalThis.WebSocket` is `undefined`, causing all connection attempts to fail silently. Node 22 ships stable native WebSocket. |
+| `maxRetries` increased from 20 to 40 in `waitForServer` | `web-client/test/integration.test.ts` | ROS2 node startup takes >10 s on Pi5; 40 retries × 500 ms = 20 s gives adequate margin. `hookTimeout` raised to 30 000 ms to match. |
 
 ---
 
@@ -75,6 +77,22 @@ docker compose down
 Phone connects to: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
 
 For build commands, test commands, and file structure → [repository-structure.md](memory/agent-guides/repository-structure.md)
+
+---
+
+## Task Completion Protocol — Mandatory After Every Task
+
+**This ritual is required after every task, every time, without exception.**
+
+1. **Run all tests** — 0 failures required before anything else. If any test fails, fix it first. Do not proceed to step 2 until the full suite is green.
+2. **Update all docs** — in the same commit as the code:
+   - `AGENTS.md` handoff table: mark task ✅ Done, advance ⬜ Next, update Notes and Head SHA
+   - Any guide file that changed (see the "Keeping docs current" table in [version-control.md](memory/agent-guides/version-control.md))
+3. **Commit** — one commit per task, with code + docs together
+4. **Request push** — say exactly: `"Committed as <hash>. Ready to push — shall I?"`
+5. **Wait** — do not start the next task until the user explicitly confirms the push and gives the go-ahead
+
+Skipping any step is a violation of the workflow. Tests are the gate — nothing moves forward until they pass.
 
 ---
 
