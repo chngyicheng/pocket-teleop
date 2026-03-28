@@ -6,28 +6,25 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All 12 implementation tasks are complete. The branch is ready for review and merge. All tests pass (15 tests, 0 failures). Tag `v0.1.0-server` marks the verified state.
+> **For the next agent:** Web client Task 1 (project scaffolding) is complete. `docker compose up --build webclient` serves a placeholder page at port 8080. Next task is Task 2: `protocol.ts`.
 
-**Implementation branch:** `feat/server-implementation`
-**Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `40009ac` (as of 2026-03-28)
+**Implementation branch:** `feat/client-implementation`
+**Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
+**Head SHA:** `69f9736` (as of 2026-03-28; update after commit)
 
-### Task progress
+### Task progress (web client)
 
 | Task | Status | Notes |
 |---|---|---|
-| 1 — Docker scaffolding | ✅ Done | `Dockerfile`, `docker-compose.yml`, `.dockerignore` |
-| 2 — ROS2 package scaffolding | ✅ Done | `package.xml`, `CMakeLists.txt`, stub source files |
-| 3 — CommandHandler types + header | ✅ Done | `command_handler.hpp/.cpp` stub; CMakeLists C++17 fix applied |
-| 4 — CommandHandler ping/twist parsing | ✅ Done | `command_handler.cpp` full parsing + range validation |
-| 5 — TeleopServer skeleton | ✅ Done | `teleop_server.hpp/.cpp` start/stop skeleton + ServerStartsAndStops test |
-| 6 — TeleopServer token validation | ✅ Done | `on_validate` with query-string token check; 3 tests pass |
-| 7 — TeleopServer single-client + status | ✅ Done | `on_open` sends status JSON, rejects second client; 2 tests pass |
-| 8 — TeleopServer message handling | ✅ Done | `on_message` twist/ping/error; 3 new tests pass |
-| 9 — TeleopServer safety watchdog | ✅ Done | `watchdog_loop` implemented; WatchdogFiresZeroVelocityOnTimeout passes |
-| 10 — TeleopNode ROS2 wrapper | ✅ Done | `teleop_node.hpp/.cpp`; TwistPublishedToCmdVel + DisconnectPublishesZeroVelocity pass |
-| 11 — main.cpp + launch file | ✅ Done | `main.cpp` entry point + `teleop.launch.py`; smoke test passes (`Teleop server listening on port 9091`) |
-| 12 — Full test suite verification | ✅ Done | 15 tests, 0 failures; tag `v0.1.0-server` applied |
+| 1 — Project scaffolding | ✅ Done | `web-client/package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, `index.html`, `src/teleop_client.ts` stub; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
+| 2 — protocol.ts | ⬜ Next | `web-client/src/protocol.ts` + `web-client/test/protocol.test.ts` |
+| 3 — connection.ts | ⬜ | |
+| 4 — gamepad_handler.ts | ⬜ | |
+| 5 — teleop_client.ts + connection tests | ⬜ | |
+| 6 — Keepalive and twist integration tests | ⬜ | |
+| 7 — Safety integration tests | ⬜ | |
+| 8 — Wire index.html | ⬜ | |
+| 9 — Full suite verification | ⬜ | |
 
 ### Known deviations from the plan (accepted)
 
