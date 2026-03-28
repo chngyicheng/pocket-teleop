@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Server and web client (v0.1.0) both complete on `main`. Next work: implement the **practical gaps** (reconnection + gamepad profiles + calibration UI) per `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`. Design spec is `docs/superpowers/specs/2026-03-28-practical-gaps-design.md`. Target: 17 tests, tag `v0.2.0`. All implementation is web-client only — no server changes.
 
-**Head SHA:** `1569140` (as of 2026-03-28)
+**Head SHA:** `c87a716` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
