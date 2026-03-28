@@ -213,6 +213,27 @@ describe('Safety', () => {
     expect(errorMessage).not.toBe('skip');
   });
 
+  it('TeleopClient.onClose fires when connection is closed', async () => {
+    let closeCode: number | null = null;
+
+    await new Promise<void>((resolve, reject) => {
+      const client = new TeleopClient({
+        onStatus: () => {
+          client.disconnect();
+        },
+        onClose: (code) => {
+          closeCode = code;
+          resolve();
+        },
+        onError: (msg) => reject(new Error(msg)),
+      });
+      client.connect(VALID_URL);
+      setTimeout(() => reject(new Error('timeout')), 4000);
+    });
+
+    expect(closeCode).not.toBeNull();
+  });
+
   it('second client is rejected while first is connected', async () => {
     // Connect first client and wait for status confirmation
     let firstClient: TeleopClient | null = null;

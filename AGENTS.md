@@ -23,11 +23,11 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client Tasks 1–8 complete. All 9 integration tests pass (9/9). Next task is Task 9: full suite verification + tag `v0.1.0-client`.
+> **For the next agent:** Web client complete. All 10 integration tests pass (10/10). Full docker stack builds and serves correctly. Tag `v0.1.0-client` applied.
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `98cfd97` (as of 2026-03-28)
+**Head SHA:** `6ba90e4` (as of 2026-03-28)
 
 ### Task progress (web client)
 
@@ -41,7 +41,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 6 — Keepalive and twist integration tests | ✅ Done | Messaging describe block: `sendTwist does not produce an error response`, `ping receives pong within 250ms` |
 | 7 — Safety integration tests | ✅ Done | Safety describe block: `keepalive keeps connection alive past watchdog timeout`, `server closes connection after silence exceeds timeout`, `malformed message receives error response`, `TeleopClient routes server error response to onError callback`, `second client is rejected while first is connected`; 9 tests total pass |
 | 8 — Wire index.html | ✅ Done | `index.html` reads `?token=` from URL, constructs WS URL via `window.location.hostname`, calls `TeleopClient.connect()`; status paragraph updated via `onStatus`/`onError`/`onClose` callbacks |
-| 9 — Full suite verification | ⬜ Next | |
+| 9 — Full suite verification | ✅ Done | 10 tests pass (added `TeleopClient.onClose fires when connection is closed`); `tsconfig.json` `module` fixed to `Node16`; full docker stack builds; nginx serves `index.html` + compiled JS; tag `v0.1.0-client` applied |
 
 ### Known deviations from the plan (accepted)
 
@@ -59,6 +59,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `maxRetries` increased from 20 to 40 in `waitForServer` | `web-client/test/integration.test.ts` | ROS2 node startup takes >10 s on Pi5; 40 retries × 500 ms = 20 s gives adequate margin. `hookTimeout` raised to 30 000 ms to match. |
 | `navigator` guard strengthened to check `getGamepads` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally (Node 21+) but without `getGamepads`; original guard `typeof navigator === 'undefined'` passed and then crashed on `.getGamepads()`. |
 | `connection stays open after 600ms of silence` split into two tests | `web-client/test/integration.test.ts` | Server watchdog closes the connection after 500 ms silence (not just fires zero velocity); original test had wrong expectation. Split into: (1) keepalive prevents watchdog timeout, (2) server closes connection after silence. |
+| `module` changed from `ESNext` to `Node16` | `web-client/tsconfig.json` | TypeScript 5 requires `module` and `moduleResolution` to match; `ESNext` + `node16` is rejected by `tsc` with TS5110. Vitest's esbuild transform tolerated the mismatch silently, so tests passed while the builder stage failed. |
 
 ---
 
