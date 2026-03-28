@@ -23,63 +23,42 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All frontend UI tasks complete. 43 tests pass (5 settings + 16 gamepad_profiles + 10 protocol + 12 integration). `settings.ts` added, `index.html` fully rewritten with responsive UI, `teleop_client.ts` gains `onTwist`. Tag `v0.3.0` pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** Touch joystick plan written and approved. Execute `docs/superpowers/plans/2026-03-29-touch-joystick-implementation.md` using `superpowers:subagent-driven-development`. Current test count: 43. Expected after plan: 53 (+ 8 `touch_joystick` + 2 `settings`). Do NOT tag without explicit user confirmation.
 
-**Head SHA:** `0caca0f` (as of 2026-03-28)
+**Head SHA:** `fa2f6ca` (as of 2026-03-29)
 
-### Practical gaps task progress
+### Completed milestones
+
+| Milestone | Tests | Tag |
+|---|---|---|
+| Server (ROS2 WebSocket, command handler, teleop node) | — | `v0.1.0-server` |
+| Web client v0.1.0 (protocol, connection, gamepad handler, teleop client, integration tests) | 10 | `v0.1.0-client` |
+| Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
+| Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | pending `v0.3.0` |
+
+### Touch joystick task progress
 
 | Task | Status | Notes |
 |---|---|---|
-| 1 — `gamepad_profiles.ts` + unit tests | ✅ Done | `web-client/src/gamepad_profiles.ts` + `web-client/test/gamepad_profiles.test.ts`; 6 unit tests pass (`matchProfile` × 5, `loadCustomProfiles` × 1); total suite 16 tests |
-| 2 — Update `GamepadHandler` | ✅ Done | `web-client/src/gamepad_handler.ts` — `profile` constructor option, `setProfile()`, `AxisConfig`-based axis reads, rising-edge `onButton` detection; 16 tests pass (no new tests — Gamepad API is browser-only) |
-| 3 — Update `TeleopClient` + reconnection test | ✅ Done | `web-client/src/teleop_client.ts` — `maxRetries`, `retryBaseDelayMs`, `keepaliveIntervalMs`, `onReconnecting`, `onButton`, `setGamepadProfile()`; `connection.ts` gets `ws?.close()` guard; reconnection integration test uses watchdog trigger; 17 tests pass |
-| 4 — Update `index.html` | ✅ Done | `web-client/index.html` — `<button id="reconnect-btn">`, `onReconnecting` countdown, `<details id="gamepad-config">` calibration UI; 17 tests still pass; docker build healthy; nginx serves page with "Configure gamepad" |
-| 5 — Full verification + tag | ✅ Done | 38/38 tests pass (16 gamepad_profiles + 10 protocol + 12 integration); docker build healthy; nginx serves "Configure gamepad"; `git tag v0.2.0` applied |
+| 1 — `touch_joystick.ts` + unit tests | ⬜ Next | 8 jsdom tests; `TouchJoystick` class — floating origin, normalised -1..1 output |
+| 2 — Settings namespace additions | ⬜ Pending | +2 tests; `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` |
+| 3 — `GamepadHandler` setEnabled + onActivity | ⬜ Pending | No new tests; Gamepad API browser-only |
+| 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ⬜ Pending | No new tests |
+| 5 — Rewrite `index.html` | ⬜ Pending | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, bug fixes |
+| 6 — Full verification + docs | ⬜ Pending | 53 tests, docker healthy, AGENTS.md updated, push requested |
 
-### Frontend UI task progress
-
-| Task | Status | Notes |
-|---|---|---|
-| 1 — `settings.ts` + unit tests | ✅ Done | `web-client/src/settings.ts` — `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`; `web-client/test/settings.test.ts` — 5 unit tests; 43 tests total |
-| 2 — `onTwist` in `TeleopClient` | ✅ Done | `web-client/src/teleop_client.ts` — `onTwist` added to `TeleopClientOptions`; fired from `sendTwist`; 43 tests still pass |
-| 3 — Rewrite `index.html` | ✅ Done | `web-client/index.html` — full responsive HTML; sticky header, status pill (connected/warn/danger/reconnecting), video panel, velocity bars (lx/ly/az), slide-in settings drawer (Gamepad + Video pages); 43 tests still pass; docker build healthy |
-| 4 — Full verification + docs | ✅ Done | 43/43 tests pass; docker build healthy; `AGENTS.md` + `repository-structure.md` updated; committed; push requested |
-
-### Task progress (web client v0.1.0 — complete)
-
-| Task | Status | Notes |
-|---|---|---|
-| 1 — Project scaffolding | ✅ Done | `web-client/package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, `index.html`, `src/teleop_client.ts` stub; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
-| 2 — protocol.ts | ✅ Done | `web-client/src/protocol.ts` — `buildTwist`, `buildPing`, `parseMessage`; `InboundMessage` discriminated union |
-| 3 — connection.ts | ✅ Done | `web-client/src/connection.ts` — `Connection` class with `connect`, `disconnect`, `send`; uses `globalThis.WebSocket` for Node compat |
-| 4 — gamepad_handler.ts | ✅ Done | `web-client/src/gamepad_handler.ts` — `GamepadHandler` class; polls `navigator.getGamepads()` every 200ms; no-ops in Node (no `navigator`) |
-| 5 — teleop_client.ts + connection tests | ✅ Done | `web-client/src/teleop_client.ts` full implementation; `test/integration.test.ts` Connection describe block; 2 tests pass |
-| 6 — Keepalive and twist integration tests | ✅ Done | Messaging describe block: `sendTwist does not produce an error response`, `ping receives pong within 250ms` |
-| 7 — Safety integration tests | ✅ Done | Safety describe block: `keepalive keeps connection alive past watchdog timeout`, `server closes connection after silence exceeds timeout`, `malformed message receives error response`, `TeleopClient routes server error response to onError callback`, `second client is rejected while first is connected`; 9 tests total pass |
-| 8 — Wire index.html | ✅ Done | `index.html` reads `?token=` from URL, constructs WS URL via `window.location.hostname`, calls `TeleopClient.connect()`; status paragraph updated via `onStatus`/`onError`/`onClose` callbacks |
-| 9 — Full suite verification | ✅ Done | 10 tests pass (added `TeleopClient.onClose fires when connection is closed`); `tsconfig.json` `module` fixed to `Node16`; full docker stack builds; nginx serves `index.html` + compiled JS; tag `v0.1.0-client` applied |
-
-### Known deviations from the plan (accepted)
+### Known deviations (still relevant to future work)
 
 | Deviation | Location | Why accepted |
 |---|---|---|
-| `--network=host` added to build | `docker-compose.yml`, build commands | Pi5 cannot resolve DNS in Docker bridge network |
-| `TELEOP_TOKEN:?Error:...` guard | `docker-compose.yml` | Positive hardening — fails loud if token unset |
-| `ament_add_gtest` used for "no ROS2" test targets | `CMakeLists.txt` | Tests always run inside Docker (ROS2 present); "no ROS2" means no ROS2 *code*, not no ROS2 *environment* |
-| `ament_lint_auto` declared but not wired | `package.xml` + `CMakeLists.txt` | Linting not a stated requirement; accepted for now |
-| `test_command_handler.cpp` left empty | `server/test/` | Testing trophy philosophy: parsing behavior covered by `test_teleop_server` integration tests |
-| `#define ASIO_STANDALONE` removed from all WebSocket code | `teleop_server.hpp`, `test_teleop_server.cpp`, and future `test_teleop_node.cpp` | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed. Boost ASIO is correct for this environment. |
-| `docker-compose.yml` environment value quoted | `docker-compose.yml` line 9 | Docker Compose v2.35+ fails to parse `${VAR:?msg: with colon}` in unquoted YAML strings; wrapping in double quotes fixes the YAML parse error. |
-| `moduleResolution` changed from `bundler` to `node16` | `web-client/tsconfig.json` | `bundler` permits extensionless imports that 404 in browsers without a bundler; `node16` enforces `.js` extensions on all relative imports, which is correct for nginx-served native ES modules. |
-| `node:20-slim` changed to `node:22-slim` | `web-client/Dockerfile.webclient` | Node 20 has no native `WebSocket` global; `globalThis.WebSocket` is `undefined`, causing all connection attempts to fail silently. Node 22 ships stable native WebSocket. |
-| `maxRetries` increased from 20 to 40 in `waitForServer` | `web-client/test/integration.test.ts` | ROS2 node startup takes >10 s on Pi5; 40 retries × 500 ms = 20 s gives adequate margin. `hookTimeout` raised to 30 000 ms to match. |
-| `navigator` guard strengthened to check `getGamepads` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally (Node 21+) but without `getGamepads`; original guard `typeof navigator === 'undefined'` passed and then crashed on `.getGamepads()`. |
-| `connection stays open after 600ms of silence` split into two tests | `web-client/test/integration.test.ts` | Server watchdog closes the connection after 500 ms silence (not just fires zero velocity); original test had wrong expectation. Split into: (1) keepalive prevents watchdog timeout, (2) server closes connection after silence. |
-| `module` changed from `ESNext` to `Node16` | `web-client/tsconfig.json` | TypeScript 5 requires `module` and `moduleResolution` to match; `ESNext` + `node16` is rejected by `tsc` with TS5110. Vitest's esbuild transform tolerated the mismatch silently, so tests passed while the builder stage failed. |
-| Reconnection test uses watchdog timeout, not second-client kick | `web-client/test/integration.test.ts` | Plan's test connected a second client to "kick" the first, but the server rejects the SECOND client (not the first) — confirmed by `on_open` source. Test redesigned: `keepaliveIntervalMs: 1000` > server watchdog 500ms → server closes idle connection → client auto-reconnects. Added `keepaliveIntervalMs` option to `TeleopClientOptions` to enable this. |
-| `TeleopClient` retry also triggered from `onError`; `retryAttempt` reset moved to `handleMessage` on `status` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` (not `onclose`) for HTTP-rejected connections, so `scheduleRetry` was unreachable for server-down scenarios. Added `retryPending` guard to prevent double-scheduling when browsers fire both. Discovered during test coverage audit (2026-03-28). |
-| `settings.ts` localStorage calls have no `try/catch` | `web-client/src/settings.ts` | `gamepad_profiles.ts` has a guard; plan prescribed code without one. Robot context: localStorage failures are not safety-critical. Accepted as intentional. |
+| `--network=host` required for all builds | `docker-compose.yml`, build commands | Pi5 cannot resolve DNS in Docker bridge network — omitting this flag causes silent build failures |
+| `#define ASIO_STANDALONE` must NOT be used | `teleop_server.hpp` and any new server WebSocket code | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed |
+| `docker-compose.yml` env values must be quoted | `docker-compose.yml` | Docker Compose v2.35+ fails to parse `${VAR:?msg: with colon}` in unquoted YAML strings |
+| `moduleResolution: node16` (not `bundler`) | `web-client/tsconfig.json` | `bundler` allows extensionless imports that 404 in nginx-served ES modules; `node16` enforces `.js` extensions |
+| `module: Node16` (not `ESNext`) | `web-client/tsconfig.json` | TypeScript 5 rejects `module: ESNext` + `moduleResolution: node16` with TS5110 |
+| `node:22-slim` (not `node:20-slim`) | `web-client/Dockerfile.webclient` | Node 20 has no native `WebSocket` global; connection attempts fail silently |
+| `navigator` guard must check `getGamepads`, not just `navigator` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally but without `getGamepads`; bare `typeof navigator` guard crashes |
+| `TeleopClient` retry triggered from both `onError` and `onclose` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` for rejected connections; `retryPending` guard prevents double-scheduling when browsers fire both |
 
 ---
 
@@ -99,6 +78,10 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Web client design spec | `docs/superpowers/specs/2026-03-28-client-design.md` |
 | Practical gaps implementation plan | `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md` |
 | Practical gaps design spec | `docs/superpowers/specs/2026-03-28-practical-gaps-design.md` |
+| Frontend UI implementation plan | `docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md` |
+| Frontend UI design spec | `docs/superpowers/specs/2026-03-28-frontend-ui-design.md` |
+| Touch joystick implementation plan | `docs/superpowers/plans/2026-03-29-touch-joystick-implementation.md` |
+| Touch joystick design spec | `docs/superpowers/specs/2026-03-28-touch-joystick-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
