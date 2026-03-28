@@ -6,11 +6,11 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client Tasks 1–5 complete. Two connection integration tests pass (`valid token receives status message`, `invalid token is rejected without opening`). Next task is Task 6: keepalive and twist integration tests.
+> **For the next agent:** Web client Tasks 1–7 complete. All 8 integration tests pass (8/8). Next task is Task 8: wire `index.html`.
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `eae654a` (as of 2026-03-28)
+**Head SHA:** `cc81d41` (as of 2026-03-28)
 
 ### Task progress (web client)
 
@@ -20,10 +20,10 @@
 | 2 — protocol.ts | ✅ Done | `web-client/src/protocol.ts` — `buildTwist`, `buildPing`, `parseMessage`; `InboundMessage` discriminated union |
 | 3 — connection.ts | ✅ Done | `web-client/src/connection.ts` — `Connection` class with `connect`, `disconnect`, `send`; uses `globalThis.WebSocket` for Node compat |
 | 4 — gamepad_handler.ts | ✅ Done | `web-client/src/gamepad_handler.ts` — `GamepadHandler` class; polls `navigator.getGamepads()` every 200ms; no-ops in Node (no `navigator`) |
-| 5 — teleop_client.ts + connection tests | ✅ Done | `web-client/src/teleop_client.ts` full implementation; `test/integration.test.ts` connection describe block; 2 tests pass |
-| 6 — Keepalive and twist integration tests | ⬜ Next | |
-| 7 — Safety integration tests | ⬜ | |
-| 8 — Wire index.html | ⬜ | |
+| 5 — teleop_client.ts + connection tests | ✅ Done | `web-client/src/teleop_client.ts` full implementation; `test/integration.test.ts` Connection describe block; 2 tests pass |
+| 6 — Keepalive and twist integration tests | ✅ Done | Messaging describe block: `sendTwist does not produce an error response`, `ping receives pong within 250ms` |
+| 7 — Safety integration tests | ✅ Done | Safety describe block: `keepalive keeps connection alive past watchdog timeout`, `server closes connection after silence exceeds timeout`, `malformed message receives error response`, `second client is rejected while first is connected`; 8 tests total pass |
+| 8 — Wire index.html | ⬜ Next | |
 | 9 — Full suite verification | ⬜ | |
 
 ### Known deviations from the plan (accepted)
@@ -40,6 +40,8 @@
 | `moduleResolution` changed from `bundler` to `node16` | `web-client/tsconfig.json` | `bundler` permits extensionless imports that 404 in browsers without a bundler; `node16` enforces `.js` extensions on all relative imports, which is correct for nginx-served native ES modules. |
 | `node:20-slim` changed to `node:22-slim` | `web-client/Dockerfile.webclient` | Node 20 has no native `WebSocket` global; `globalThis.WebSocket` is `undefined`, causing all connection attempts to fail silently. Node 22 ships stable native WebSocket. |
 | `maxRetries` increased from 20 to 40 in `waitForServer` | `web-client/test/integration.test.ts` | ROS2 node startup takes >10 s on Pi5; 40 retries × 500 ms = 20 s gives adequate margin. `hookTimeout` raised to 30 000 ms to match. |
+| `navigator` guard strengthened to check `getGamepads` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally (Node 21+) but without `getGamepads`; original guard `typeof navigator === 'undefined'` passed and then crashed on `.getGamepads()`. |
+| `connection stays open after 600ms of silence` split into two tests | `web-client/test/integration.test.ts` | Server watchdog closes the connection after 500 ms silence (not just fires zero velocity); original test had wrong expectation. Split into: (1) keepalive prevents watchdog timeout, (2) server closes connection after silence. |
 
 ---
 
