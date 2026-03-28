@@ -1,3 +1,4 @@
+// Settings routing state and video URL persistence (localStorage).
 const VIDEO_URL_KEY = 'pocket-teleop.video-url';
 
 export type SettingsPage = 'gamepad' | 'video';

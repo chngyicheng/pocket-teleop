@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All practical gaps tasks (1–5) are complete on `main`. Full suite verified at 38 tests (16 `gamepad_profiles` + 10 `protocol` + 12 integration). Docker build healthy; nginx serves page with "Configure gamepad". Tag `v0.2.0` applied. No further planned tasks — see specs/plans for any new work.
+> **For the next agent:** Practical gaps tasks 1–5 complete. Frontend UI implementation in progress (plan: `docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md`). Task 1 (settings.ts) done — 43 tests pass. Next: Task 2 (onTwist in TeleopClient).
 
-**Head SHA:** `cebf6fe` (as of 2026-03-28)
+**Head SHA:** `3dd6277` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
@@ -36,6 +36,15 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 3 — Update `TeleopClient` + reconnection test | ✅ Done | `web-client/src/teleop_client.ts` — `maxRetries`, `retryBaseDelayMs`, `keepaliveIntervalMs`, `onReconnecting`, `onButton`, `setGamepadProfile()`; `connection.ts` gets `ws?.close()` guard; reconnection integration test uses watchdog trigger; 17 tests pass |
 | 4 — Update `index.html` | ✅ Done | `web-client/index.html` — `<button id="reconnect-btn">`, `onReconnecting` countdown, `<details id="gamepad-config">` calibration UI; 17 tests still pass; docker build healthy; nginx serves page with "Configure gamepad" |
 | 5 — Full verification + tag | ✅ Done | 38/38 tests pass (16 gamepad_profiles + 10 protocol + 12 integration); docker build healthy; nginx serves "Configure gamepad"; `git tag v0.2.0` applied |
+
+### Frontend UI task progress
+
+| Task | Status | Notes |
+|---|---|---|
+| 1 — `settings.ts` + unit tests | ✅ Done | `web-client/src/settings.ts` — `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`; `web-client/test/settings.test.ts` — 5 unit tests; 43 tests total |
+| 2 — `onTwist` in `TeleopClient` | ⬜ Next | Add `onTwist` to `TeleopClientOptions`; fire from `sendTwist` |
+| 3 — Rewrite `index.html` | ⬜ Pending | Full layout, CSS, settings drawer, velocity bars, video panel |
+| 4 — Full verification + docs | ⬜ Pending | 43 tests, docker healthy, AGENTS.md, commit, push |
 
 ### Task progress (web client v0.1.0 — complete)
 
@@ -70,6 +79,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `module` changed from `ESNext` to `Node16` | `web-client/tsconfig.json` | TypeScript 5 requires `module` and `moduleResolution` to match; `ESNext` + `node16` is rejected by `tsc` with TS5110. Vitest's esbuild transform tolerated the mismatch silently, so tests passed while the builder stage failed. |
 | Reconnection test uses watchdog timeout, not second-client kick | `web-client/test/integration.test.ts` | Plan's test connected a second client to "kick" the first, but the server rejects the SECOND client (not the first) — confirmed by `on_open` source. Test redesigned: `keepaliveIntervalMs: 1000` > server watchdog 500ms → server closes idle connection → client auto-reconnects. Added `keepaliveIntervalMs` option to `TeleopClientOptions` to enable this. |
 | `TeleopClient` retry also triggered from `onError`; `retryAttempt` reset moved to `handleMessage` on `status` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` (not `onclose`) for HTTP-rejected connections, so `scheduleRetry` was unreachable for server-down scenarios. Added `retryPending` guard to prevent double-scheduling when browsers fire both. Discovered during test coverage audit (2026-03-28). |
+| `settings.ts` localStorage calls have no `try/catch` | `web-client/src/settings.ts` | `gamepad_profiles.ts` has a guard; plan prescribed code without one. Robot context: localStorage failures are not safety-critical. Accepted as intentional. |
 
 ---
 
