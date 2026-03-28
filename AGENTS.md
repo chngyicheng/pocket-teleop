@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Server and web client both complete. All 10 client integration tests pass. Both `v0.1.0-server` and `v0.1.0-client` tagged. Everything merged to `main`.
 
-**Head SHA:** `d877f21` (as of 2026-03-28)
+**Head SHA:** `98f6223` (as of 2026-03-28)
 
 ### Task progress (web client)
 
