@@ -41,10 +41,11 @@
 |---|---|
 | Language | TypeScript (strict mode) |
 | Build | `tsc` — no bundler, ES modules |
-| Test runner | Vitest (Node.js, not browser) |
+| Test runner | Vitest (Node 22, not browser) |
 | Static server | nginx (official Docker image) |
 | Input | Browser Gamepad API |
 | Transport | Browser WebSocket API |
+| Node runtime | Node 22 (node:22-slim) — required for native `globalThis.WebSocket` |
 
 No frontend framework. No runtime dependencies. Dev dependencies only: `typescript`, `vitest`.
 

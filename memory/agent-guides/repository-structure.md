@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** The server component is complete. The web client is designed (spec at `docs/superpowers/specs/2026-03-28-client-design.md`) and ready for implementation.
+> **Scope note:** The server component is complete. The web client Tasks 1–8 are complete on branch `feat/client-implementation`; Task 9 (full suite verification + tag) is next.
 
 ## Component layers (server)
 
