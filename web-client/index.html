@@ -6,7 +6,28 @@
   <title>pocket-teleop</title>
 </head>
 <body>
-  <p>pocket-teleop client — connecting...</p>
-  <script type="module" src="/dist/teleop_client.js"></script>
+  <p id="status">Connecting...</p>
+  <script type="module">
+    import { TeleopClient } from '/dist/teleop_client.js';
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token') ?? '';
+    const wsUrl = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
+
+    const client = new TeleopClient({
+      onStatus: (_connected, robotType) => {
+        document.getElementById('status').textContent =
+          `Connected — robot type: ${robotType}`;
+      },
+      onError: (msg) => {
+        document.getElementById('status').textContent = `Error: ${msg}`;
+      },
+      onClose: () => {
+        document.getElementById('status').textContent = 'Disconnected';
+      },
+    });
+
+    client.connect(wsUrl);
+  </script>
 </body>
 </html>

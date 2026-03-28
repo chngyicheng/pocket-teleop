@@ -6,11 +6,11 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client Tasks 1–7 complete. All 8 integration tests pass (8/8). Next task is Task 8: wire `index.html`.
+> **For the next agent:** Web client Tasks 1–8 complete. All 9 integration tests pass (9/9). Next task is Task 9: full suite verification + tag `v0.1.0-client`.
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `cc81d41` (as of 2026-03-28)
+**Head SHA:** `c4548f5` (as of 2026-03-28)
 
 ### Task progress (web client)
 
@@ -23,8 +23,8 @@
 | 5 — teleop_client.ts + connection tests | ✅ Done | `web-client/src/teleop_client.ts` full implementation; `test/integration.test.ts` Connection describe block; 2 tests pass |
 | 6 — Keepalive and twist integration tests | ✅ Done | Messaging describe block: `sendTwist does not produce an error response`, `ping receives pong within 250ms` |
 | 7 — Safety integration tests | ✅ Done | Safety describe block: `keepalive keeps connection alive past watchdog timeout`, `server closes connection after silence exceeds timeout`, `malformed message receives error response`, `TeleopClient routes server error response to onError callback`, `second client is rejected while first is connected`; 9 tests total pass |
-| 8 — Wire index.html | ⬜ Next | |
-| 9 — Full suite verification | ⬜ | |
+| 8 — Wire index.html | ✅ Done | `index.html` reads `?token=` from URL, constructs WS URL via `window.location.hostname`, calls `TeleopClient.connect()`; status paragraph updated via `onStatus`/`onError`/`onClose` callbacks |
+| 9 — Full suite verification | ⬜ Next | |
 
 ### Known deviations from the plan (accepted)
 
