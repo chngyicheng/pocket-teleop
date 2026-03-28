@@ -23,7 +23,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 17 passed), verify docker build, then `git tag v0.2.0` and push. All implementation is web-client only — no server changes.
+> **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (38 tests pass). Post-task-4 coverage audit added `protocol.test.ts` (10 tests), extended `gamepad_profiles.test.ts` (16 tests), fixed a `TeleopClient` reconnection bug (Node.js 22 `onerror`-only behavior), and added a `maxRetries` exhaustion integration test. Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 38 passed), verify docker build, then `git tag v0.2.0` and push.
 
 **Head SHA:** `2c20aa2` (as of 2026-03-28)
 
@@ -69,6 +69,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `connection stays open after 600ms of silence` split into two tests | `web-client/test/integration.test.ts` | Server watchdog closes the connection after 500 ms silence (not just fires zero velocity); original test had wrong expectation. Split into: (1) keepalive prevents watchdog timeout, (2) server closes connection after silence. |
 | `module` changed from `ESNext` to `Node16` | `web-client/tsconfig.json` | TypeScript 5 requires `module` and `moduleResolution` to match; `ESNext` + `node16` is rejected by `tsc` with TS5110. Vitest's esbuild transform tolerated the mismatch silently, so tests passed while the builder stage failed. |
 | Reconnection test uses watchdog timeout, not second-client kick | `web-client/test/integration.test.ts` | Plan's test connected a second client to "kick" the first, but the server rejects the SECOND client (not the first) — confirmed by `on_open` source. Test redesigned: `keepaliveIntervalMs: 1000` > server watchdog 500ms → server closes idle connection → client auto-reconnects. Added `keepaliveIntervalMs` option to `TeleopClientOptions` to enable this. |
+| `TeleopClient` retry also triggered from `onError`; `retryAttempt` reset moved to `handleMessage` on `status` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` (not `onclose`) for HTTP-rejected connections, so `scheduleRetry` was unreachable for server-down scenarios. Added `retryPending` guard to prevent double-scheduling when browsers fire both. Discovered during test coverage audit (2026-03-28). |
 
 ---
 

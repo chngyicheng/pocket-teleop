@@ -23,6 +23,9 @@ export class TeleopClient {
   private url = '';
   private intentionalDisconnect = false;
   private retryAttempt = 0;
+  // Prevents double-scheduling when both onerror and onclose fire (browser behaviour).
+  // Node.js 22 native WebSocket only fires onerror for rejected connections, not onclose.
+  private retryPending = false;
   private readonly maxRetries: number;
   private readonly retryBaseDelayMs: number;
   private readonly keepaliveIntervalMs: number;
@@ -35,7 +38,7 @@ export class TeleopClient {
     this.keepaliveIntervalMs = options.keepaliveIntervalMs ?? 200;
     this.connection = new Connection({
       onMessage: (raw) => this.handleMessage(raw),
-      onOpen: () => { this.retryAttempt = 0; },
+      onOpen: () => { /* retryAttempt is reset in handleMessage on status */ },
       onClose: (code, reason) => {
         this.stopKeepalive();
         this.gamepadHandler.stop();
@@ -43,10 +46,19 @@ export class TeleopClient {
           this.options.onClose?.(code, reason);
           return;
         }
-        this.scheduleRetry();
+        if (!this.retryPending) {
+          this.retryPending = true;
+          this.scheduleRetry();
+        }
       },
       onError: (e) => {
         this.options.onError?.((e as ErrorEvent).message ?? 'connection error');
+        // Node.js 22 fires only onerror (not onclose) for rejected connections,
+        // so retry must also be triggered here.
+        if (!this.intentionalDisconnect && !this.retryPending) {
+          this.retryPending = true;
+          this.scheduleRetry();
+        }
       },
     });
     this.gamepadHandler = new GamepadHandler({
@@ -59,6 +71,7 @@ export class TeleopClient {
     this.url = url;
     this.intentionalDisconnect = false;
     this.retryAttempt = 0;
+    this.retryPending = false;
     this.connection.connect(url);
     this.startKeepalive();
     this.gamepadHandler.start();
@@ -87,6 +100,7 @@ export class TeleopClient {
   private handleMessage(raw: string): void {
     const msg = parseMessage(raw);
     if (msg.type === 'status') {
+      this.retryAttempt = 0; // fully connected; reset exponential backoff counter
       this.options.onStatus?.(msg.connected, msg.robot_type);
     } else if (msg.type === 'error') {
       this.options.onError?.(msg.message);
@@ -103,6 +117,7 @@ export class TeleopClient {
     this.options.onReconnecting?.(this.retryAttempt, this.maxRetries, delayMs);
     this.retryTimeoutId = setTimeout(() => {
       this.retryTimeoutId = null;
+      this.retryPending = false; // allow next close/error to schedule a retry
       this.connection.connect(this.url);
       this.startKeepalive();
       this.gamepadHandler.start();

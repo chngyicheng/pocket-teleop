@@ -177,26 +177,15 @@ describe('Safety', () => {
   });
 
   it('TeleopClient routes server error response to onError callback', async () => {
-    // Sends malformed JSON via TeleopClient so the error flows through
-    // TeleopClient.handleMessage → error branch → options.onError
+    // Strategy: occupy the server slot with a raw Connection, then connect
+    // TeleopClient. The server sends an "already connected" error message to
+    // TeleopClient → handleMessage → error branch → options.onError fires.
     const errorMessage = await new Promise<string>((resolve, reject) => {
       const client = new TeleopClient({
-        onStatus: () => {
-          // Once connected, send garbage directly through the underlying connection.
-          // TeleopClient has no public raw-send, so we use sendTwist with extreme
-          // values that the server rejects as out-of-range.
-          // Instead, reach the error path by connecting a second time via a separate
-          // Connection and letting TeleopClient stay as the active client, then having
-          // TeleopClient itself receive the "already connected" error by connecting a
-          // second TeleopClient while this one is active.
-          resolve('skip'); // handled below
-        },
         onError: (msg) => resolve(msg),
         onClose: () => {},
       });
 
-      // Connect a first raw Connection to occupy the slot, then connect TeleopClient.
-      // TeleopClient will receive the "already connected" error → onError fires.
       const occupier = new Connection({
         onMessage: () => {},
         onOpen: () => {
@@ -210,7 +199,6 @@ describe('Safety', () => {
     });
 
     expect(errorMessage).toBeTruthy();
-    expect(errorMessage).not.toBe('skip');
   });
 
   it('TeleopClient.onClose fires when connection is closed', async () => {
@@ -267,6 +255,32 @@ describe('Safety', () => {
 
     expect(result.reconnected).toBe(true);
     expect(result.reconnectingCount).toBeGreaterThanOrEqual(1);
+  }, 6000);
+
+  it('onClose fires with "max retries exceeded" after all retries are exhausted', async () => {
+    // Uses INVALID_URL so the server rejects the connection before the WebSocket
+    // handshake completes — onOpen never fires, so retryAttempt is not reset.
+    // maxRetries=2 → 3 failed attempts → onClose('max retries exceeded').
+    let closeCode = -1;
+    let closeReason = '';
+
+    await new Promise<void>((resolve, reject) => {
+      const client = new TeleopClient({
+        maxRetries: 2,
+        retryBaseDelayMs: 200,
+        onClose: (code, reason) => {
+          closeCode = code;
+          closeReason = reason;
+          resolve();
+        },
+        onError: () => {}, // silence per-attempt connection errors
+      });
+      client.connect(INVALID_URL);
+      setTimeout(() => reject(new Error('timeout')), 5000);
+    });
+
+    expect(closeReason).toBe('max retries exceeded');
+    expect(closeCode).toBe(0);
   }, 6000);
 
   it('second client is rejected while first is connected', async () => {
