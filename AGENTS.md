@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Practical gaps tasks 1–5 complete. Frontend UI implementation in progress — Tasks 1 and 2 complete, Task 3 is next. Use `superpowers:subagent-driven-development` to continue executing `docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md` starting at **Task 3: Rewrite `index.html`**. The full HTML for Task 3 is in the plan file. After Task 3, run Task 4 (full verification + docs + request push). Do NOT tag without user confirmation.
+> **For the next agent:** All frontend UI tasks complete. 43 tests pass (5 settings + 16 gamepad_profiles + 10 protocol + 12 integration). `settings.ts` added, `index.html` fully rewritten with responsive UI, `teleop_client.ts` gains `onTwist`. Tag `v0.3.0` pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `5e30508` (as of 2026-03-28)
+**Head SHA:** `TBD` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
@@ -43,8 +43,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 |---|---|---|
 | 1 — `settings.ts` + unit tests | ✅ Done | `web-client/src/settings.ts` — `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`; `web-client/test/settings.test.ts` — 5 unit tests; 43 tests total |
 | 2 — `onTwist` in `TeleopClient` | ✅ Done | `web-client/src/teleop_client.ts` — `onTwist` added to `TeleopClientOptions`; fired from `sendTwist`; 43 tests still pass |
-| 3 — Rewrite `index.html` | ⬜ Next | Full layout, CSS, settings drawer, velocity bars, video panel — full HTML in plan file |
-| 4 — Full verification + docs | ⬜ Pending | 43 tests, docker healthy, AGENTS.md, commit, push |
+| 3 — Rewrite `index.html` | ✅ Done | `web-client/index.html` — full responsive HTML; sticky header, status pill (connected/warn/danger/reconnecting), video panel, velocity bars (lx/ly/az), slide-in settings drawer (Gamepad + Video pages); 43 tests still pass; docker build healthy |
+| 4 — Full verification + docs | ✅ Done | 43/43 tests pass; docker build healthy; `AGENTS.md` + `repository-structure.md` updated; committed; push requested |
 
 ### Task progress (web client v0.1.0 — complete)
 

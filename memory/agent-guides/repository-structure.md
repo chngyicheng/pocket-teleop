@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** Server and web client v0.1.0 both complete. Practical gaps Tasks 1–5 all complete (38 tests, `main`). Tags: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
+> **Scope note:** Server and web client v0.1.0 both complete. All practical gaps tasks complete (43 tests, `main`). Frontend UI complete (v0.3.0 pending tag). Tags so far: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
 
 ## Component layers (server)
 
@@ -117,7 +117,9 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 | `web-client/src/teleop_client.ts` | Orchestrates all modules; reconnection loop; public API |
 | `web-client/test/gamepad_profiles.test.ts` | Unit tests for `matchProfile` and `loadCustomProfiles` (6 tests) |
 | `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
-| `web-client/index.html` | Shell page; wires TeleopClient; no visual design |
+| `web-client/src/settings.ts` | `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl` — settings routing and video URL persistence |
+| `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (5 tests; `vi.stubGlobal` for localStorage) |
+| `web-client/index.html` | Full responsive UI — sticky header, status pill, video panel, velocity bars, settings drawer (Gamepad + Video pages) |
 | `web-client/tsconfig.json` | TypeScript strict mode config |
 | `web-client/package.json` | Dev deps: typescript, vitest |
 
