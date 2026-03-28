@@ -4,6 +4,7 @@
 
 - **Testing trophy philosophy:** heavy on integration tests, light on unit tests. Tests must survive a refactor without needing to be rewritten. Do not write tests that assert specific function return values on internal helpers.
 - **TDD order is mandatory:** write failing test → run to confirm failure → implement → run to confirm pass → commit. Never write implementation before the test.
+- **Red must be a behavior failure, not a missing module.** Before writing tests, create the implementation file as a stub — exported names exist but throw `new Error('not implemented')` (TypeScript) or return a sentinel value (C++). A "module not found" / linker error is a build failure, not a red test. The red phase must prove the test exercises the right code path, not just that the file is absent.
 - **`test_command_handler.cpp` — minimal or empty.** `CommandHandler` parsing behavior is covered through `test_teleop_server` (real WebSocket messages, real parsing). Avoid unit tests that pin return types of `parse()`.
 - **`test_teleop_server.cpp` — primary test target.** Real WebSocket connections, real JSON messages, mock ROS2 callback. This is where most test coverage lives.
 - **`test_teleop_node.cpp` — crown jewel.** Full ROS2 pipeline: WebSocket message → `/cmd_vel` Twist published. Covers auth, parsing, and publish in one shot.
