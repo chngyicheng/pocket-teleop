@@ -20,7 +20,7 @@ ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
 | Component | Status |
 |---|---|
 | Server (ROS2 + WebSocket) | Complete — `v0.1.0-server` |
-| Web client (browser UI) | Complete — `v0.1.0-client` |
+| Web client (browser UI) | Complete — responsive UI, settings drawer, velocity bars, video panel (`v0.2.0` / `v0.3.0` pending) |
 | Android app | Stretch goal |
 
 ## Running tests
@@ -39,6 +39,10 @@ TELEOP_TOKEN=testtoken docker compose --profile test run --rm webclient-test
 | [`docs/superpowers/specs/2026-03-28-client-design.md`](docs/superpowers/specs/2026-03-28-client-design.md) | Web client design spec |
 | [`docs/superpowers/plans/2026-03-27-server-implementation.md`](docs/superpowers/plans/2026-03-27-server-implementation.md) | Server implementation plan |
 | [`docs/superpowers/plans/2026-03-28-client-implementation.md`](docs/superpowers/plans/2026-03-28-client-implementation.md) | Web client implementation plan |
+| [`docs/superpowers/specs/2026-03-28-practical-gaps-design.md`](docs/superpowers/specs/2026-03-28-practical-gaps-design.md) | Practical gaps design spec (gamepad profiles, reconnection, calibration UI) |
+| [`docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`](docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md) | Practical gaps implementation plan |
+| [`docs/superpowers/specs/2026-03-28-frontend-ui-design.md`](docs/superpowers/specs/2026-03-28-frontend-ui-design.md) | Frontend UI design spec |
+| [`docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md`](docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md) | Frontend UI implementation plan |
 
 ## Supported robots
 
