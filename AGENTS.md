@@ -4,6 +4,23 @@
 
 ---
 
+## Staleness — Keeping This File Current
+
+**`CLAUDE.md` is a symlink to `AGENTS.md`. Always edit `AGENTS.md` directly — never `CLAUDE.md`.**
+
+**Update this file in the same commit as the code change it documents.**
+
+The Handoff State section is the first thing a new agent reads. Write it as if you are handing off to someone with zero context about this conversation:
+
+- **Head SHA** — update to the commit you are about to make (run `git rev-parse --short HEAD` after staging, before committing)
+- **Task table** — mark the task ✅ Done; move ⬜ Next to the following task; update Notes with what was created or the key test names that now pass
+- **Known deviations** — add a row for any deviation from the plan, with a concrete "Why accepted" that would satisfy a skeptical reviewer reading it cold
+- **No pronouns or "we" / "I" / "our"** — write in third person so it reads as documentation, not a conversation
+
+See [version-control.md](memory/agent-guides/version-control.md) for the full table of what to update and when.
+
+---
+
 ## Handoff State — Resume Here
 
 > **For the next agent:** Web client Tasks 1–8 complete. All 9 integration tests pass (9/9). Next task is Task 9: full suite verification + tag `v0.1.0-client`.
@@ -125,20 +142,3 @@ See [project-skills.md](memory/agent-guides/project-skills.md) for the task orie
 For complete step-by-step code: `docs/superpowers/plans/2026-03-27-server-implementation.md`
 
 For full protocol and component spec: `docs/superpowers/specs/2026-03-27-server-design.md`
-
----
-
-## Staleness — Keeping This File Current
-
-**`CLAUDE.md` is a symlink to `AGENTS.md`. Always edit `AGENTS.md` directly — never `CLAUDE.md`.**
-
-**Update this file in the same commit as the code change it documents.**
-
-The Handoff State section is the first thing a new agent reads. Write it as if you are handing off to someone with zero context about this conversation:
-
-- **Head SHA** — update to the commit you are about to make (run `git rev-parse --short HEAD` after staging, before committing)
-- **Task table** — mark the task ✅ Done; move ⬜ Next to the following task; update Notes with what was created or the key test names that now pass
-- **Known deviations** — add a row for any deviation from the plan, with a concrete "Why accepted" that would satisfy a skeptical reviewer reading it cold
-- **No pronouns or "we" / "I" / "our"** — write in third person so it reads as documentation, not a conversation
-
-See [version-control.md](memory/agent-guides/version-control.md) for the full table of what to update and when.
