@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** The server component is complete. The web client Tasks 1–8 are complete on branch `feat/client-implementation`; Task 9 (full suite verification + tag) is next.
+> **Scope note:** Server and web client both complete and merged to `main`. Tags: `v0.1.0-server`, `v0.1.0-client`.
 
 ## Component layers (server)
 

@@ -23,11 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Web client complete. All 10 integration tests pass (10/10). Full docker stack builds and serves correctly. Tag `v0.1.0-client` applied.
+> **For the next agent:** Server and web client both complete. All 10 client integration tests pass. Both `v0.1.0-server` and `v0.1.0-client` tagged. Everything merged to `main`.
 
-**Implementation branch:** `feat/client-implementation`
-**Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `45f08d4` (as of 2026-03-28)
+**Head SHA:** `d877f21` (as of 2026-03-28)
 
 ### Task progress (web client)
 
@@ -67,14 +65,16 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 | What you need | Where to look |
 |---|---|
-| Run the server now | Level 1 (below) |
+| Run the stack now | Level 1 (below) |
 | Build, test, docker commands | [repository-structure.md](memory/agent-guides/repository-structure.md) |
 | Tech stack and dependencies | [techstack.md](memory/agent-guides/techstack.md) |
 | Message protocol and data types | [data-schema.md](memory/agent-guides/data-schema.md) |
 | Git workflow and doc update rules | [version-control.md](memory/agent-guides/version-control.md) |
 | TDD standards, guardrails, task orientation | [project-skills.md](memory/agent-guides/project-skills.md) |
-| Step-by-step implementation plan | `docs/superpowers/plans/2026-03-27-server-implementation.md` |
-| Full protocol and component spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
+| Server implementation plan | `docs/superpowers/plans/2026-03-27-server-implementation.md` |
+| Server design spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
+| Web client implementation plan | `docs/superpowers/plans/2026-03-28-client-implementation.md` |
+| Web client design spec | `docs/superpowers/specs/2026-03-28-client-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
@@ -94,7 +94,9 @@ TELEOP_TOKEN=mysecrettoken docker compose up --build
 docker compose down
 ```
 
-Phone connects to: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
+Phone connects to WebSocket: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
+
+Web client (phone browser): `http://<robot-ip>:8080?token=mysecrettoken`
 
 For build commands, test commands, and file structure → [repository-structure.md](memory/agent-guides/repository-structure.md)
 

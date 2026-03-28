@@ -91,4 +91,7 @@ The Handoff State in `CLAUDE.md` is the first thing the next agent reads. It mus
 
 ## Worktrees
 
-Implementation work runs in a git worktree at `.worktrees/feat-server`. Do not recreate it if it already exists. Run `git worktree list` to check.
+Implementation work runs in a git worktree under `.worktrees/`. Do not recreate a worktree if it already exists. Run `git worktree list` to check.
+
+- `.worktrees/feat-server` — used for server implementation (complete)
+- `.worktrees/feat-client` — used for web client implementation (complete)
