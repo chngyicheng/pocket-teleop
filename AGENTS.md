@@ -10,7 +10,7 @@
 
 **Implementation branch:** `feat/server-implementation`
 **Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `0edb2a8` (as of 2026-03-27)
+**Head SHA:** `00386a3` (as of 2026-03-28)
 
 ### Task progress
 
@@ -26,8 +26,8 @@
 | 8 — TeleopServer message handling | ✅ Done | `on_message` twist/ping/error; 3 new tests pass |
 | 9 — TeleopServer safety watchdog | ✅ Done | `watchdog_loop` implemented; WatchdogFiresZeroVelocityOnTimeout passes |
 | 10 — TeleopNode ROS2 wrapper | ✅ Done | `teleop_node.hpp/.cpp`; TwistPublishedToCmdVel + DisconnectPublishesZeroVelocity pass |
-| 11 — main.cpp + launch file | ⬜ Next | |
-| 12 — Full test suite verification | ⬜ Pending | |
+| 11 — main.cpp + launch file | ✅ Done | `main.cpp` entry point + `teleop.launch.py`; smoke test passes (`Teleop server listening on port 9091`) |
+| 12 — Full test suite verification | ⬜ Next | |
 
 ### Known deviations from the plan (accepted)
 
@@ -39,6 +39,7 @@
 | `ament_lint_auto` declared but not wired | `package.xml` + `CMakeLists.txt` | Linting not a stated requirement; accepted for now |
 | `test_command_handler.cpp` left empty | `server/test/` | Testing trophy philosophy: parsing behavior covered by `test_teleop_server` integration tests |
 | `#define ASIO_STANDALONE` removed from all WebSocket code | `teleop_server.hpp`, `test_teleop_server.cpp`, and future `test_teleop_node.cpp` | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed. Boost ASIO is correct for this environment. |
+| `docker-compose.yml` environment value quoted | `docker-compose.yml` line 9 | Docker Compose v2.35+ fails to parse `${VAR:?msg: with colon}` in unquoted YAML strings; wrapping in double quotes fixes the YAML parse error. |
 
 ---
 
