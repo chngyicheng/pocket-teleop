@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (38 tests pass). Post-task-4 coverage audit added `protocol.test.ts` (10 tests), extended `gamepad_profiles.test.ts` (16 tests), fixed a `TeleopClient` reconnection bug (Node.js 22 `onerror`-only behavior), and added a `maxRetries` exhaustion integration test. Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 38 passed), verify docker build, then `git tag v0.2.0` and push.
 
-**Head SHA:** `2c20aa2` (as of 2026-03-28)
+**Head SHA:** `32aa6b5` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
