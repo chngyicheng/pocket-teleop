@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Practical gaps tasks 1–5 complete. Frontend UI implementation in progress (plan: `docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md`). Task 1 (settings.ts) done — 43 tests pass. Next: Task 2 (onTwist in TeleopClient).
+> **For the next agent:** Practical gaps tasks 1–5 complete. Frontend UI implementation in progress — Tasks 1 and 2 complete, Task 3 is next. Use `superpowers:subagent-driven-development` to continue executing `docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md` starting at **Task 3: Rewrite `index.html`**. The full HTML for Task 3 is in the plan file. After Task 3, run Task 4 (full verification + docs + request push). Do NOT tag without user confirmation.
 
-**Head SHA:** `3dd6277` (as of 2026-03-28)
+**Head SHA:** `5e30508` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
@@ -42,8 +42,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Task | Status | Notes |
 |---|---|---|
 | 1 — `settings.ts` + unit tests | ✅ Done | `web-client/src/settings.ts` — `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`; `web-client/test/settings.test.ts` — 5 unit tests; 43 tests total |
-| 2 — `onTwist` in `TeleopClient` | ⬜ Next | Add `onTwist` to `TeleopClientOptions`; fire from `sendTwist` |
-| 3 — Rewrite `index.html` | ⬜ Pending | Full layout, CSS, settings drawer, velocity bars, video panel |
+| 2 — `onTwist` in `TeleopClient` | ✅ Done | `web-client/src/teleop_client.ts` — `onTwist` added to `TeleopClientOptions`; fired from `sendTwist`; 43 tests still pass |
+| 3 — Rewrite `index.html` | ⬜ Next | Full layout, CSS, settings drawer, velocity bars, video panel — full HTML in plan file |
 | 4 — Full verification + docs | ⬜ Pending | 43 tests, docker healthy, AGENTS.md, commit, push |
 
 ### Task progress (web client v0.1.0 — complete)
