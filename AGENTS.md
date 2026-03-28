@@ -23,11 +23,21 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Server and web client both complete. All 10 client integration tests pass. Both `v0.1.0-server` and `v0.1.0-client` tagged. Everything merged to `main`.
+> **For the next agent:** Server and web client (v0.1.0) both complete on `main`. Next work: implement the **practical gaps** (reconnection + gamepad profiles + calibration UI) per `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`. Design spec is `docs/superpowers/specs/2026-03-28-practical-gaps-design.md`. Target: 17 tests, tag `v0.2.0`. All implementation is web-client only — no server changes.
 
-**Head SHA:** `98f6223` (as of 2026-03-28)
+**Head SHA:** `889f774` (as of 2026-03-28)
 
-### Task progress (web client)
+### Practical gaps task progress
+
+| Task | Status | Notes |
+|---|---|---|
+| 1 — `gamepad_profiles.ts` + unit tests | ⬜ Next | New file `web-client/src/gamepad_profiles.ts`; new test file `web-client/test/gamepad_profiles.test.ts`; 6 unit tests |
+| 2 — Update `GamepadHandler` | ⬜ Pending | Add `profile`, `setProfile()`, `onButton` rising-edge detection |
+| 3 — Update `TeleopClient` + reconnection test | ⬜ Pending | Add reconnection loop, `onReconnecting`, `onButton` forwarding; total 11 integration tests |
+| 4 — Update `index.html` | ⬜ Pending | Reconnect button + status, calibration UI |
+| 5 — Full verification + tag | ⬜ Pending | 17 tests pass; `v0.2.0` tag applied |
+
+### Task progress (web client v0.1.0 — complete)
 
 | Task | Status | Notes |
 |---|---|---|
@@ -75,6 +85,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Server design spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
 | Web client implementation plan | `docs/superpowers/plans/2026-03-28-client-implementation.md` |
 | Web client design spec | `docs/superpowers/specs/2026-03-28-client-design.md` |
+| Practical gaps implementation plan | `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md` |
+| Practical gaps design spec | `docs/superpowers/specs/2026-03-28-practical-gaps-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
