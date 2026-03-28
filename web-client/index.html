@@ -4,138 +4,496 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>pocket-teleop</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --border: #e0e0e0;
+      --text: #111111;
+      --text-muted: #666666;
+      --accent: #0070f3;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --header-h: 48px;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111111;
+        --surface: #1e1e1e;
+        --border: #333333;
+        --text: #f0f0f0;
+        --text-muted: #999999;
+      }
+    }
+
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+    /* ── Header ─────────────────────────────────── */
+    #app-header {
+      flex: 0 0 var(--header-h);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      z-index: 10;
+    }
+    #menu-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 20px;
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 6px;
+      line-height: 1;
+    }
+    #menu-btn:hover { background: var(--surface); }
+    #app-title { flex: 1; text-align: center; font-weight: 600; font-size: 15px; }
+
+    /* ── Status pill ────────────────────────────── */
+    .pill {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 99px;
+      border: 1px solid currentColor;
+      background: transparent;
+      white-space: nowrap;
+      color: var(--text-muted);
+      cursor: default;
+    }
+    .pill:disabled { cursor: default; opacity: 1; }
+    .pill-connected  { color: #16a34a; }
+    .pill-warn       { color: var(--warn); }
+    .pill-danger     { color: var(--danger); cursor: pointer; }
+
+    /* ── Video panel ────────────────────────────── */
+    #video-panel {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--surface);
+      position: relative;
+    }
+    #video-placeholder { color: var(--text-muted); font-size: 14px; text-align: center; padding: 16px; }
+    #video-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+
+    /* ── Velocity bar ───────────────────────────── */
+    #velocity-bar {
+      flex: 0 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .vel-row { display: flex; align-items: center; gap: 8px; }
+    .vel-label { font-size: 11px; font-weight: 600; color: var(--text-muted); width: 16px; text-align: right; font-family: monospace; }
+    .vel-track {
+      position: relative;
+      flex: 1;
+      height: 8px;
+      background: var(--surface);
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .vel-fill {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: left 100ms, width 100ms;
+      left: 50%;
+      width: 0;
+    }
+    .vel-value { font-size: 11px; font-family: monospace; color: var(--text-muted); width: 44px; text-align: right; }
+
+    /* ── Backdrop ───────────────────────────────── */
+    #backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 20;
+    }
+    #backdrop.visible { display: block; }
+
+    /* ── Settings drawer ────────────────────────── */
+    #drawer {
+      position: fixed;
+      top: 0; left: 0;
+      height: 100%;
+      width: 320px;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      z-index: 30;
+      transform: translateX(-100%);
+      transition: transform 250ms ease;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    #drawer.open { transform: translateX(0); }
+    @media (max-width: 400px) { #drawer { width: 90vw; } }
+
+    #drawer-header { padding: 16px; font-weight: 600; font-size: 15px; border-bottom: 1px solid var(--border); }
+
+    #drawer-nav { list-style: none; border-bottom: 1px solid var(--border); }
+    .nav-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-muted);
+      border-left: 3px solid transparent;
+    }
+    .nav-item:hover { background: var(--surface); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+    .drawer-page { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* Shared drawer element styles */
+    .drawer-page h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .drawer-page label { font-size: 14px; }
+    .drawer-page select,
+    .drawer-page input[type="text"] {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .drawer-page button {
+      padding: 7px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .drawer-page button:hover { background: var(--border); }
+    .drawer-page button:disabled { opacity: 0.5; cursor: default; }
+    .drawer-page ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .drawer-page li { font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+    /* Video page */
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+    .field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+    .field-row { display: flex; gap: 8px; }
+    .field-row input { flex: 1; }
+    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-primary:hover { opacity: 0.9; background: var(--accent); }
+  </style>
 </head>
 <body>
-  <p id="status">Connecting...</p>
-  <button id="reconnect-btn" style="display:none">Reconnect</button>
+  <div id="backdrop"></div>
 
-  <details id="gamepad-config" style="display:none">
-    <summary>Configure gamepad</summary>
+  <nav id="drawer" aria-label="Settings">
+    <div id="drawer-header">Settings</div>
+    <ul id="drawer-nav">
+      <li class="nav-item active" data-page="gamepad">Gamepad</li>
+      <li class="nav-item" data-page="video">Video</li>
+    </ul>
 
-    <p>
-      <label for="profile-select">Profile: </label>
-      <select id="profile-select"></select>
-      <button id="profile-delete" style="display:none">Delete</button>
-    </p>
+    <!-- Gamepad page -->
+    <div id="page-gamepad" class="drawer-page">
+      <div>
+        <label for="profile-select">Profile</label><br>
+        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
+          <select id="profile-select"></select>
+          <button id="profile-delete" style="display:none">Delete</button>
+        </div>
+      </div>
 
-    <div id="axis-calibration">
-      <h3>Axis calibration</h3>
-      <p id="cal-instruction">Press <strong>Start</strong> to calibrate axes from scratch, or skip to use the selected profile as-is.</p>
-      <button id="cal-start">Start calibration</button>
-      <button id="cal-next" style="display:none">Next</button>
-      <button id="cal-skip" style="display:none">Skip step</button>
-    </div>
+      <div id="axis-calibration">
+        <h3>Axis calibration</h3>
+        <p id="cal-instruction" style="font-size:13px;margin-top:6px">Press <strong>Start</strong> to calibrate axes from scratch, or skip to use the selected profile as-is.</p>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button id="cal-start">Start calibration</button>
+          <button id="cal-next" style="display:none">Next</button>
+          <button id="cal-skip" style="display:none">Skip step</button>
+        </div>
+      </div>
 
-    <div id="button-assignments">
-      <h3>Button assignments</h3>
-      <ul id="button-list"></ul>
-      <div id="button-add-form">
-        <input id="button-action-input" placeholder="action name (e.g. emergency_stop)" style="width:220px" />
-        <button id="button-add-start">Add</button>
-        <span id="button-waiting" style="display:none"> — press a button on the gamepad…</span>
+      <div id="button-assignments">
+        <h3>Button assignments</h3>
+        <ul id="button-list"></ul>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+          <input id="button-action-input" type="text" placeholder="action name (e.g. emergency_stop)" style="width:200px" />
+          <button id="button-add-start">Add</button>
+          <span id="button-waiting" style="display:none;font-size:13px;color:var(--text-muted)">press a button on the gamepad…</span>
+        </div>
+      </div>
+
+      <div>
+        <h3>Save profile</h3>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="save-name-input" type="text" placeholder="Profile name…" style="flex:1" />
+          <button id="save-btn" class="btn-primary">Save</button>
+        </div>
       </div>
     </div>
 
-    <p>
-      <input id="save-name-input" placeholder="Save profile as…" style="width:200px" />
-      <button id="save-btn">Save</button>
-    </p>
-  </details>
+    <!-- Video page -->
+    <div id="page-video" class="drawer-page" hidden>
+      <div class="field-group">
+        <span class="field-label">Stream URL</span>
+        <div class="field-row">
+          <input id="stream-url-input" type="text" placeholder="http://robot.local:8081/stream" />
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button id="video-apply-btn" class="btn-primary">Apply</button>
+          <button id="video-clear-btn">Clear</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <header id="app-header">
+    <button id="menu-btn" aria-label="Open settings">☰</button>
+    <span id="app-title">pocket-teleop</span>
+    <button id="status-pill" class="pill" disabled>Connecting…</button>
+  </header>
+
+  <main id="video-panel">
+    <p id="video-placeholder">No video stream — add one in Settings ⚙</p>
+    <img id="video-img" alt="video stream" style="display:none" />
+  </main>
+
+  <footer id="velocity-bar">
+    <div class="vel-row">
+      <span class="vel-label">lx</span>
+      <div class="vel-track"><div class="vel-fill" id="vel-fill-lx"></div></div>
+      <span class="vel-value" id="vel-val-lx">—</span>
+    </div>
+    <div class="vel-row">
+      <span class="vel-label">ly</span>
+      <div class="vel-track"><div class="vel-fill" id="vel-fill-ly"></div></div>
+      <span class="vel-value" id="vel-val-ly">—</span>
+    </div>
+    <div class="vel-row">
+      <span class="vel-label">az</span>
+      <div class="vel-track"><div class="vel-fill" id="vel-fill-az"></div></div>
+      <span class="vel-value" id="vel-val-az">—</span>
+    </div>
+  </footer>
 
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
-    import { matchProfile, getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
+    import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
+    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '/dist/settings.js';
+
+    // ── Settings drawer ───────────────────────────────────────────────────────
+
+    const drawer   = document.getElementById('drawer');
+    const backdrop = document.getElementById('backdrop');
+    const menuBtn  = document.getElementById('menu-btn');
+
+    function openDrawer()  { drawer.classList.add('open');    backdrop.classList.add('visible'); }
+    function closeDrawer() { drawer.classList.remove('open'); backdrop.classList.remove('visible'); }
+
+    menuBtn.addEventListener('click', () =>
+      drawer.classList.contains('open') ? closeDrawer() : openDrawer()
+    );
+    backdrop.addEventListener('click', closeDrawer);
+
+    // ── Settings router ───────────────────────────────────────────────────────
+
+    const router = new SettingsRouter();
+    router.onNavigate = (page) => {
+      document.querySelectorAll('.drawer-page').forEach((el) => { el.hidden = true; });
+      document.getElementById(`page-${page}`).hidden = false;
+      document.querySelectorAll('.nav-item').forEach((el) => el.classList.remove('active'));
+      document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+    };
+    document.querySelectorAll('.nav-item').forEach((item) => {
+      item.addEventListener('click', () => router.navigate(item.dataset.page));
+    });
 
     // ── Connection ────────────────────────────────────────────────────────────
 
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get('token') ?? '';
-    const wsUrl = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
+    const params   = new URLSearchParams(window.location.search);
+    const token    = params.get('token') ?? '';
+    const wsUrl    = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
 
-    const statusEl      = document.getElementById('status');
-    const reconnectBtn  = document.getElementById('reconnect-btn');
-
+    const statusPill = document.getElementById('status-pill');
     let countdownInterval = null;
 
     function clearCountdown() {
       if (countdownInterval !== null) { clearInterval(countdownInterval); countdownInterval = null; }
     }
 
+    function setStatus(state, text) {
+      clearCountdown();
+      statusPill.textContent = text;
+      statusPill.className = 'pill';
+      statusPill.disabled = state !== 'danger';
+      if (state === 'connected') statusPill.classList.add('pill-connected');
+      else if (state === 'warn')  statusPill.classList.add('pill-warn');
+      else if (state === 'danger') statusPill.classList.add('pill-danger');
+    }
+
+    statusPill.addEventListener('click', () => {
+      if (!statusPill.disabled) {
+        setStatus('default', 'Connecting…');
+        client.connect(wsUrl);
+      }
+    });
+
+    // ── Velocity bars ─────────────────────────────────────────────────────────
+
+    function updateVelBar(key, v) {
+      const fill = document.getElementById(`vel-fill-${key}`);
+      const val  = document.getElementById(`vel-val-${key}`);
+      const c = Math.max(-1, Math.min(1, v));
+      if (c >= 0) {
+        fill.style.left  = '50%';
+        fill.style.width = `${c * 50}%`;
+      } else {
+        fill.style.left  = `${(0.5 + c * 0.5) * 100}%`;
+        fill.style.width = `${-c * 50}%`;
+      }
+      val.textContent = v.toFixed(2);
+    }
+
+    function clearVelBars() {
+      ['lx', 'ly', 'az'].forEach((k) => {
+        const fill = document.getElementById(`vel-fill-${k}`);
+        fill.style.left = '50%';
+        fill.style.width = '0';
+        document.getElementById(`vel-val-${k}`).textContent = '—';
+      });
+    }
+
+    // ── TeleopClient ──────────────────────────────────────────────────────────
+
     const client = new TeleopClient({
       maxRetries: 5,
       retryBaseDelayMs: 2000,
       onStatus: (_connected, robotType) => {
-        clearCountdown();
-        reconnectBtn.style.display = 'none';
-        statusEl.textContent = `Connected — robot type: ${robotType}`;
+        setStatus('connected', `● Connected — ${robotType}`);
       },
       onError: (msg) => {
-        statusEl.textContent = `Error: ${msg}`;
+        setStatus('warn', `Error: ${msg}`);
       },
       onReconnecting: (attempt, maxAttempts, delayMs) => {
         clearCountdown();
-        reconnectBtn.style.display = 'none';
         let remaining = Math.ceil(delayMs / 1000);
-        statusEl.textContent = `Reconnecting in ${remaining}s (attempt ${attempt}/${maxAttempts})…`;
+        // Set pill state directly — avoid calling setStatus() inside the interval
+        // because setStatus() calls clearCountdown(), which would stop the interval.
+        statusPill.disabled = true;
+        statusPill.className = 'pill pill-warn';
+        statusPill.textContent = `⟳ Reconnecting in ${remaining}s (${attempt}/${maxAttempts})`;
         countdownInterval = setInterval(() => {
           remaining -= 1;
           if (remaining <= 0) {
             clearCountdown();
-            statusEl.textContent = `Reconnecting… (attempt ${attempt}/${maxAttempts})`;
+            statusPill.textContent = `⟳ Reconnecting… (${attempt}/${maxAttempts})`;
           } else {
-            statusEl.textContent = `Reconnecting in ${remaining}s (attempt ${attempt}/${maxAttempts})…`;
+            statusPill.textContent = `⟳ Reconnecting in ${remaining}s (${attempt}/${maxAttempts})`;
           }
         }, 1000);
       },
       onClose: () => {
         clearCountdown();
-        statusEl.textContent = 'Disconnected';
-        reconnectBtn.style.display = 'inline';
+        clearVelBars();
+        setStatus('danger', '○ Disconnected');
+      },
+      onTwist: (lx, ly, az) => {
+        updateVelBar('lx', lx);
+        updateVelBar('ly', ly);
+        updateVelBar('az', az);
       },
       onButton: (action) => {
         console.log(`Button action: ${action}`);
       },
     });
 
-    reconnectBtn.addEventListener('click', () => {
-      reconnectBtn.style.display = 'none';
-      statusEl.textContent = 'Connecting…';
-      client.connect(wsUrl);
-    });
-
     client.connect(wsUrl);
 
-    // ── Calibration UI ────────────────────────────────────────────────────────
+    // ── Video panel ───────────────────────────────────────────────────────────
 
-    const gamepadConfig   = document.getElementById('gamepad-config');
-    const profileSelect   = document.getElementById('profile-select');
+    const videoImg         = document.getElementById('video-img');
+    const videoPlaceholder = document.getElementById('video-placeholder');
+    const streamUrlInput   = document.getElementById('stream-url-input');
+
+    function applyVideoUrl(url) {
+      if (!url) {
+        videoImg.style.display = 'none';
+        videoPlaceholder.style.display = '';
+        return;
+      }
+      videoImg.src = url;
+      videoImg.style.display = 'block';
+      videoPlaceholder.style.display = 'none';
+    }
+
+    videoImg.onerror = () => {
+      videoImg.style.display = 'none';
+      videoPlaceholder.textContent = 'Stream unavailable';
+      videoPlaceholder.style.display = '';
+    };
+
+    const savedUrl = loadVideoUrl();
+    if (savedUrl) { streamUrlInput.value = savedUrl; applyVideoUrl(savedUrl); }
+
+    document.getElementById('video-apply-btn').addEventListener('click', () => {
+      const url = streamUrlInput.value.trim();
+      if (url) saveVideoUrl(url); else clearVideoUrl();
+      videoPlaceholder.textContent = 'No video stream — add one in Settings ⚙';
+      applyVideoUrl(url);
+    });
+
+    document.getElementById('video-clear-btn').addEventListener('click', () => {
+      streamUrlInput.value = '';
+      clearVideoUrl();
+      videoPlaceholder.textContent = 'No video stream — add one in Settings ⚙';
+      applyVideoUrl('');
+    });
+
+    // ── Gamepad calibration UI ────────────────────────────────────────────────
+
+    const profileSelect    = document.getElementById('profile-select');
     const profileDeleteBtn = document.getElementById('profile-delete');
-    const calInstruction  = document.getElementById('cal-instruction');
-    const calStartBtn     = document.getElementById('cal-start');
-    const calNextBtn      = document.getElementById('cal-next');
-    const calSkipBtn      = document.getElementById('cal-skip');
-    const buttonList      = document.getElementById('button-list');
+    const calInstruction   = document.getElementById('cal-instruction');
+    const calStartBtn      = document.getElementById('cal-start');
+    const calNextBtn       = document.getElementById('cal-next');
+    const calSkipBtn       = document.getElementById('cal-skip');
+    const buttonList       = document.getElementById('button-list');
     const buttonActionInput = document.getElementById('button-action-input');
-    const buttonAddStart  = document.getElementById('button-add-start');
-    const buttonWaiting   = document.getElementById('button-waiting');
-    const saveNameInput   = document.getElementById('save-name-input');
-    const saveBtn         = document.getElementById('save-btn');
+    const buttonAddStart   = document.getElementById('button-add-start');
+    const buttonWaiting    = document.getElementById('button-waiting');
+    const saveNameInput    = document.getElementById('save-name-input');
+    const saveBtn          = document.getElementById('save-btn');
 
-    // Working state — starts as a copy of the selected profile's mapping
     let workingMapping = { lx: { axis: 1, invert: true }, ly: { axis: 0, invert: true }, az: { axis: 2, invert: true } };
     let workingButtons = {};
     let listeningForButton = false;
 
-    // Calibration state machine: idle → step1 → step2 → step3 → done
-    let calState = 'idle';
+    let calStepIndex = 0;
+    let calSamples = [];
+    let calSampleInterval = null;
     const CAL_STEPS = [
       { key: 'lx', instruction: 'Push the <strong>left stick fully forward</strong> and hold…' },
       { key: 'ly', instruction: 'Push the <strong>left stick fully right</strong> and hold…' },
       { key: 'az', instruction: 'Push the <strong>right stick fully right</strong> and hold…' },
     ];
-    let calStepIndex = 0;
-    let calSamples = [];
-    let calSampleInterval = null;
 
     function populateProfileDropdown() {
       const profiles = getAllProfiles();
@@ -151,28 +509,20 @@
 
     function updateDeleteButton() {
       const builtIns = ['Xbox', 'DualShock / DualSense', 'GameSir G8+', 'Generic'];
-      const isCustom = !builtIns.includes(profileSelect.value);
-      profileDeleteBtn.style.display = isCustom ? 'inline' : 'none';
+      profileDeleteBtn.style.display = builtIns.includes(profileSelect.value) ? 'none' : 'inline';
     }
 
     function applySelectedProfile() {
       const profiles = getAllProfiles();
       const selected = profiles.find((p) => p.name === profileSelect.value);
       if (!selected) return;
-      workingMapping = {
-        lx: { ...selected.mapping.lx },
-        ly: { ...selected.mapping.ly },
-        az: { ...selected.mapping.az },
-      };
+      workingMapping = { lx: { ...selected.mapping.lx }, ly: { ...selected.mapping.ly }, az: { ...selected.mapping.az } };
       workingButtons = { ...selected.buttons };
       client.setGamepadProfile(selected);
       renderButtonList();
     }
 
-    profileSelect.addEventListener('change', () => {
-      updateDeleteButton();
-      applySelectedProfile();
-    });
+    profileSelect.addEventListener('change', () => { updateDeleteButton(); applySelectedProfile(); });
 
     profileDeleteBtn.addEventListener('click', () => {
       deleteProfile(profileSelect.value);
@@ -180,54 +530,37 @@
       applySelectedProfile();
     });
 
-    // Calibration step logic
-    calStartBtn.addEventListener('click', () => {
-      calStepIndex = 0;
-      calState = 'step1';
-      startCalStep();
-    });
+    calStartBtn.addEventListener('click', () => { calStepIndex = 0; startCalStep(); });
 
     function startCalStep() {
-      const step = CAL_STEPS[calStepIndex];
-      calInstruction.innerHTML = step.instruction;
+      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction;
       calStartBtn.style.display = 'none';
       calNextBtn.style.display = 'none';
       calSkipBtn.style.display = 'inline';
       calSamples = [];
-
       calSampleInterval = setInterval(() => {
-        const gamepads = navigator.getGamepads();
-        const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
+        const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
         if (!gp) return;
         calSamples.push([...gp.axes]);
-        if (calSamples.length >= 5) {
-          clearInterval(calSampleInterval);
-          calSampleInterval = null;
-          commitCalStep();
-        }
+        if (calSamples.length >= 5) { clearInterval(calSampleInterval); calSampleInterval = null; commitCalStep(); }
       }, 200);
     }
 
     function commitCalStep() {
-      // Find the axis with the largest mean absolute deflection
       const axisCount = calSamples[0].length;
-      let maxMean = 0;
-      let maxAxis = 0;
+      let maxMean = 0, maxAxis = 0;
       for (let a = 0; a < axisCount; a++) {
-        const mean = calSamples.reduce((sum, s) => sum + Math.abs(s[a] ?? 0), 0) / calSamples.length;
+        const mean = calSamples.reduce((s, r) => s + Math.abs(r[a] ?? 0), 0) / calSamples.length;
         if (mean > maxMean) { maxMean = mean; maxAxis = a; }
       }
-      // Determine inversion: if mean value is negative, invert so output is positive
-      const meanVal = calSamples.reduce((sum, s) => sum + (s[maxAxis] ?? 0), 0) / calSamples.length;
-      const invert = meanVal < 0;
-      workingMapping[CAL_STEPS[calStepIndex].key] = { axis: maxAxis, invert };
+      const meanVal = calSamples.reduce((s, r) => s + (r[maxAxis] ?? 0), 0) / calSamples.length;
+      workingMapping[CAL_STEPS[calStepIndex].key] = { axis: maxAxis, invert: meanVal < 0 };
       advanceCalStep();
     }
 
     function advanceCalStep() {
       calStepIndex += 1;
       if (calStepIndex >= CAL_STEPS.length) {
-        calState = 'done';
         calInstruction.textContent = 'Axis calibration complete. Save the profile below.';
         calStartBtn.style.display = 'inline';
         calStartBtn.textContent = 'Recalibrate';
@@ -243,36 +576,31 @@
       advanceCalStep();
     });
 
-    // Button assignment
     function renderButtonList() {
       buttonList.innerHTML = '';
       for (const [action, idx] of Object.entries(workingButtons)) {
         const li = document.createElement('li');
-        li.textContent = `${action} → button ${idx} `;
+        const label = document.createElement('span');
+        label.textContent = `${action} → button ${idx}`;
         const rm = document.createElement('button');
         rm.textContent = 'Remove';
-        rm.addEventListener('click', () => {
-          delete workingButtons[action];
-          renderButtonList();
-        });
+        rm.addEventListener('click', () => { delete workingButtons[action]; renderButtonList(); });
+        li.appendChild(label);
         li.appendChild(rm);
         buttonList.appendChild(li);
       }
     }
 
     buttonAddStart.addEventListener('click', () => {
-      const actionName = buttonActionInput.value.trim();
-      if (!actionName) return;
+      if (!buttonActionInput.value.trim()) return;
       buttonWaiting.style.display = 'inline';
       buttonAddStart.disabled = true;
       listeningForButton = true;
     });
 
-    // Detect button presses while listening
     setInterval(() => {
       if (!listeningForButton) return;
-      const gamepads = navigator.getGamepads();
-      const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
+      const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
       if (!gp) return;
       for (let i = 0; i < gp.buttons.length; i++) {
         if (gp.buttons[i]?.pressed) {
@@ -287,7 +615,6 @@
       }
     }, 100);
 
-    // Save profile
     saveBtn.addEventListener('click', () => {
       const name = saveNameInput.value.trim();
       if (!name) return;
@@ -298,18 +625,12 @@
       saveNameInput.value = '';
     });
 
-    // Detect first gamepad connection
+    // Detect first gamepad — populate profile dropdown on connect
     let gamepadDetected = false;
     setInterval(() => {
       if (gamepadDetected) return;
-      const gamepads = navigator.getGamepads();
-      const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
-      if (gp !== null) {
-        gamepadDetected = true;
-        gamepadConfig.style.display = '';
-        populateProfileDropdown();
-        applySelectedProfile();
-      }
+      const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
+      if (gp !== null) { gamepadDetected = true; populateProfileDropdown(); applySelectedProfile(); }
     }, 500);
   </script>
 </body>
