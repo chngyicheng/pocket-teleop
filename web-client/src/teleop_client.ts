@@ -10,6 +10,7 @@ export interface TeleopClientOptions {
   onReconnecting?: (attempt: number, maxAttempts: number, delayMs: number) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
+  onGamepadActivity?: () => void;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   keepaliveIntervalMs?: number;
@@ -63,8 +64,9 @@ export class TeleopClient {
       },
     });
     this.gamepadHandler = new GamepadHandler({
-      onTwist: (lx, ly, az) => this.sendTwist(lx, ly, az),
-      onButton: (action) => this.options.onButton?.(action),
+      onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az),
+      onButton:   (action) => this.options.onButton?.(action),
+      onActivity: () => this.options.onGamepadActivity?.(),
     });
   }
 
@@ -91,6 +93,10 @@ export class TeleopClient {
 
   setGamepadProfile(profile: GamepadProfile): void {
     this.gamepadHandler.setProfile(profile);
+  }
+
+  setGamepadEnabled(enabled: boolean): void {
+    this.gamepadHandler.setEnabled(enabled);
   }
 
   sendTwist(lx: number, ly: number, az: number): void {
