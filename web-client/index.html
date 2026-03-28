@@ -7,27 +7,310 @@
 </head>
 <body>
   <p id="status">Connecting...</p>
+  <button id="reconnect-btn" style="display:none">Reconnect</button>
+
+  <details id="gamepad-config" style="display:none">
+    <summary>Configure gamepad</summary>
+
+    <p>
+      <label for="profile-select">Profile: </label>
+      <select id="profile-select"></select>
+      <button id="profile-delete" style="display:none">Delete</button>
+    </p>
+
+    <div id="axis-calibration">
+      <h3>Axis calibration</h3>
+      <p id="cal-instruction">Press <strong>Start</strong> to calibrate axes from scratch, or skip to use the selected profile as-is.</p>
+      <button id="cal-start">Start calibration</button>
+      <button id="cal-next" style="display:none">Next</button>
+      <button id="cal-skip" style="display:none">Skip step</button>
+    </div>
+
+    <div id="button-assignments">
+      <h3>Button assignments</h3>
+      <ul id="button-list"></ul>
+      <div id="button-add-form">
+        <input id="button-action-input" placeholder="action name (e.g. emergency_stop)" style="width:220px" />
+        <button id="button-add-start">Add</button>
+        <span id="button-waiting" style="display:none"> — press a button on the gamepad…</span>
+      </div>
+    </div>
+
+    <p>
+      <input id="save-name-input" placeholder="Save profile as…" style="width:200px" />
+      <button id="save-btn">Save</button>
+    </p>
+  </details>
+
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
+    import { matchProfile, getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
+
+    // ── Connection ────────────────────────────────────────────────────────────
 
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token') ?? '';
     const wsUrl = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
 
+    const statusEl      = document.getElementById('status');
+    const reconnectBtn  = document.getElementById('reconnect-btn');
+
+    let countdownInterval = null;
+
+    function clearCountdown() {
+      if (countdownInterval !== null) { clearInterval(countdownInterval); countdownInterval = null; }
+    }
+
     const client = new TeleopClient({
+      maxRetries: 5,
+      retryBaseDelayMs: 2000,
       onStatus: (_connected, robotType) => {
-        document.getElementById('status').textContent =
-          `Connected — robot type: ${robotType}`;
+        clearCountdown();
+        reconnectBtn.style.display = 'none';
+        statusEl.textContent = `Connected — robot type: ${robotType}`;
       },
       onError: (msg) => {
-        document.getElementById('status').textContent = `Error: ${msg}`;
+        statusEl.textContent = `Error: ${msg}`;
+      },
+      onReconnecting: (attempt, maxAttempts, delayMs) => {
+        clearCountdown();
+        reconnectBtn.style.display = 'none';
+        let remaining = Math.ceil(delayMs / 1000);
+        statusEl.textContent = `Reconnecting in ${remaining}s (attempt ${attempt}/${maxAttempts})…`;
+        countdownInterval = setInterval(() => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            clearCountdown();
+            statusEl.textContent = `Reconnecting… (attempt ${attempt}/${maxAttempts})`;
+          } else {
+            statusEl.textContent = `Reconnecting in ${remaining}s (attempt ${attempt}/${maxAttempts})…`;
+          }
+        }, 1000);
       },
       onClose: () => {
-        document.getElementById('status').textContent = 'Disconnected';
+        clearCountdown();
+        statusEl.textContent = 'Disconnected';
+        reconnectBtn.style.display = 'inline';
+      },
+      onButton: (action) => {
+        console.log(`Button action: ${action}`);
       },
     });
 
+    reconnectBtn.addEventListener('click', () => {
+      reconnectBtn.style.display = 'none';
+      statusEl.textContent = 'Connecting…';
+      client.connect(wsUrl);
+    });
+
     client.connect(wsUrl);
+
+    // ── Calibration UI ────────────────────────────────────────────────────────
+
+    const gamepadConfig   = document.getElementById('gamepad-config');
+    const profileSelect   = document.getElementById('profile-select');
+    const profileDeleteBtn = document.getElementById('profile-delete');
+    const calInstruction  = document.getElementById('cal-instruction');
+    const calStartBtn     = document.getElementById('cal-start');
+    const calNextBtn      = document.getElementById('cal-next');
+    const calSkipBtn      = document.getElementById('cal-skip');
+    const buttonList      = document.getElementById('button-list');
+    const buttonActionInput = document.getElementById('button-action-input');
+    const buttonAddStart  = document.getElementById('button-add-start');
+    const buttonWaiting   = document.getElementById('button-waiting');
+    const saveNameInput   = document.getElementById('save-name-input');
+    const saveBtn         = document.getElementById('save-btn');
+
+    // Working state — starts as a copy of the selected profile's mapping
+    let workingMapping = { lx: { axis: 1, invert: true }, ly: { axis: 0, invert: true }, az: { axis: 2, invert: true } };
+    let workingButtons = {};
+    let listeningForButton = false;
+
+    // Calibration state machine: idle → step1 → step2 → step3 → done
+    let calState = 'idle';
+    const CAL_STEPS = [
+      { key: 'lx', instruction: 'Push the <strong>left stick fully forward</strong> and hold…' },
+      { key: 'ly', instruction: 'Push the <strong>left stick fully right</strong> and hold…' },
+      { key: 'az', instruction: 'Push the <strong>right stick fully right</strong> and hold…' },
+    ];
+    let calStepIndex = 0;
+    let calSamples = [];
+    let calSampleInterval = null;
+
+    function populateProfileDropdown() {
+      const profiles = getAllProfiles();
+      profileSelect.innerHTML = '';
+      for (const p of profiles) {
+        const opt = document.createElement('option');
+        opt.value = p.name;
+        opt.textContent = p.name;
+        profileSelect.appendChild(opt);
+      }
+      updateDeleteButton();
+    }
+
+    function updateDeleteButton() {
+      const builtIns = ['Xbox', 'DualShock / DualSense', 'GameSir G8+', 'Generic'];
+      const isCustom = !builtIns.includes(profileSelect.value);
+      profileDeleteBtn.style.display = isCustom ? 'inline' : 'none';
+    }
+
+    function applySelectedProfile() {
+      const profiles = getAllProfiles();
+      const selected = profiles.find((p) => p.name === profileSelect.value);
+      if (!selected) return;
+      workingMapping = {
+        lx: { ...selected.mapping.lx },
+        ly: { ...selected.mapping.ly },
+        az: { ...selected.mapping.az },
+      };
+      workingButtons = { ...selected.buttons };
+      client.setGamepadProfile(selected);
+      renderButtonList();
+    }
+
+    profileSelect.addEventListener('change', () => {
+      updateDeleteButton();
+      applySelectedProfile();
+    });
+
+    profileDeleteBtn.addEventListener('click', () => {
+      deleteProfile(profileSelect.value);
+      populateProfileDropdown();
+      applySelectedProfile();
+    });
+
+    // Calibration step logic
+    calStartBtn.addEventListener('click', () => {
+      calStepIndex = 0;
+      calState = 'step1';
+      startCalStep();
+    });
+
+    function startCalStep() {
+      const step = CAL_STEPS[calStepIndex];
+      calInstruction.innerHTML = step.instruction;
+      calStartBtn.style.display = 'none';
+      calNextBtn.style.display = 'none';
+      calSkipBtn.style.display = 'inline';
+      calSamples = [];
+
+      calSampleInterval = setInterval(() => {
+        const gamepads = navigator.getGamepads();
+        const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
+        if (!gp) return;
+        calSamples.push([...gp.axes]);
+        if (calSamples.length >= 5) {
+          clearInterval(calSampleInterval);
+          calSampleInterval = null;
+          commitCalStep();
+        }
+      }, 200);
+    }
+
+    function commitCalStep() {
+      // Find the axis with the largest mean absolute deflection
+      const axisCount = calSamples[0].length;
+      let maxMean = 0;
+      let maxAxis = 0;
+      for (let a = 0; a < axisCount; a++) {
+        const mean = calSamples.reduce((sum, s) => sum + Math.abs(s[a] ?? 0), 0) / calSamples.length;
+        if (mean > maxMean) { maxMean = mean; maxAxis = a; }
+      }
+      // Determine inversion: if mean value is negative, invert so output is positive
+      const meanVal = calSamples.reduce((sum, s) => sum + (s[maxAxis] ?? 0), 0) / calSamples.length;
+      const invert = meanVal < 0;
+      workingMapping[CAL_STEPS[calStepIndex].key] = { axis: maxAxis, invert };
+      advanceCalStep();
+    }
+
+    function advanceCalStep() {
+      calStepIndex += 1;
+      if (calStepIndex >= CAL_STEPS.length) {
+        calState = 'done';
+        calInstruction.textContent = 'Axis calibration complete. Save the profile below.';
+        calStartBtn.style.display = 'inline';
+        calStartBtn.textContent = 'Recalibrate';
+        calNextBtn.style.display = 'none';
+        calSkipBtn.style.display = 'none';
+      } else {
+        startCalStep();
+      }
+    }
+
+    calSkipBtn.addEventListener('click', () => {
+      if (calSampleInterval !== null) { clearInterval(calSampleInterval); calSampleInterval = null; }
+      advanceCalStep();
+    });
+
+    // Button assignment
+    function renderButtonList() {
+      buttonList.innerHTML = '';
+      for (const [action, idx] of Object.entries(workingButtons)) {
+        const li = document.createElement('li');
+        li.textContent = `${action} → button ${idx} `;
+        const rm = document.createElement('button');
+        rm.textContent = 'Remove';
+        rm.addEventListener('click', () => {
+          delete workingButtons[action];
+          renderButtonList();
+        });
+        li.appendChild(rm);
+        buttonList.appendChild(li);
+      }
+    }
+
+    buttonAddStart.addEventListener('click', () => {
+      const actionName = buttonActionInput.value.trim();
+      if (!actionName) return;
+      buttonWaiting.style.display = 'inline';
+      buttonAddStart.disabled = true;
+      listeningForButton = true;
+    });
+
+    // Detect button presses while listening
+    setInterval(() => {
+      if (!listeningForButton) return;
+      const gamepads = navigator.getGamepads();
+      const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
+      if (!gp) return;
+      for (let i = 0; i < gp.buttons.length; i++) {
+        if (gp.buttons[i]?.pressed) {
+          workingButtons[buttonActionInput.value.trim()] = i;
+          listeningForButton = false;
+          buttonWaiting.style.display = 'none';
+          buttonAddStart.disabled = false;
+          buttonActionInput.value = '';
+          renderButtonList();
+          break;
+        }
+      }
+    }, 100);
+
+    // Save profile
+    saveBtn.addEventListener('click', () => {
+      const name = saveNameInput.value.trim();
+      if (!name) return;
+      saveProfile(name, workingMapping, workingButtons);
+      populateProfileDropdown();
+      profileSelect.value = name;
+      updateDeleteButton();
+      saveNameInput.value = '';
+    });
+
+    // Detect first gamepad connection
+    let gamepadDetected = false;
+    setInterval(() => {
+      if (gamepadDetected) return;
+      const gamepads = navigator.getGamepads();
+      const gp = Array.from(gamepads).find((g) => g !== null) ?? null;
+      if (gp !== null) {
+        gamepadDetected = true;
+        gamepadConfig.style.display = '';
+        populateProfileDropdown();
+        applySelectedProfile();
+      }
+    }, 500);
   </script>
 </body>
 </html>

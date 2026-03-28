@@ -23,7 +23,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Tasks 1–3 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 4 — update `index.html` with reconnect button and calibration UI, then Task 5 — verify and tag `v0.2.0`. See `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md` for step-by-step code. All implementation is web-client only — no server changes.
+> **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 17 passed), verify docker build, then `git tag v0.2.0` and push. All implementation is web-client only — no server changes.
 
 **Head SHA:** `aea549b` (as of 2026-03-28)
 
@@ -34,8 +34,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 1 — `gamepad_profiles.ts` + unit tests | ✅ Done | `web-client/src/gamepad_profiles.ts` + `web-client/test/gamepad_profiles.test.ts`; 6 unit tests pass (`matchProfile` × 5, `loadCustomProfiles` × 1); total suite 16 tests |
 | 2 — Update `GamepadHandler` | ✅ Done | `web-client/src/gamepad_handler.ts` — `profile` constructor option, `setProfile()`, `AxisConfig`-based axis reads, rising-edge `onButton` detection; 16 tests pass (no new tests — Gamepad API is browser-only) |
 | 3 — Update `TeleopClient` + reconnection test | ✅ Done | `web-client/src/teleop_client.ts` — `maxRetries`, `retryBaseDelayMs`, `keepaliveIntervalMs`, `onReconnecting`, `onButton`, `setGamepadProfile()`; `connection.ts` gets `ws?.close()` guard; reconnection integration test uses watchdog trigger; 17 tests pass |
-| 4 — Update `index.html` | ⬜ Next | Reconnect button + status, calibration UI |
-| 5 — Full verification + tag | ⬜ Pending | 17 tests pass; `v0.2.0` tag applied |
+| 4 — Update `index.html` | ✅ Done | `web-client/index.html` — `<button id="reconnect-btn">`, `onReconnecting` countdown, `<details id="gamepad-config">` calibration UI; 17 tests still pass; docker build healthy; nginx serves page with "Configure gamepad" |
+| 5 — Full verification + tag | ⬜ Next | 17 tests pass; `v0.2.0` tag applied |
 
 ### Task progress (web client v0.1.0 — complete)
 
