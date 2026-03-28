@@ -6,11 +6,11 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Implementation is in progress. Read this section first, then go only as deep as your task requires.
+> **For the next agent:** All 12 implementation tasks are complete. The branch is ready for review and merge. All tests pass (15 tests, 0 failures). Tag `v0.1.0-server` marks the verified state.
 
 **Implementation branch:** `feat/server-implementation`
 **Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `00386a3` (as of 2026-03-28)
+**Head SHA:** `233837a` (as of 2026-03-28)
 
 ### Task progress
 
@@ -27,7 +27,7 @@
 | 9 — TeleopServer safety watchdog | ✅ Done | `watchdog_loop` implemented; WatchdogFiresZeroVelocityOnTimeout passes |
 | 10 — TeleopNode ROS2 wrapper | ✅ Done | `teleop_node.hpp/.cpp`; TwistPublishedToCmdVel + DisconnectPublishesZeroVelocity pass |
 | 11 — main.cpp + launch file | ✅ Done | `main.cpp` entry point + `teleop.launch.py`; smoke test passes (`Teleop server listening on port 9091`) |
-| 12 — Full test suite verification | ⬜ Next | |
+| 12 — Full test suite verification | ✅ Done | 15 tests, 0 failures; tag `v0.1.0-server` applied |
 
 ### Known deviations from the plan (accepted)
 
