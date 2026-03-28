@@ -29,6 +29,25 @@
 - `geometry_msgs` — `geometry_msgs/msg/Twist` published to `/cmd_vel`
 - `ament_lint_auto` — declared but not wired (linting not a stated requirement)
 
-## Key architectural constraint
+## Key architectural constraint (server)
 
 `CommandHandler` and `TeleopServer` must compile and link **without** `rclcpp`. They are pure C++ layers. Only `TeleopNode` may depend on ROS2.
+
+---
+
+## Web client tech stack
+
+| Layer | Technology |
+|---|---|
+| Language | TypeScript (strict mode) |
+| Build | `tsc` — no bundler, ES modules |
+| Test runner | Vitest (Node.js, not browser) |
+| Static server | nginx (official Docker image) |
+| Input | Browser Gamepad API |
+| Transport | Browser WebSocket API |
+
+No frontend framework. No runtime dependencies. Dev dependencies only: `typescript`, `vitest`.
+
+## Key architectural constraint (client)
+
+`Protocol` must have no I/O or side effects — pure TypeScript types and serializers. `Connection` must have no knowledge of message format or gamepad. Only `TeleopClient` wires all modules together. On-screen UI (future) calls `TeleopClient.sendTwist()` directly and never touches lower layers.

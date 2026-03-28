@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** The current implementation covers the **server** component only. This file will expand as additional components (e.g. client, bridge) are added.
+> **Scope note:** The server component is complete. The web client is designed (spec at `docs/superpowers/specs/2026-03-28-client-design.md`) and ready for implementation.
 
 ## Component layers (server)
 
@@ -77,3 +77,59 @@ Volume-mounting `server/` means host edits are picked up without rebuilding the 
 | 9091 | Running container (never use in tests) |
 | 19091 | `test_teleop_server` |
 | 19092 | `test_teleop_node` |
+
+---
+
+## Component layers (client)
+
+```
+Phone browser  http://<robot-ip>:8080?token=<secret>
+    │
+    ▼
+┌─────────────────────────────────────────────┐
+│  Docker container (nginx)                   │
+│  Serves compiled TypeScript → dist/         │
+└─────────────────────────────────────────────┘
+    │  WebSocket ws://<robot-ip>:9091/teleop?token=<secret>
+    ▼
+TeleopServer (server container)
+```
+
+Browser-side layers (TypeScript, no framework):
+
+```
+TeleopClient       ← public API; owns keepalive loop
+    ├── Connection         ← WebSocket lifecycle
+    ├── GamepadHandler     ← Gamepad API polling
+    └── Protocol           ← message types + serializers; no I/O
+```
+
+## Key files (client)
+
+| File | What it does |
+|---|---|
+| `web-client/Dockerfile.webclient` | Multi-stage: `builder` (tsc) + `runtime` (nginx) |
+| `web-client/src/protocol.ts` | Message types, serializers, inbound parser |
+| `web-client/src/connection.ts` | WebSocket open/close/send; fires callbacks |
+| `web-client/src/gamepad_handler.ts` | Polls Gamepad API; emits twist values |
+| `web-client/src/teleop_client.ts` | Orchestrates all modules; public API |
+| `web-client/test/integration.test.ts` | Integration tests against real server; no mocks |
+| `web-client/index.html` | Shell page; wires TeleopClient; no visual design |
+| `web-client/tsconfig.json` | TypeScript strict mode config |
+| `web-client/package.json` | Dev deps: typescript, vitest |
+
+## Build and test commands (client)
+
+```bash
+# Full stack (server + client)
+TELEOP_TOKEN=mysecrettoken docker compose up --build
+
+# Integration tests (requires server running)
+TELEOP_TOKEN=testtoken docker compose --profile test run --rm webclient-test
+```
+
+## Port assignments (client)
+
+| Port | Reserved for |
+|---|---|
+| 8080 | nginx web client (host-mapped) |
