@@ -10,7 +10,7 @@
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `c4548f5` (as of 2026-03-28)
+**Head SHA:** `98cfd97` (as of 2026-03-28)
 
 ### Task progress (web client)
 
