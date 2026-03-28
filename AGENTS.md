@@ -25,14 +25,14 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Server and web client (v0.1.0) both complete on `main`. Next work: implement the **practical gaps** (reconnection + gamepad profiles + calibration UI) per `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`. Design spec is `docs/superpowers/specs/2026-03-28-practical-gaps-design.md`. Target: 17 tests, tag `v0.2.0`. All implementation is web-client only — no server changes.
 
-**Head SHA:** `889f774` (as of 2026-03-28)
+**Head SHA:** `e37b221` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
 | Task | Status | Notes |
 |---|---|---|
-| 1 — `gamepad_profiles.ts` + unit tests | ⬜ Next | New file `web-client/src/gamepad_profiles.ts`; new test file `web-client/test/gamepad_profiles.test.ts`; 6 unit tests |
-| 2 — Update `GamepadHandler` | ⬜ Pending | Add `profile`, `setProfile()`, `onButton` rising-edge detection |
+| 1 — `gamepad_profiles.ts` + unit tests | ✅ Done | `web-client/src/gamepad_profiles.ts` + `web-client/test/gamepad_profiles.test.ts`; 6 unit tests pass (`matchProfile` × 5, `loadCustomProfiles` × 1); total suite 16 tests |
+| 2 — Update `GamepadHandler` | ⬜ Next | Add `profile`, `setProfile()`, `onButton` rising-edge detection |
 | 3 — Update `TeleopClient` + reconnection test | ⬜ Pending | Add reconnection loop, `onReconnecting`, `onButton` forwarding; total 11 integration tests |
 | 4 — Update `index.html` | ⬜ Pending | Reconnect button + status, calibration UI |
 | 5 — Full verification + tag | ⬜ Pending | 17 tests pass; `v0.2.0` tag applied |
