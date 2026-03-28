@@ -26,8 +26,8 @@ export class GamepadHandler {
   }
 
   private poll(): void {
-    // navigator is not available in Node.js (test environment) — no-op
-    if (typeof navigator === 'undefined') return;
+    // navigator.getGamepads is not available in Node.js test environment — no-op
+    if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return;
 
     const gamepads = navigator.getGamepads();
     const gp = gamepads.find((g) => g !== null) ?? null;

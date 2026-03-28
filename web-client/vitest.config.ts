@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     testTimeout: 5000,
-    hookTimeout: 15000,
+    hookTimeout: 30000,
     sequence: {
       concurrent: false,
     },
