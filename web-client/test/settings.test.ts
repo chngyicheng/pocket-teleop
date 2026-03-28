@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '../src/settings.js';
+import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl,
+         loadRobotNamespace, saveRobotNamespace } from '../src/settings.js';
 
 describe('video URL persistence', () => {
   let store: Record<string, string>;
@@ -30,6 +31,32 @@ describe('video URL persistence', () => {
     saveVideoUrl('http://robot.local:8081/stream');
     clearVideoUrl();
     expect(loadVideoUrl()).toBeNull();
+  });
+});
+
+describe('robot namespace persistence', () => {
+  let store: Record<string, string>;
+
+  beforeEach(() => {
+    store = {};
+    vi.stubGlobal('localStorage', {
+      getItem:    (key: string) => store[key] ?? null,
+      setItem:    (key: string, value: string) => { store[key] = value; },
+      removeItem: (key: string) => { delete store[key]; },
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('loadRobotNamespace returns null when localStorage is empty', () => {
+    expect(loadRobotNamespace()).toBeNull();
+  });
+
+  it('loadRobotNamespace returns saved value after saveRobotNamespace', () => {
+    saveRobotNamespace('robot1');
+    expect(loadRobotNamespace()).toBe('robot1');
   });
 });
 
