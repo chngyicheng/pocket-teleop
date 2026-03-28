@@ -6,28 +6,28 @@
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All 12 implementation tasks are complete. The branch is ready for review and merge. All tests pass (15 tests, 0 failures). Tag `v0.1.0-server` marks the verified state.
+> **For the next agent:** Web client implementation is in progress on `feat/client-implementation`. Client Task 1 (project scaffolding) is done; Task 2 (`protocol.ts`) is next. Server implementation is complete — 15 tests, 0 failures; tag `v0.1.0-server`.
 
-**Implementation branch:** `feat/server-implementation`
-**Worktree:** `.worktrees/feat-server` (already exists — do not recreate)
-**Head SHA:** `40009ac` (as of 2026-03-28)
+**Implementation branch:** `feat/client-implementation`
+**Head SHA:** `88ec4bb` (as of 2026-03-28)
 
-### Task progress
+### Server tasks (complete)
+
+All 12 server tasks done. 15 tests, 0 failures. Tag `v0.1.0-server` applied. See `docs/superpowers/plans/2026-03-27-server-implementation.md` for full history.
+
+### Web client task progress
 
 | Task | Status | Notes |
 |---|---|---|
-| 1 — Docker scaffolding | ✅ Done | `Dockerfile`, `docker-compose.yml`, `.dockerignore` |
-| 2 — ROS2 package scaffolding | ✅ Done | `package.xml`, `CMakeLists.txt`, stub source files |
-| 3 — CommandHandler types + header | ✅ Done | `command_handler.hpp/.cpp` stub; CMakeLists C++17 fix applied |
-| 4 — CommandHandler ping/twist parsing | ✅ Done | `command_handler.cpp` full parsing + range validation |
-| 5 — TeleopServer skeleton | ✅ Done | `teleop_server.hpp/.cpp` start/stop skeleton + ServerStartsAndStops test |
-| 6 — TeleopServer token validation | ✅ Done | `on_validate` with query-string token check; 3 tests pass |
-| 7 — TeleopServer single-client + status | ✅ Done | `on_open` sends status JSON, rejects second client; 2 tests pass |
-| 8 — TeleopServer message handling | ✅ Done | `on_message` twist/ping/error; 3 new tests pass |
-| 9 — TeleopServer safety watchdog | ✅ Done | `watchdog_loop` implemented; WatchdogFiresZeroVelocityOnTimeout passes |
-| 10 — TeleopNode ROS2 wrapper | ✅ Done | `teleop_node.hpp/.cpp`; TwistPublishedToCmdVel + DisconnectPublishesZeroVelocity pass |
-| 11 — main.cpp + launch file | ✅ Done | `main.cpp` entry point + `teleop.launch.py`; smoke test passes (`Teleop server listening on port 9091`) |
-| 12 — Full test suite verification | ✅ Done | 15 tests, 0 failures; tag `v0.1.0-server` applied |
+| 1 — Project scaffolding | ✅ Done | `web-client/` dir, `package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, placeholder `index.html`, stub `teleop_client.ts`; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
+| 2 — `protocol.ts` | ⬜ Next | |
+| 3 — `connection.ts` | ⬜ Pending | |
+| 4 — `gamepad_handler.ts` | ⬜ Pending | |
+| 5 — `teleop_client.ts` + connection tests | ⬜ Pending | |
+| 6 — Keepalive + twist tests | ⬜ Pending | |
+| 7 — Safety tests | ⬜ Pending | |
+| 8 — Wire `index.html` | ⬜ Pending | |
+| 9 — Full suite verification + tag | ⬜ Pending | |
 
 ### Known deviations from the plan (accepted)
 
@@ -53,8 +53,10 @@
 | Message protocol and data types | [data-schema.md](memory/agent-guides/data-schema.md) |
 | Git workflow and doc update rules | [version-control.md](memory/agent-guides/version-control.md) |
 | TDD standards, guardrails, task orientation | [project-skills.md](memory/agent-guides/project-skills.md) |
-| Step-by-step implementation plan | `docs/superpowers/plans/2026-03-27-server-implementation.md` |
-| Full protocol and component spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
+| Server implementation plan | `docs/superpowers/plans/2026-03-27-server-implementation.md` |
+| Server design spec | `docs/superpowers/specs/2026-03-27-server-design.md` |
+| Web client implementation plan | `docs/superpowers/plans/2026-03-28-client-implementation.md` |
+| Web client design spec | `docs/superpowers/specs/2026-03-28-client-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
