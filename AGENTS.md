@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** All frontend UI tasks complete. 43 tests pass (5 settings + 16 gamepad_profiles + 10 protocol + 12 integration). `settings.ts` added, `index.html` fully rewritten with responsive UI, `teleop_client.ts` gains `onTwist`. Tag `v0.3.0` pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `TBD` (as of 2026-03-28)
+**Head SHA:** `0caca0f` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
