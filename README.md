@@ -10,19 +10,25 @@ WebSocket bridge from phone browser → ROS2 `/cmd_vel`. Token-authenticated, si
 TELEOP_TOKEN=mysecrettoken docker compose up --build
 ```
 
-Phone connects to: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
+- Server WebSocket: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
+- Web client: `http://<robot-ip>:8080?token=mysecrettoken`
 
 ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
 
 ## Status
 
-**In development — server backend.** See [`AGENTS.md`](AGENTS.md) for architecture, task guides, and development workflow.
-
 | Component | Status |
 |---|---|
-| Server (ROS2 + WebSocket) | In development |
-| Web client (browser UI) | Not started |
+| Server (ROS2 + WebSocket) | Complete — `v0.1.0-server` |
+| Web client (browser UI) | Complete — `v0.1.0-client` |
 | Android app | Stretch goal |
+
+## Running tests
+
+```bash
+# Integration tests (client against real server)
+TELEOP_TOKEN=testtoken docker compose --profile test run --rm webclient-test
+```
 
 ## Documentation
 
@@ -30,7 +36,9 @@ ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Architecture, dev workflow, task guides (progressive disclosure) |
 | [`docs/superpowers/specs/2026-03-27-server-design.md`](docs/superpowers/specs/2026-03-27-server-design.md) | Server design spec |
-| [`docs/superpowers/plans/2026-03-27-server-implementation.md`](docs/superpowers/plans/2026-03-27-server-implementation.md) | Step-by-step implementation plan |
+| [`docs/superpowers/specs/2026-03-28-client-design.md`](docs/superpowers/specs/2026-03-28-client-design.md) | Web client design spec |
+| [`docs/superpowers/plans/2026-03-27-server-implementation.md`](docs/superpowers/plans/2026-03-27-server-implementation.md) | Server implementation plan |
+| [`docs/superpowers/plans/2026-03-28-client-implementation.md`](docs/superpowers/plans/2026-03-28-client-implementation.md) | Web client implementation plan |
 
 ## Supported robots
 
