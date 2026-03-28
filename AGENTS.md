@@ -10,14 +10,14 @@
 
 **Implementation branch:** `feat/client-implementation`
 **Worktree:** `.worktrees/feat-client` (already exists — do not recreate)
-**Head SHA:** `9cbc672` (as of 2026-03-28)
+**Head SHA:** `a5649b6` (as of 2026-03-28)
 
 ### Task progress (web client)
 
 | Task | Status | Notes |
 |---|---|---|
 | 1 — Project scaffolding | ✅ Done | `web-client/package.json`, `tsconfig.json`, `vitest.config.ts`, `Dockerfile.webclient`, `index.html`, `src/teleop_client.ts` stub; `docker-compose.yml` gains `webclient` + `webclient-test` services; nginx serves placeholder at port 8080 |
-| 2 — protocol.ts | ⬜ Next | `web-client/src/protocol.ts` + `web-client/test/protocol.test.ts` |
+| 2 — protocol.ts | ⬜ Next | `web-client/src/protocol.ts` — covered by integration tests, no separate test file |
 | 3 — connection.ts | ⬜ | |
 | 4 — gamepad_handler.ts | ⬜ | |
 | 5 — teleop_client.ts + connection tests | ⬜ | |
@@ -37,6 +37,7 @@
 | `test_command_handler.cpp` left empty | `server/test/` | Testing trophy philosophy: parsing behavior covered by `test_teleop_server` integration tests |
 | `#define ASIO_STANDALONE` removed from all WebSocket code | `teleop_server.hpp`, `test_teleop_server.cpp`, and future `test_teleop_node.cpp` | Dockerfile installs `libboost-system-dev` (Boost ASIO); standalone ASIO (`libasio-dev`) is not installed. Boost ASIO is correct for this environment. |
 | `docker-compose.yml` environment value quoted | `docker-compose.yml` line 9 | Docker Compose v2.35+ fails to parse `${VAR:?msg: with colon}` in unquoted YAML strings; wrapping in double quotes fixes the YAML parse error. |
+| `moduleResolution` changed from `bundler` to `node16` | `web-client/tsconfig.json` | `bundler` permits extensionless imports that 404 in browsers without a bundler; `node16` enforces `.js` extensions on all relative imports, which is correct for nginx-served native ES modules. |
 
 ---
 
