@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** All practical gaps tasks (1–5) are complete on `main`. Full suite verified at 38 tests (16 `gamepad_profiles` + 10 `protocol` + 12 integration). Docker build healthy; nginx serves page with "Configure gamepad". Tag `v0.2.0` applied. No further planned tasks — see specs/plans for any new work.
 
-**Head SHA:** `32aa6b5` (as of 2026-03-28)
+**Head SHA:** `cebf6fe` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
