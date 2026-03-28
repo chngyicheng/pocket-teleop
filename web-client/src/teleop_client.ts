@@ -9,6 +9,7 @@ export interface TeleopClientOptions {
   onClose?: (code: number, reason: string) => void;
   onReconnecting?: (attempt: number, maxAttempts: number, delayMs: number) => void;
   onButton?: (action: string) => void;
+  onTwist?: (lx: number, ly: number, az: number) => void;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   keepaliveIntervalMs?: number;
@@ -95,6 +96,7 @@ export class TeleopClient {
   sendTwist(lx: number, ly: number, az: number): void {
     this.connection.send(buildTwist(lx, ly, az));
     this.lastSentAt = Date.now();
+    this.options.onTwist?.(lx, ly, az);
   }
 
   private handleMessage(raw: string): void {
