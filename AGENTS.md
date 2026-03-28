@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 17 passed), verify docker build, then `git tag v0.2.0` and push. All implementation is web-client only — no server changes.
 
-**Head SHA:** `aea549b` (as of 2026-03-28)
+**Head SHA:** `2c20aa2` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
