@@ -23,7 +23,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (38 tests pass). Post-task-4 coverage audit added `protocol.test.ts` (10 tests), extended `gamepad_profiles.test.ts` (16 tests), fixed a `TeleopClient` reconnection bug (Node.js 22 `onerror`-only behavior), and added a `maxRetries` exhaustion integration test. Next work: Task 5 — full verification and tag `v0.2.0`. Run the test suite (expect 38 passed), verify docker build, then `git tag v0.2.0` and push.
+> **For the next agent:** Tasks 1–4 of the practical gaps are complete on `main` (38 tests pass). A post-task-4 coverage audit added `protocol.test.ts` (10 tests), extended `gamepad_profiles.test.ts` to 16 tests, fixed a `TeleopClient` reconnection bug (Node.js 22 fires only `onerror` for rejected connections — `scheduleRetry` was unreachable; fixed with `retryPending` guard), and added a `maxRetries` exhaustion integration test. Next work: Task 5 — run the full test suite (expect 38 passed), verify `docker compose up --build --wait webclient` is healthy and `curl http://localhost:8080/ | grep -c "Configure gamepad"` returns `1`, then apply `git tag v0.2.0` and request push.
 
 **Head SHA:** `32aa6b5` (as of 2026-03-28)
 
@@ -35,7 +35,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 2 — Update `GamepadHandler` | ✅ Done | `web-client/src/gamepad_handler.ts` — `profile` constructor option, `setProfile()`, `AxisConfig`-based axis reads, rising-edge `onButton` detection; 16 tests pass (no new tests — Gamepad API is browser-only) |
 | 3 — Update `TeleopClient` + reconnection test | ✅ Done | `web-client/src/teleop_client.ts` — `maxRetries`, `retryBaseDelayMs`, `keepaliveIntervalMs`, `onReconnecting`, `onButton`, `setGamepadProfile()`; `connection.ts` gets `ws?.close()` guard; reconnection integration test uses watchdog trigger; 17 tests pass |
 | 4 — Update `index.html` | ✅ Done | `web-client/index.html` — `<button id="reconnect-btn">`, `onReconnecting` countdown, `<details id="gamepad-config">` calibration UI; 17 tests still pass; docker build healthy; nginx serves page with "Configure gamepad" |
-| 5 — Full verification + tag | ⬜ Next | 17 tests pass; `v0.2.0` tag applied |
+| 5 — Full verification + tag | ⬜ Next | Run suite (expect 38 passed), verify docker build + nginx, then `git tag v0.2.0` |
 
 ### Task progress (web client v0.1.0 — complete)
 
