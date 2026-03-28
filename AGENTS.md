@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Server and web client (v0.1.0) both complete on `main`. Next work: implement the **practical gaps** (reconnection + gamepad profiles + calibration UI) per `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`. Design spec is `docs/superpowers/specs/2026-03-28-practical-gaps-design.md`. Target: 17 tests, tag `v0.2.0`. All implementation is web-client only — no server changes.
+> **For the next agent:** Tasks 1–3 of the practical gaps are complete on `main` (17 tests pass). Next work: Task 4 — update `index.html` with reconnect button and calibration UI, then Task 5 — verify and tag `v0.2.0`. See `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md` for step-by-step code. All implementation is web-client only — no server changes.
 
-**Head SHA:** `c87a716` (as of 2026-03-28)
+**Head SHA:** `1ad318c` (as of 2026-03-28)
 
 ### Practical gaps task progress
 

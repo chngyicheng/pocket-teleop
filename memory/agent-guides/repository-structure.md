@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** Server and web client both complete and merged to `main`. Tags: `v0.1.0-server`, `v0.1.0-client`.
+> **Scope note:** Server and web client v0.1.0 both complete. Practical gaps Tasks 1–3 complete (17 tests, `main`). Tags: `v0.1.0-server`, `v0.1.0-client`. Task 4 (index.html UI) and Task 5 (v0.2.0 tag) still pending.
 
 ## Component layers (server)
 
@@ -98,9 +98,10 @@ TeleopServer (server container)
 Browser-side layers (TypeScript, no framework):
 
 ```
-TeleopClient       ← public API; owns keepalive loop
-    ├── Connection         ← WebSocket lifecycle
-    ├── GamepadHandler     ← Gamepad API polling
+TeleopClient       ← public API; keepalive + exponential-backoff reconnect
+    ├── Connection         ← WebSocket lifecycle; ws?.close() guard on reconnect
+    ├── GamepadHandler     ← Gamepad API polling; profile-aware axis reads; rising-edge buttons
+    ├── GamepadProfiles    ← built-in profiles + localStorage persistence
     └── Protocol           ← message types + serializers; no I/O
 ```
 
@@ -111,9 +112,11 @@ TeleopClient       ← public API; owns keepalive loop
 | `web-client/Dockerfile.webclient` | Multi-stage: `builder` (tsc) + `runtime` (nginx) |
 | `web-client/src/protocol.ts` | Message types, serializers, inbound parser |
 | `web-client/src/connection.ts` | WebSocket open/close/send; fires callbacks |
-| `web-client/src/gamepad_handler.ts` | Polls Gamepad API; emits twist values |
-| `web-client/src/teleop_client.ts` | Orchestrates all modules; public API |
-| `web-client/test/integration.test.ts` | Integration tests against real server; no mocks |
+| `web-client/src/gamepad_profiles.ts` | `GamepadProfile` types; 4 built-in profiles; `matchProfile`, `loadCustomProfiles`, `saveProfile`, `deleteProfile` |
+| `web-client/src/gamepad_handler.ts` | Polls Gamepad API; auto-matches profile; emits twist + button events |
+| `web-client/src/teleop_client.ts` | Orchestrates all modules; reconnection loop; public API |
+| `web-client/test/gamepad_profiles.test.ts` | Unit tests for `matchProfile` and `loadCustomProfiles` (6 tests) |
+| `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
 | `web-client/index.html` | Shell page; wires TeleopClient; no visual design |
 | `web-client/tsconfig.json` | TypeScript strict mode config |
 | `web-client/package.json` | Dev deps: typescript, vitest |
