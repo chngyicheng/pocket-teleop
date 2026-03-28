@@ -25,16 +25,16 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Server and web client (v0.1.0) both complete on `main`. Next work: implement the **practical gaps** (reconnection + gamepad profiles + calibration UI) per `docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`. Design spec is `docs/superpowers/specs/2026-03-28-practical-gaps-design.md`. Target: 17 tests, tag `v0.2.0`. All implementation is web-client only — no server changes.
 
-**Head SHA:** `e37b221` (as of 2026-03-28)
+**Head SHA:** `1569140` (as of 2026-03-28)
 
 ### Practical gaps task progress
 
 | Task | Status | Notes |
 |---|---|---|
 | 1 — `gamepad_profiles.ts` + unit tests | ✅ Done | `web-client/src/gamepad_profiles.ts` + `web-client/test/gamepad_profiles.test.ts`; 6 unit tests pass (`matchProfile` × 5, `loadCustomProfiles` × 1); total suite 16 tests |
-| 2 — Update `GamepadHandler` | ⬜ Next | Add `profile`, `setProfile()`, `onButton` rising-edge detection |
-| 3 — Update `TeleopClient` + reconnection test | ⬜ Pending | Add reconnection loop, `onReconnecting`, `onButton` forwarding; total 11 integration tests |
-| 4 — Update `index.html` | ⬜ Pending | Reconnect button + status, calibration UI |
+| 2 — Update `GamepadHandler` | ✅ Done | `web-client/src/gamepad_handler.ts` — `profile` constructor option, `setProfile()`, `AxisConfig`-based axis reads, rising-edge `onButton` detection; 16 tests pass (no new tests — Gamepad API is browser-only) |
+| 3 — Update `TeleopClient` + reconnection test | ✅ Done | `web-client/src/teleop_client.ts` — `maxRetries`, `retryBaseDelayMs`, `keepaliveIntervalMs`, `onReconnecting`, `onButton`, `setGamepadProfile()`; `connection.ts` gets `ws?.close()` guard; reconnection integration test uses watchdog trigger; 17 tests pass |
+| 4 — Update `index.html` | ⬜ Next | Reconnect button + status, calibration UI |
 | 5 — Full verification + tag | ⬜ Pending | 17 tests pass; `v0.2.0` tag applied |
 
 ### Task progress (web client v0.1.0 — complete)
@@ -68,6 +68,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `navigator` guard strengthened to check `getGamepads` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally (Node 21+) but without `getGamepads`; original guard `typeof navigator === 'undefined'` passed and then crashed on `.getGamepads()`. |
 | `connection stays open after 600ms of silence` split into two tests | `web-client/test/integration.test.ts` | Server watchdog closes the connection after 500 ms silence (not just fires zero velocity); original test had wrong expectation. Split into: (1) keepalive prevents watchdog timeout, (2) server closes connection after silence. |
 | `module` changed from `ESNext` to `Node16` | `web-client/tsconfig.json` | TypeScript 5 requires `module` and `moduleResolution` to match; `ESNext` + `node16` is rejected by `tsc` with TS5110. Vitest's esbuild transform tolerated the mismatch silently, so tests passed while the builder stage failed. |
+| Reconnection test uses watchdog timeout, not second-client kick | `web-client/test/integration.test.ts` | Plan's test connected a second client to "kick" the first, but the server rejects the SECOND client (not the first) — confirmed by `on_open` source. Test redesigned: `keepaliveIntervalMs: 1000` > server watchdog 500ms → server closes idle connection → client auto-reconnects. Added `keepaliveIntervalMs` option to `TeleopClientOptions` to enable this. |
 
 ---
 

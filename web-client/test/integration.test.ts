@@ -234,6 +234,41 @@ describe('Safety', () => {
     expect(closeCode).not.toBeNull();
   });
 
+  it('TeleopClient reconnects after server closes idle connection', async () => {
+    // keepaliveIntervalMs > server watchdog (500ms) → server closes after 500ms silence.
+    // Client must detect the close and reconnect automatically.
+    let initialStatusReceived = false;
+    let reconnectingCount = 0;
+
+    const result = await new Promise<{ reconnected: boolean; reconnectingCount: number }>(
+      (resolve, reject) => {
+        const client = new TeleopClient({
+          maxRetries: 3,
+          retryBaseDelayMs: 200,
+          keepaliveIntervalMs: 1000,
+          onStatus: () => {
+            if (!initialStatusReceived) {
+              initialStatusReceived = true;
+              // Keepalive fires every 1000ms but server closes after 500ms silence —
+              // so the server will drop this connection and client must reconnect.
+            } else {
+              client.disconnect();
+              resolve({ reconnected: true, reconnectingCount });
+            }
+          },
+          onReconnecting: () => { reconnectingCount += 1; },
+          onClose: () => {},
+          onError: () => {},
+        });
+        client.connect(VALID_URL);
+        setTimeout(() => reject(new Error('reconnection timeout')), 5000);
+      }
+    );
+
+    expect(result.reconnected).toBe(true);
+    expect(result.reconnectingCount).toBeGreaterThanOrEqual(1);
+  }, 6000);
+
   it('second client is rejected while first is connected', async () => {
     // Connect first client and wait for status confirmation
     let firstClient: TeleopClient | null = null;

@@ -14,6 +14,9 @@ export class Connection {
   }
 
   connect(url: string): void {
+    // Close any pre-existing socket — no-op if already closed; guards against
+    // reconnection calls leaving orphaned sockets.
+    this.ws?.close();
     // Use globalThis.WebSocket so this works in both browser and Node.js 20+
     this.ws = new globalThis.WebSocket(url);
     this.ws.onmessage = (e: MessageEvent) => this.callbacks.onMessage(e.data as string);
