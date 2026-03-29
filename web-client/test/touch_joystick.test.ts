@@ -90,6 +90,24 @@ describe('TouchJoystick', () => {
     expect(base.style.display).toBe('none');
   });
 
+  it('onMove fires normalised Y values', () => {
+    const moves: [number, number][] = [];
+    new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
+    fire(container, 'touchstart', 100, 100);
+    fire(container, 'touchmove', 100, 150); // dx=0, dy=50 → x=0.0, y=1.0
+    expect(moves[0][0]).toBeCloseTo(0.0);
+    expect(moves[0][1]).toBeCloseTo(1.0);
+  });
+
+  it('onMove fires negative normalised values', () => {
+    const moves: [number, number][] = [];
+    new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
+    fire(container, 'touchstart', 100, 100);
+    fire(container, 'touchmove', 50, 100); // dx=-50, dy=0 → x=-1.0, y=0.0
+    expect(moves[0][0]).toBeCloseTo(-1.0);
+    expect(moves[0][1]).toBeCloseTo(0.0);
+  });
+
   it('second touchstart updates origin', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });

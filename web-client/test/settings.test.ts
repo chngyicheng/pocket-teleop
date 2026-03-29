@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl,
-         loadRobotNamespace, saveRobotNamespace } from '../src/settings.js';
+         loadRobotNamespace, saveRobotNamespace, clearRobotNamespace } from '../src/settings.js';
 
 describe('video URL persistence', () => {
   let store: Record<string, string>;
@@ -57,6 +57,12 @@ describe('robot namespace persistence', () => {
   it('loadRobotNamespace returns saved value after saveRobotNamespace', () => {
     saveRobotNamespace('robot1');
     expect(loadRobotNamespace()).toBe('robot1');
+  });
+
+  it('clearRobotNamespace removes the saved value', () => {
+    saveRobotNamespace('robot1');
+    clearRobotNamespace();
+    expect(loadRobotNamespace()).toBeNull();
   });
 });
 
