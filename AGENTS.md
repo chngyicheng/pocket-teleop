@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** 60 tests pass. Brave dual-touch bug addressed — `TouchJoystick` now uses document-level listeners with `e.target` routing and a module-level `_activeTouchIds` set; `setPointerCapture` removed. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `480350d` → updated to new SHA after commit (see git log)
+**Head SHA:** `9abf070` (as of 2026-03-29)
 
 ### Completed milestones
 
