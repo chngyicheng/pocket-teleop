@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** All touch joystick tasks complete. 53 tests pass (8 touch_joystick + 7 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Touch joysticks, robot namespace, layout overhaul, and bug fixes shipped. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `TBD` (update after docs commit)
+**Head SHA:** `ab671ea` (as of 2026-03-29)
 
 ### Completed milestones
 
