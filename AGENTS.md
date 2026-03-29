@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All touch joystick tasks complete and post-ship bugs fixed. 58 tests pass (12 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). `TouchJoystick` rewritten to Pointer Events API (Chrome + Brave dual-touch verified). Settings drawer nav CSS fixed. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** Settings drawer nav fixed. 58 tests pass. `TouchJoystick` rewritten to Pointer Events API — dual-touch works in Chrome but **still broken in Brave browser** (open bug). **Web search is allowed** to investigate this. See Known deviations and memory/project_known_bugs.md for full diagnosis history and recommended next steps. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `1aec799` (as of 2026-03-29)
+**Head SHA:** `5a9e53b` (as of 2026-03-29)
 
 ### Completed milestones
 
@@ -47,7 +47,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
 | 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
 | 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
-| 7 — Post-ship bug fixes | ✅ Done | `touch_joystick.ts`: rewritten to Pointer Events API (fixes dual-touch on Chrome + Brave); `index.html`: `.drawer-page[hidden]` CSS fixes settings nav; 58/58 tests pass |
+| 7 — Post-ship bug fixes | ✅ Done | Settings nav CSS fixed; `TouchJoystick` rewritten to Pointer Events API; Chrome dual-touch works; 58/58 tests pass |
+| 8 — Brave dual-touch fix | ⬜ Next | Dual-touch still broken in Brave after Pointer Events rewrite; web search allowed; see memory/project_known_bugs.md for full history |
 
 ### Known deviations (still relevant to future work)
 
