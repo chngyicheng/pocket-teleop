@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { TouchJoystick } from '../src/touch_joystick.js';
+import { TouchJoystick, _activeTouchIds } from '../src/touch_joystick.js';
 
 // jsdom 24 does not expose PointerEvent as a global — shim it.
 if (typeof globalThis.PointerEvent === 'undefined') {
@@ -38,6 +38,7 @@ describe('TouchJoystick', () => {
   beforeEach(() => {
     container = document.createElement('div');
     document.body.appendChild(container);
+    _activeTouchIds.clear();
   });
 
   it('joystick base is hidden on init', () => {
@@ -152,5 +153,30 @@ describe('TouchJoystick', () => {
     fire(container, 'pointerdown', 100, 100, 1);
     fire(container, 'pointerup',   100, 100, 2); // different pointerId — must be ignored
     expect(ended).toBe(false);
+  });
+
+  it('ignores pointerdown fired on an element outside the container', () => {
+    const outside = document.createElement('div');
+    document.body.appendChild(outside);
+    new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+    outside.dispatchEvent(new PointerEvent('pointerdown', {
+      pointerId: 1, clientX: 100, clientY: 100, bubbles: true, pointerType: 'touch',
+    }));
+    const base = container.querySelector('.joystick-base') as HTMLElement;
+    expect(base.style.display).toBe('none');
+  });
+
+  it('second zone rejects same pointerId already claimed by first zone', () => {
+    const containerA = document.createElement('div');
+    const containerB = document.createElement('div');
+    document.body.appendChild(containerA);
+    document.body.appendChild(containerB);
+    let activatedB = false;
+    new TouchJoystick(containerA, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+    new TouchJoystick(containerB, { maxRadius: 50, onMove: () => { activatedB = true; }, onEnd: () => {} });
+    fire(containerA, 'pointerdown', 100, 100, 1); // zone A claims pointer 1
+    fire(containerB, 'pointerdown', 300, 300, 1); // zone B must reject same pointerId
+    fire(containerB, 'pointermove', 350, 300, 1);
+    expect(activatedB).toBe(false);
   });
 });
