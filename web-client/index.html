@@ -44,7 +44,7 @@
       gap: 8px;
       border-bottom: 1px solid var(--border);
       background: var(--bg);
-      z-index: 10;
+      z-index: 40;
     }
     #menu-btn {
       background: none;
@@ -72,9 +72,21 @@
       cursor: default;
     }
     .pill:disabled { cursor: default; opacity: 1; }
-    .pill-connected  { color: #16a34a; }
-    .pill-warn       { color: var(--warn); }
-    .pill-danger     { color: var(--danger); cursor: pointer; }
+    .pill-connected { color: #16a34a; }
+    .pill-warn      { color: var(--warn); }
+    .pill-danger    { color: var(--danger); cursor: pointer; }
+
+    /* ── Robot name strip ───────────────────────── */
+    #robot-name-strip {
+      flex: 0 0 auto;
+      padding: 4px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      display: none;
+    }
 
     /* ── Video panel ────────────────────────────── */
     #video-panel {
@@ -86,40 +98,49 @@
       background: var(--surface);
       position: relative;
     }
+    #video-placeholder-box {
+      aspect-ratio: 4 / 3;
+      max-width: 100%;
+      max-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
     #video-placeholder { color: var(--text-muted); font-size: 14px; text-align: center; padding: 16px; }
     #video-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 
-    /* ── Velocity bar ───────────────────────────── */
-    #velocity-bar {
-      flex: 0 0 auto;
+    /* ── Velocity overlay ───────────────────────── */
+    #vel-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 8px 16px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 12px 16px;
-      border-top: 1px solid var(--border);
-      background: var(--bg);
+      gap: 4px;
+      z-index: 5;
+      pointer-events: none;
     }
     .vel-row { display: flex; align-items: center; gap: 8px; }
-    .vel-label { font-size: 11px; font-weight: 600; color: var(--text-muted); width: 16px; text-align: right; font-family: monospace; }
+    .vel-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); width: 16px; text-align: right; font-family: monospace; }
     .vel-track {
       position: relative;
       flex: 1;
-      height: 8px;
-      background: var(--surface);
-      border-radius: 4px;
-      border: 1px solid var(--border);
+      height: 6px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
     }
     .vel-fill {
       position: absolute;
       top: 0;
       height: 100%;
-      background: var(--accent);
-      border-radius: 4px;
+      background: rgba(255,255,255,0.8);
+      border-radius: 3px;
       transition: left 100ms, width 100ms;
       left: 50%;
       width: 0;
     }
-    .vel-value { font-size: 11px; font-family: monospace; color: var(--text-muted); width: 44px; text-align: right; }
+    .vel-value { font-size: 11px; font-family: monospace; color: rgba(255,255,255,0.7); width: 44px; text-align: right; }
 
     /* ── Backdrop ───────────────────────────────── */
     #backdrop {
@@ -164,7 +185,6 @@
 
     .drawer-page { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 
-    /* Shared drawer element styles */
     .drawer-page h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
     .drawer-page label { font-size: 14px; }
     .drawer-page select,
@@ -192,13 +212,46 @@
     .drawer-page ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
     .drawer-page li { font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
-    /* Video page */
     .field-group { display: flex; flex-direction: column; gap: 6px; }
     .field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
     .field-row { display: flex; gap: 8px; }
     .field-row input { flex: 1; }
     .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn-primary:hover { opacity: 0.9; background: var(--accent); }
+
+    /* ── Joystick zones ─────────────────────────── */
+    #joystick-left, #joystick-right {
+      position: fixed;
+      bottom: 0;
+      width: 45vw;
+      height: 45vh;
+      z-index: 15;
+      touch-action: none;
+    }
+    #joystick-left  { left: 0; }
+    #joystick-right { right: 0; }
+
+    /* ── Joystick elements (rendered by TouchJoystick) ── */
+    .joystick-base {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      border: 2px solid rgba(255,255,255,0.4);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .joystick-knob {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+      transform: translate(-50%, -50%);
+    }
   </style>
 </head>
 <body>
@@ -209,6 +262,7 @@
     <ul id="drawer-nav">
       <li class="nav-item active" data-page="gamepad">Gamepad</li>
       <li class="nav-item" data-page="video">Video</li>
+      <li class="nav-item" data-page="connection">Connection</li>
     </ul>
 
     <!-- Gamepad page -->
@@ -263,6 +317,20 @@
         </div>
       </div>
     </div>
+
+    <!-- Connection page -->
+    <div id="page-connection" class="drawer-page" hidden>
+      <div class="field-group">
+        <span class="field-label">Robot namespace</span>
+        <div class="field-row">
+          <input id="namespace-input" type="text" placeholder="robot1" />
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button id="namespace-apply-btn" class="btn-primary">Apply</button>
+          <button id="namespace-clear-btn">Clear</button>
+        </div>
+      </div>
+    </div>
   </nav>
 
   <header id="app-header">
@@ -271,33 +339,41 @@
     <button id="status-pill" class="pill" disabled>Connecting…</button>
   </header>
 
+  <div id="robot-name-strip"></div>
+
   <main id="video-panel">
-    <p id="video-placeholder">No video stream — add one in Settings ⚙</p>
+    <div id="vel-overlay">
+      <div class="vel-row">
+        <span class="vel-label">lx</span>
+        <div class="vel-track"><div class="vel-fill" id="vel-fill-lx"></div></div>
+        <span class="vel-value" id="vel-val-lx">—</span>
+      </div>
+      <div class="vel-row">
+        <span class="vel-label">ly</span>
+        <div class="vel-track"><div class="vel-fill" id="vel-fill-ly"></div></div>
+        <span class="vel-value" id="vel-val-ly">—</span>
+      </div>
+      <div class="vel-row">
+        <span class="vel-label">az</span>
+        <div class="vel-track"><div class="vel-fill" id="vel-fill-az"></div></div>
+        <span class="vel-value" id="vel-val-az">—</span>
+      </div>
+    </div>
+    <div id="video-placeholder-box">
+      <p id="video-placeholder">No video stream — configure one in Settings (☰)</p>
+    </div>
     <img id="video-img" alt="video stream" style="display:none" />
   </main>
 
-  <footer id="velocity-bar">
-    <div class="vel-row">
-      <span class="vel-label">lx</span>
-      <div class="vel-track"><div class="vel-fill" id="vel-fill-lx"></div></div>
-      <span class="vel-value" id="vel-val-lx">—</span>
-    </div>
-    <div class="vel-row">
-      <span class="vel-label">ly</span>
-      <div class="vel-track"><div class="vel-fill" id="vel-fill-ly"></div></div>
-      <span class="vel-value" id="vel-val-ly">—</span>
-    </div>
-    <div class="vel-row">
-      <span class="vel-label">az</span>
-      <div class="vel-track"><div class="vel-fill" id="vel-fill-az"></div></div>
-      <span class="vel-value" id="vel-val-az">—</span>
-    </div>
-  </footer>
+  <div id="joystick-left"></div>
+  <div id="joystick-right"></div>
 
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
     import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
-    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '/dist/settings.js';
+    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl,
+             loadRobotNamespace, saveRobotNamespace, clearRobotNamespace } from '/dist/settings.js';
+    import { TouchJoystick } from '/dist/touch_joystick.js';
 
     // ── Settings drawer ───────────────────────────────────────────────────────
 
@@ -325,12 +401,20 @@
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.addEventListener('click', () => router.navigate(item.dataset.page));
     });
+    router.navigate('gamepad'); // initialise: ensures only gamepad page is visible
 
-    // ── Connection ────────────────────────────────────────────────────────────
+    // ── Connection URL builder ────────────────────────────────────────────────
 
-    const params   = new URLSearchParams(window.location.search);
-    const token    = params.get('token') ?? '';
-    const wsUrl    = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
+    const params = new URLSearchParams(window.location.search);
+    const token  = params.get('token') ?? '';
+
+    function buildWsUrl() {
+      const ns   = loadRobotNamespace();
+      const base = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
+      return ns ? `${base}&ns=${encodeURIComponent(ns)}` : base;
+    }
+
+    // ── Status pill ───────────────────────────────────────────────────────────
 
     const statusPill = document.getElementById('status-pill');
     let countdownInterval = null;
@@ -352,11 +436,11 @@
     statusPill.addEventListener('click', () => {
       if (!statusPill.disabled) {
         setStatus('default', 'Connecting…');
-        client.connect(wsUrl);
+        client.connect(buildWsUrl());
       }
     });
 
-    // ── Velocity bars ─────────────────────────────────────────────────────────
+    // ── Velocity overlay ──────────────────────────────────────────────────────
 
     function updateVelBar(key, v) {
       const fill = document.getElementById(`vel-fill-${key}`);
@@ -374,17 +458,65 @@
 
     function clearVelBars() {
       ['lx', 'ly', 'az'].forEach((k) => {
-        const fill = document.getElementById(`vel-fill-${k}`);
-        fill.style.left = '50%';
-        fill.style.width = '0';
-        document.getElementById(`vel-val-${k}`).textContent = '—';
+        document.getElementById(`vel-fill-${k}`).style.left  = '50%';
+        document.getElementById(`vel-fill-${k}`).style.width = '0';
+        document.getElementById(`vel-val-${k}`).textContent  = '—';
       });
     }
 
+    // ── Robot name strip ──────────────────────────────────────────────────────
+
+    const robotNameStrip = document.getElementById('robot-name-strip');
+
+    function applyNamespace(ns) {
+      robotNameStrip.textContent    = ns || '';
+      robotNameStrip.style.display  = ns ? '' : 'none';
+    }
+
+    applyNamespace(loadRobotNamespace());
+
+    // ── Input source switching ────────────────────────────────────────────────
+
+    let inputSource = 'touch';
+    const joystickLeftEl  = document.getElementById('joystick-left');
+    const joystickRightEl = document.getElementById('joystick-right');
+
+    function showJoysticks() {
+      joystickLeftEl.style.display  = '';
+      joystickRightEl.style.display = '';
+    }
+    function hideJoysticks() {
+      joystickLeftEl.style.display  = 'none';
+      joystickRightEl.style.display = 'none';
+    }
+
+    window.addEventListener('gamepadconnected', () => {
+      inputSource = 'gamepad';
+      hideJoysticks();
+      client.setGamepadEnabled(true);
+    });
+
+    window.addEventListener('gamepaddisconnected', () => {
+      inputSource = 'touch';
+      showJoysticks();
+    });
+
+    [joystickLeftEl, joystickRightEl].forEach((zone) => {
+      zone.addEventListener('touchstart', () => {
+        if (inputSource !== 'touch') {
+          inputSource = 'touch';
+          showJoysticks();
+          client.setGamepadEnabled(false);
+        }
+      }, { passive: true });
+    });
+
     // ── TeleopClient ──────────────────────────────────────────────────────────
 
+    let joyLx = 0, joyLy = 0, joyAz = 0;
+
     const client = new TeleopClient({
-      maxRetries: 5,
+      maxRetries:       5,
       retryBaseDelayMs: 2000,
       onStatus: (_connected, robotType) => {
         setStatus('connected', `● Connected — ${robotType}`);
@@ -395,8 +527,6 @@
       onReconnecting: (attempt, maxAttempts, delayMs) => {
         clearCountdown();
         let remaining = Math.ceil(delayMs / 1000);
-        // Set pill state directly — avoid calling setStatus() inside the interval
-        // because setStatus() calls clearCountdown(), which would stop the interval.
         statusPill.disabled = true;
         statusPill.className = 'pill pill-warn';
         statusPill.textContent = `⟳ Reconnecting in ${remaining}s (${attempt}/${maxAttempts})`;
@@ -423,31 +553,55 @@
       onButton: (action) => {
         console.log(`Button action: ${action}`);
       },
+      onGamepadActivity: () => {
+        if (inputSource === 'touch') {
+          inputSource = 'gamepad';
+          hideJoysticks();
+          client.setGamepadEnabled(true);
+        }
+      },
     });
 
-    client.connect(wsUrl);
+    client.connect(buildWsUrl());
+
+    // ── Touch joysticks ───────────────────────────────────────────────────────
+
+    // Left joystick: lx = forward/back (invert Y), ly = strafe left/right
+    // Right joystick: az = rotate (invert X for clockwise = positive)
+    new TouchJoystick(joystickLeftEl, {
+      maxRadius: 60,
+      onMove: (x, y) => { joyLx = -y; joyLy = x; client.sendTwist(joyLx, joyLy, joyAz); },
+      onEnd:  ()     => { joyLx = 0; joyLy = 0;  client.sendTwist(0, 0, joyAz); },
+    });
+
+    new TouchJoystick(joystickRightEl, {
+      maxRadius: 60,
+      onMove: (x, _) => { joyAz = -x; client.sendTwist(joyLx, joyLy, joyAz); },
+      onEnd:  ()     => { joyAz = 0;  client.sendTwist(joyLx, joyLy, 0); },
+    });
 
     // ── Video panel ───────────────────────────────────────────────────────────
 
-    const videoImg         = document.getElementById('video-img');
-    const videoPlaceholder = document.getElementById('video-placeholder');
-    const streamUrlInput   = document.getElementById('stream-url-input');
+    const videoImg           = document.getElementById('video-img');
+    const videoPlaceholder   = document.getElementById('video-placeholder');
+    const videoPlaceholderBox = document.getElementById('video-placeholder-box');
+    const streamUrlInput     = document.getElementById('stream-url-input');
 
     function applyVideoUrl(url) {
       if (!url) {
-        videoImg.style.display = 'none';
-        videoPlaceholder.style.display = '';
+        videoImg.style.display         = 'none';
+        videoPlaceholderBox.style.display = '';
         return;
       }
-      videoImg.src = url;
-      videoImg.style.display = 'block';
-      videoPlaceholder.style.display = 'none';
+      videoImg.src                    = url;
+      videoImg.style.display          = 'block';
+      videoPlaceholderBox.style.display = 'none';
     }
 
     videoImg.onerror = () => {
-      videoImg.style.display = 'none';
-      videoPlaceholder.textContent = 'Stream unavailable';
-      videoPlaceholder.style.display = '';
+      videoImg.style.display            = 'none';
+      videoPlaceholderBox.style.display = '';
+      videoPlaceholder.textContent      = 'Stream unavailable';
     };
 
     const savedUrl = loadVideoUrl();
@@ -456,31 +610,49 @@
     document.getElementById('video-apply-btn').addEventListener('click', () => {
       const url = streamUrlInput.value.trim();
       if (url) saveVideoUrl(url); else clearVideoUrl();
-      videoPlaceholder.textContent = 'No video stream — add one in Settings ⚙';
+      videoPlaceholder.textContent = 'No video stream — configure one in Settings (☰)';
       applyVideoUrl(url);
     });
 
     document.getElementById('video-clear-btn').addEventListener('click', () => {
       streamUrlInput.value = '';
       clearVideoUrl();
-      videoPlaceholder.textContent = 'No video stream — add one in Settings ⚙';
+      videoPlaceholder.textContent = 'No video stream — configure one in Settings (☰)';
       applyVideoUrl('');
+    });
+
+    // ── Namespace settings ────────────────────────────────────────────────────
+
+    const namespaceInput = document.getElementById('namespace-input');
+    const savedNs = loadRobotNamespace();
+    if (savedNs) namespaceInput.value = savedNs;
+
+    document.getElementById('namespace-apply-btn').addEventListener('click', () => {
+      const ns = namespaceInput.value.trim();
+      if (ns) saveRobotNamespace(ns); else clearRobotNamespace();
+      applyNamespace(ns);
+    });
+
+    document.getElementById('namespace-clear-btn').addEventListener('click', () => {
+      namespaceInput.value = '';
+      clearRobotNamespace();
+      applyNamespace('');
     });
 
     // ── Gamepad calibration UI ────────────────────────────────────────────────
 
-    const profileSelect    = document.getElementById('profile-select');
-    const profileDeleteBtn = document.getElementById('profile-delete');
-    const calInstruction   = document.getElementById('cal-instruction');
-    const calStartBtn      = document.getElementById('cal-start');
-    const calNextBtn       = document.getElementById('cal-next');
-    const calSkipBtn       = document.getElementById('cal-skip');
-    const buttonList       = document.getElementById('button-list');
+    const profileSelect     = document.getElementById('profile-select');
+    const profileDeleteBtn  = document.getElementById('profile-delete');
+    const calInstruction    = document.getElementById('cal-instruction');
+    const calStartBtn       = document.getElementById('cal-start');
+    const calNextBtn        = document.getElementById('cal-next');
+    const calSkipBtn        = document.getElementById('cal-skip');
+    const buttonList        = document.getElementById('button-list');
     const buttonActionInput = document.getElementById('button-action-input');
-    const buttonAddStart   = document.getElementById('button-add-start');
-    const buttonWaiting    = document.getElementById('button-waiting');
-    const saveNameInput    = document.getElementById('save-name-input');
-    const saveBtn          = document.getElementById('save-btn');
+    const buttonAddStart    = document.getElementById('button-add-start');
+    const buttonWaiting     = document.getElementById('button-waiting');
+    const saveNameInput     = document.getElementById('save-name-input');
+    const saveBtn           = document.getElementById('save-btn');
 
     let workingMapping = { lx: { axis: 1, invert: true }, ly: { axis: 0, invert: true }, az: { axis: 2, invert: true } };
     let workingButtons = {};
@@ -535,8 +707,8 @@
     function startCalStep() {
       calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction;
       calStartBtn.style.display = 'none';
-      calNextBtn.style.display = 'none';
-      calSkipBtn.style.display = 'inline';
+      calNextBtn.style.display  = 'none';
+      calSkipBtn.style.display  = 'inline';
       calSamples = [];
       calSampleInterval = setInterval(() => {
         const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
@@ -561,11 +733,11 @@
     function advanceCalStep() {
       calStepIndex += 1;
       if (calStepIndex >= CAL_STEPS.length) {
-        calInstruction.textContent = 'Axis calibration complete. Save the profile below.';
-        calStartBtn.style.display = 'inline';
-        calStartBtn.textContent = 'Recalibrate';
-        calNextBtn.style.display = 'none';
-        calSkipBtn.style.display = 'none';
+        calInstruction.textContent    = 'Axis calibration complete. Save the profile below.';
+        calStartBtn.style.display     = 'inline';
+        calStartBtn.textContent       = 'Recalibrate';
+        calNextBtn.style.display      = 'none';
+        calSkipBtn.style.display      = 'none';
       } else {
         startCalStep();
       }
@@ -579,7 +751,7 @@
     function renderButtonList() {
       buttonList.innerHTML = '';
       for (const [action, idx] of Object.entries(workingButtons)) {
-        const li = document.createElement('li');
+        const li    = document.createElement('li');
         const label = document.createElement('span');
         label.textContent = `${action} → button ${idx}`;
         const rm = document.createElement('button');
@@ -593,9 +765,9 @@
 
     buttonAddStart.addEventListener('click', () => {
       if (!buttonActionInput.value.trim()) return;
-      buttonWaiting.style.display = 'inline';
-      buttonAddStart.disabled = true;
-      listeningForButton = true;
+      buttonWaiting.style.display  = 'inline';
+      buttonAddStart.disabled      = true;
+      listeningForButton           = true;
     });
 
     setInterval(() => {
@@ -605,10 +777,10 @@
       for (let i = 0; i < gp.buttons.length; i++) {
         if (gp.buttons[i]?.pressed) {
           workingButtons[buttonActionInput.value.trim()] = i;
-          listeningForButton = false;
+          listeningForButton          = false;
           buttonWaiting.style.display = 'none';
-          buttonAddStart.disabled = false;
-          buttonActionInput.value = '';
+          buttonAddStart.disabled     = false;
+          buttonActionInput.value     = '';
           renderButtonList();
           break;
         }
@@ -625,7 +797,6 @@
       saveNameInput.value = '';
     });
 
-    // Detect first gamepad — populate profile dropdown on connect
     let gamepadDetected = false;
     setInterval(() => {
       if (gamepadDetected) return;
