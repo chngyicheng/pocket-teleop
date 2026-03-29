@@ -119,8 +119,8 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 | `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
 | `web-client/src/settings.ts` | `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and persistence |
 | `web-client/src/touch_joystick.ts` | `TouchJoystick` class — floating touch joystick, normalised -1..1 output, jsdom-testable |
-| `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (7 tests; `vi.stubGlobal` for localStorage) |
-| `web-client/test/touch_joystick.test.ts` | 8 unit tests using jsdom TouchEvent simulation |
+| `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (8 tests; `vi.stubGlobal` for localStorage) |
+| `web-client/test/touch_joystick.test.ts` | 10 unit tests using jsdom TouchEvent simulation |
 | `web-client/index.html` | Full responsive UI — header, status pill, robot name strip, velocity overlay, touch joystick zones, settings drawer (Gamepad + Video + Connection pages) |
 | `web-client/tsconfig.json` | TypeScript strict mode config |
 | `web-client/package.json` | Dev deps: typescript, vitest, jsdom |

@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All touch joystick tasks complete. 53 tests pass (8 touch_joystick + 7 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Touch joysticks, robot namespace, layout overhaul, and bug fixes shipped. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** All touch joystick tasks complete. 56 tests pass (10 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Touch joysticks, robot namespace, layout overhaul, and bug fixes shipped. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `ab671ea` (as of 2026-03-29)
+**Head SHA:** `75317ab` (as of 2026-03-29)
 
 ### Completed milestones
 
@@ -46,7 +46,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 3 — `GamepadHandler` setEnabled + onActivity | ✅ Done | `web-client/src/gamepad_handler.ts` — `setEnabled(boolean)`, `onActivity` callback |
 | 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
 | 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
-| 6 — Full verification + docs | ✅ Done | 53/53 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; push requested |
+| 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
 
 ### Known deviations (still relevant to future work)
 
