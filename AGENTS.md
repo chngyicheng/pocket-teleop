@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** 60 tests pass. Brave dual-touch bug addressed — `TouchJoystick` now uses document-level listeners with `e.target` routing and a module-level `_activeTouchIds` set; `setPointerCapture` removed. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** 60 tests pass. Brave dual-touch fixed. Namespace display above video panel fixed (was broken — style.display='' doesn't override CSS display:none; fixed to 'block'). Title is now Press Start 2P pixel font, left-aligned next to hamburger. Tag v0.4.0 pending user confirmation.
 
-**Head SHA:** `9abf070` (as of 2026-03-29)
+**Head SHA:** `6959841` (as of 2026-03-29)
 
 ### Completed milestones
 
@@ -49,6 +49,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
 | 7 — Post-ship bug fixes | ✅ Done | Settings nav CSS fixed; `TouchJoystick` rewritten to Pointer Events API; Chrome dual-touch works; 58/58 tests pass |
 | 8 — Brave dual-touch fix | ✅ Done | Document-level listeners + `e.target` routing + `_activeTouchIds` set + `setPointerCapture` removed; 60/60 tests pass; see Known deviations row below |
+| 9 — UI polish | ✅ Done | Namespace display fixed + shown above video; retro pixel title left-aligned; 60/60 tests pass |
 
 ### Known deviations (still relevant to future work)
 
@@ -66,6 +67,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `.drawer-page[hidden] { display: none }` required alongside `[hidden]` | `web-client/index.html` | Author CSS `.drawer-page { display: flex }` overrides UA `[hidden] { display: none }` due to cascade order; compound selector has higher specificity and restores correct behaviour |
 | `TouchJoystick` uses document-level Pointer Event listeners, no `setPointerCapture` | `web-client/src/touch_joystick.ts` | Brave routes a second finger's `pointerdown` to the capturing element when `setPointerCapture` is active, corrupting the second joystick's origin. Fix: listen on `document`; use `e.target` to route each `pointerdown` to the correct zone; `_activeTouchIds` module-level set prevents two zones from claiming the same `pointerId` if a browser reuses IDs. `touch-action: none` is still required on zone elements. |
 | `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
+| `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
 
 ---
 
