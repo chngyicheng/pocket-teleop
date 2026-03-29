@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Touch joystick plan written and approved. Execute `docs/superpowers/plans/2026-03-29-touch-joystick-implementation.md` using `superpowers:subagent-driven-development`. Current test count: 43. Expected after plan: 53 (+ 8 `touch_joystick` + 2 `settings`). Do NOT tag without explicit user confirmation.
+> **For the next agent:** All touch joystick tasks complete. 53 tests pass (8 touch_joystick + 7 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Touch joysticks, robot namespace, layout overhaul, and bug fixes shipped. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `fa2f6ca` (as of 2026-03-29)
+**Head SHA:** `TBD` (update after docs commit)
 
 ### Completed milestones
 
@@ -35,17 +35,18 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Web client v0.1.0 (protocol, connection, gamepad handler, teleop client, integration tests) | 10 | `v0.1.0-client` |
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | pending `v0.3.0` |
+| Touch joystick (TouchJoystick module, namespace settings, gamepad switching, index.html rewrite) | 53 | pending `v0.4.0` |
 
 ### Touch joystick task progress
 
 | Task | Status | Notes |
 |---|---|---|
-| 1 — `touch_joystick.ts` + unit tests | ⬜ Next | 8 jsdom tests; `TouchJoystick` class — floating origin, normalised -1..1 output |
-| 2 — Settings namespace additions | ⬜ Pending | +2 tests; `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` |
-| 3 — `GamepadHandler` setEnabled + onActivity | ⬜ Pending | No new tests; Gamepad API browser-only |
-| 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ⬜ Pending | No new tests |
-| 5 — Rewrite `index.html` | ⬜ Pending | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, bug fixes |
-| 6 — Full verification + docs | ⬜ Pending | 53 tests, docker healthy, AGENTS.md updated, push requested |
+| 1 — `touch_joystick.ts` + unit tests | ✅ Done | `web-client/src/touch_joystick.ts` — `TouchJoystick` class; 8 unit tests; `jsdom` added to devDeps; `Touch` shim for jsdom 24 |
+| 2 — Settings namespace additions | ✅ Done | `web-client/src/settings.ts` — `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace`; +2 tests; 53 total |
+| 3 — `GamepadHandler` setEnabled + onActivity | ✅ Done | `web-client/src/gamepad_handler.ts` — `setEnabled(boolean)`, `onActivity` callback |
+| 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
+| 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
+| 6 — Full verification + docs | ✅ Done | 53/53 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; push requested |
 
 ### Known deviations (still relevant to future work)
 
@@ -59,6 +60,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `node:22-slim` (not `node:20-slim`) | `web-client/Dockerfile.webclient` | Node 20 has no native `WebSocket` global; connection attempts fail silently |
 | `navigator` guard must check `getGamepads`, not just `navigator` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally but without `getGamepads`; bare `typeof navigator` guard crashes |
 | `TeleopClient` retry triggered from both `onError` and `onclose` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` for rejected connections; `retryPending` guard prevents double-scheduling when browsers fire both |
+| `Touch` constructor shimmed in test; `jsdom` added to devDeps | `web-client/test/touch_joystick.test.ts`, `web-client/package.json` | jsdom 24 exposes `TouchEvent` but not `Touch` as a global constructor; shim defines a minimal class that satisfies the test's constructor calls |
 
 ---
 

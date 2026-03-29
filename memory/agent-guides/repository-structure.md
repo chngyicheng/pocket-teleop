@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** Server and web client v0.1.0 both complete. All practical gaps tasks complete (43 tests, `main`). Frontend UI complete (v0.3.0 pending tag). Tags so far: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
+> **Scope note:** Server and web client v0.1.0 both complete. All practical gaps tasks complete. Frontend UI + touch joysticks complete (v0.4.0 pending tag). Tags so far: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
 
 ## Component layers (server)
 
@@ -117,11 +117,13 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 | `web-client/src/teleop_client.ts` | Orchestrates all modules; reconnection loop; public API |
 | `web-client/test/gamepad_profiles.test.ts` | Unit tests for `matchProfile` and `loadCustomProfiles` (6 tests) |
 | `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
-| `web-client/src/settings.ts` | `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl` — settings routing and video URL persistence |
-| `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (5 tests; `vi.stubGlobal` for localStorage) |
-| `web-client/index.html` | Full responsive UI — sticky header, status pill, video panel, velocity bars, settings drawer (Gamepad + Video pages) |
+| `web-client/src/settings.ts` | `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and persistence |
+| `web-client/src/touch_joystick.ts` | `TouchJoystick` class — floating touch joystick, normalised -1..1 output, jsdom-testable |
+| `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (7 tests; `vi.stubGlobal` for localStorage) |
+| `web-client/test/touch_joystick.test.ts` | 8 unit tests using jsdom TouchEvent simulation |
+| `web-client/index.html` | Full responsive UI — header, status pill, robot name strip, velocity overlay, touch joystick zones, settings drawer (Gamepad + Video + Connection pages) |
 | `web-client/tsconfig.json` | TypeScript strict mode config |
-| `web-client/package.json` | Dev deps: typescript, vitest |
+| `web-client/package.json` | Dev deps: typescript, vitest, jsdom |
 
 ## Build and test commands (client)
 
