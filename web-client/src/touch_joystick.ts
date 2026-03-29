@@ -9,7 +9,7 @@ export class TouchJoystick {
   private readonly knob: HTMLDivElement;
   private originX = 0;
   private originY = 0;
-  private activeTouchId: number | null = null;
+  private activePointerId: number | null = null;
   private readonly options: TouchJoystickOptions;
 
   constructor(container: HTMLElement, options: TouchJoystickOptions) {
@@ -24,20 +24,21 @@ export class TouchJoystick {
     this.base.appendChild(this.knob);
     container.appendChild(this.base);
 
-    container.addEventListener('touchstart',  (e) => this.onTouchStart(e),  { passive: true });
-    container.addEventListener('touchmove',   (e) => this.onTouchMove(e),   { passive: true });
-    container.addEventListener('touchend',    (e) => this.onTouchEnd(e),    { passive: true });
-    container.addEventListener('touchcancel', (e) => this.onTouchEnd(e),    { passive: true });
+    container.addEventListener('pointerdown',   (e) => this.onPointerDown(e));
+    container.addEventListener('pointermove',   (e) => this.onPointerMove(e));
+    container.addEventListener('pointerup',     (e) => this.onPointerUp(e));
+    container.addEventListener('pointercancel', (e) => this.onPointerUp(e));
   }
 
-  private onTouchStart(e: TouchEvent): void {
-    if (this.activeTouchId !== null) return;
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    this.activeTouchId = touch.identifier;
+  private onPointerDown(e: PointerEvent): void {
+    if (this.activePointerId !== null) return;
+    this.activePointerId = e.pointerId;
+    // Capture this pointer so pointermove/pointerup always arrive here even if
+    // the finger drifts outside the element's bounds.
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    this.originX = touch.clientX - rect.left;
-    this.originY = touch.clientY - rect.top;
+    this.originX = e.clientX - rect.left;
+    this.originY = e.clientY - rect.top;
     this.base.style.display = 'block';
     this.base.style.position = 'absolute';
     this.base.style.left = `${this.originX}px`;
@@ -45,13 +46,11 @@ export class TouchJoystick {
     this.knob.style.transform = 'translate(-50%, -50%)';
   }
 
-  private onTouchMove(e: TouchEvent): void {
-    if (this.activeTouchId === null) return;
-    const touch = Array.from(e.changedTouches).find(t => t.identifier === this.activeTouchId);
-    if (!touch) return;
+  private onPointerMove(e: PointerEvent): void {
+    if (e.pointerId !== this.activePointerId) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const dx = (touch.clientX - rect.left) - this.originX;
-    const dy = (touch.clientY - rect.top)  - this.originY;
+    const dx = (e.clientX - rect.left) - this.originX;
+    const dy = (e.clientY - rect.top)  - this.originY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const scale = dist > this.options.maxRadius ? this.options.maxRadius / dist : 1;
     const cdx = dx * scale;
@@ -60,11 +59,9 @@ export class TouchJoystick {
     this.options.onMove(cdx / this.options.maxRadius, cdy / this.options.maxRadius);
   }
 
-  private onTouchEnd(e: TouchEvent): void {
-    if (this.activeTouchId === null) return;
-    const ended = Array.from(e.changedTouches).find(t => t.identifier === this.activeTouchId);
-    if (!ended) return;
-    this.activeTouchId = null;
+  private onPointerUp(e: PointerEvent): void {
+    if (e.pointerId !== this.activePointerId) return;
+    this.activePointerId = null;
     this.base.style.display = 'none';
     this.knob.style.transform = 'translate(-50%, -50%)';
     this.options.onEnd();

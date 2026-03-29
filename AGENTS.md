@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All touch joystick tasks complete and post-ship bugs fixed. 58 tests pass (12 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Bug fixes: dual-touch identifier tracking in `TouchJoystick`, CSS specificity fix for settings drawer nav. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** All touch joystick tasks complete and post-ship bugs fixed. 58 tests pass (12 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). `TouchJoystick` rewritten to Pointer Events API (Chrome + Brave dual-touch verified). Settings drawer nav CSS fixed. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `892b92f` (as of 2026-03-29)
+**Head SHA:** `1aec799` (as of 2026-03-29)
 
 ### Completed milestones
 
@@ -47,7 +47,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
 | 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
 | 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
-| 7 — Post-ship bug fixes | ✅ Done | `touch_joystick.ts`: `activeTouchId` tracking fixes dual-touch; `index.html`: `.drawer-page[hidden]` CSS fixes settings nav; 58/58 tests pass |
+| 7 — Post-ship bug fixes | ✅ Done | `touch_joystick.ts`: rewritten to Pointer Events API (fixes dual-touch on Chrome + Brave); `index.html`: `.drawer-page[hidden]` CSS fixes settings nav; 58/58 tests pass |
 
 ### Known deviations (still relevant to future work)
 
@@ -63,6 +63,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `TeleopClient` retry triggered from both `onError` and `onclose` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` for rejected connections; `retryPending` guard prevents double-scheduling when browsers fire both |
 | `Touch` constructor shimmed in test; `jsdom` added to devDeps | `web-client/test/touch_joystick.test.ts`, `web-client/package.json` | jsdom 24 exposes `TouchEvent` but not `Touch` as a global constructor; shim defines a minimal class that satisfies the test's constructor calls |
 | `.drawer-page[hidden] { display: none }` required alongside `[hidden]` | `web-client/index.html` | Author CSS `.drawer-page { display: flex }` overrides UA `[hidden] { display: none }` due to cascade order; compound selector has higher specificity and restores correct behaviour |
+| `TouchJoystick` uses Pointer Events, not Touch Events | `web-client/src/touch_joystick.ts` | Chrome Android and Brave both contaminate `targetTouches`/`changedTouches` with cross-zone touches on multi-touch; Pointer Events fire one `pointerdown` per finger on the exact element touched, with `setPointerCapture` locking the event stream — no cross-zone contamination possible |
+| `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
 
 ---
 

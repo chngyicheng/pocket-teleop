@@ -2,28 +2,33 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TouchJoystick } from '../src/touch_joystick.js';
 
-// jsdom 24 exposes TouchEvent but not the Touch constructor — shim it.
-if (typeof globalThis.Touch === 'undefined') {
-  (globalThis as unknown as Record<string, unknown>).Touch = class Touch {
-    identifier: number; target: EventTarget; clientX: number; clientY: number;
-    pageX: number; pageY: number; screenX: number; screenY: number;
-    radiusX: number; radiusY: number; rotationAngle: number; force: number;
-    constructor(init: TouchInit) { Object.assign(this, init); }
+// jsdom 24 does not expose PointerEvent as a global — shim it.
+if (typeof globalThis.PointerEvent === 'undefined') {
+  (globalThis as unknown as Record<string, unknown>).PointerEvent = class PointerEvent extends Event {
+    pointerId:   number;
+    clientX:     number;
+    clientY:     number;
+    pointerType: string;
+    isPrimary:   boolean;
+    constructor(type: string, init: PointerEventInit & EventInit = {}) {
+      super(type, init);
+      this.pointerId   = init.pointerId   ?? 0;
+      this.clientX     = init.clientX     ?? 0;
+      this.clientY     = init.clientY     ?? 0;
+      this.pointerType = init.pointerType ?? '';
+      this.isPrimary   = init.isPrimary   ?? false;
+    }
   };
 }
 
-function makeTouch(target: HTMLElement, clientX: number, clientY: number): Touch {
-  return new Touch({ identifier: 1, target, clientX, clientY,
-    pageX: clientX, pageY: clientY, screenX: clientX, screenY: clientY,
-    radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-}
-
-function fire(el: HTMLElement, type: string, clientX: number, clientY: number): void {
-  const touch = makeTouch(el, clientX, clientY);
-  el.dispatchEvent(new TouchEvent(type, {
-    touches: type === 'touchend' || type === 'touchcancel' ? [] : [touch],
-    changedTouches: [touch],
+function fire(el: HTMLElement, type: string, clientX: number, clientY: number, pointerId = 1): void {
+  el.dispatchEvent(new PointerEvent(type, {
+    pointerId,
+    clientX,
+    clientY,
     bubbles: true,
+    pointerType: 'touch',
+    isPrimary: pointerId === 1,
   }));
 }
 
@@ -41,9 +46,9 @@ describe('TouchJoystick', () => {
     expect(base.style.display).toBe('none');
   });
 
-  it('touchstart shows the joystick base', () => {
+  it('pointerdown shows the joystick base', () => {
     new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
+    fire(container, 'pointerdown', 100, 100);
     const base = container.querySelector('.joystick-base') as HTMLElement;
     expect(base.style.display).toBe('block');
   });
@@ -51,8 +56,8 @@ describe('TouchJoystick', () => {
   it('onMove fires with normalised values', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchmove', 150, 100); // dx=50, dy=0 → x=1.0, y=0.0
+    fire(container, 'pointerdown', 100, 100);
+    fire(container, 'pointermove', 150, 100); // dx=50, dy=0 → x=1.0, y=0.0
     expect(moves.length).toBe(1);
     expect(moves[0][0]).toBeCloseTo(1.0);
     expect(moves[0][1]).toBeCloseTo(0.0);
@@ -61,31 +66,31 @@ describe('TouchJoystick', () => {
   it('values clamp to -1..1 at max radius', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
-    fire(container, 'touchstart', 0, 0);
-    fire(container, 'touchmove', 200, 0); // dx=200 >> maxRadius=50 → clamp to x=1.0
+    fire(container, 'pointerdown', 0, 0);
+    fire(container, 'pointermove', 200, 0); // dx=200 >> maxRadius=50 → clamp to x=1.0
     expect(moves[0][0]).toBeCloseTo(1.0);
   });
 
   it('onEnd fires when finger lifts', () => {
     let ended = false;
     new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => { ended = true; } });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchend', 100, 100);
+    fire(container, 'pointerdown', 100, 100);
+    fire(container, 'pointerup',   100, 100);
     expect(ended).toBe(true);
   });
 
-  it('joystick hides on touchend', () => {
+  it('joystick hides on pointerup', () => {
     new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchend', 100, 100);
+    fire(container, 'pointerdown', 100, 100);
+    fire(container, 'pointerup',   100, 100);
     const base = container.querySelector('.joystick-base') as HTMLElement;
     expect(base.style.display).toBe('none');
   });
 
-  it('joystick hides on touchcancel', () => {
+  it('joystick hides on pointercancel', () => {
     new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchcancel', 100, 100);
+    fire(container, 'pointerdown',   100, 100);
+    fire(container, 'pointercancel', 100, 100);
     const base = container.querySelector('.joystick-base') as HTMLElement;
     expect(base.style.display).toBe('none');
   });
@@ -93,8 +98,8 @@ describe('TouchJoystick', () => {
   it('onMove fires normalised Y values', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchmove', 100, 150); // dx=0, dy=50 → x=0.0, y=1.0
+    fire(container, 'pointerdown', 100, 100);
+    fire(container, 'pointermove', 100, 150); // dx=0, dy=50 → x=0.0, y=1.0
     expect(moves[0][0]).toBeCloseTo(0.0);
     expect(moves[0][1]).toBeCloseTo(1.0);
   });
@@ -102,25 +107,25 @@ describe('TouchJoystick', () => {
   it('onMove fires negative normalised values', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
-    fire(container, 'touchstart', 100, 100);
-    fire(container, 'touchmove', 50, 100); // dx=-50, dy=0 → x=-1.0, y=0.0
+    fire(container, 'pointerdown', 100, 100);
+    fire(container, 'pointermove',  50, 100); // dx=-50, dy=0 → x=-1.0, y=0.0
     expect(moves[0][0]).toBeCloseTo(-1.0);
     expect(moves[0][1]).toBeCloseTo(0.0);
   });
 
-  it('second touchstart updates origin', () => {
+  it('second pointerdown updates origin', () => {
     const moves: [number, number][] = [];
     new TouchJoystick(container, { maxRadius: 50, onMove: (x, y) => moves.push([x, y]), onEnd: () => {} });
-    fire(container, 'touchstart', 0, 0);
-    fire(container, 'touchend', 0, 0);
+    fire(container, 'pointerdown', 0, 0);
+    fire(container, 'pointerup',   0, 0);
     // New origin at (200, 200)
-    fire(container, 'touchstart', 200, 200);
-    fire(container, 'touchmove', 250, 200); // dx=50 → x=1.0
+    fire(container, 'pointerdown', 200, 200);
+    fire(container, 'pointermove', 250, 200); // dx=50 → x=1.0
     expect(moves[0][0]).toBeCloseTo(1.0);
   });
 
-  it('tracks its own touch by identifier when multiple touches are active', () => {
-    const containerLeft = document.createElement('div');
+  it('each zone tracks its own pointer independently', () => {
+    const containerLeft  = document.createElement('div');
     const containerRight = document.createElement('div');
     document.body.appendChild(containerLeft);
     document.body.appendChild(containerRight);
@@ -129,50 +134,23 @@ describe('TouchJoystick', () => {
     new TouchJoystick(containerLeft,  { maxRadius: 50, onMove: (x, y) => movesLeft.push([x, y]), onEnd: () => {} });
     new TouchJoystick(containerRight, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
 
-    // Left finger starts at (100, 100) — identifier 1
-    const t1s = new Touch({ identifier: 1, target: containerLeft,
-      clientX: 100, clientY: 100, pageX: 100, pageY: 100,
-      screenX: 100, screenY: 100, radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-    containerLeft.dispatchEvent(new TouchEvent('touchstart',
-      { touches: [t1s], changedTouches: [t1s], bubbles: true }));
+    // Each zone receives its own pointerdown with a distinct pointerId.
+    fire(containerLeft,  'pointerdown', 100, 100, 1);
+    fire(containerRight, 'pointerdown', 300, 300, 2);
 
-    // Right finger starts at (300, 300) — identifier 2
-    const t2s = new Touch({ identifier: 2, target: containerRight,
-      clientX: 300, clientY: 300, pageX: 300, pageY: 300,
-      screenX: 300, screenY: 300, radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-    containerRight.dispatchEvent(new TouchEvent('touchstart',
-      { touches: [t1s, t2s], changedTouches: [t2s], bubbles: true }));
-
-    // Left finger moves to (150, 100) — dx=50 → x=1.0
-    // t2 is first in touches[] to expose the [0] bug
-    const t1m = new Touch({ identifier: 1, target: containerLeft,
-      clientX: 150, clientY: 100, pageX: 150, pageY: 100,
-      screenX: 150, screenY: 100, radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-    containerLeft.dispatchEvent(new TouchEvent('touchmove',
-      { touches: [t2s, t1m], changedTouches: [t1m], bubbles: true }));
+    // Left finger moves dx=50 → x=1.0; right joystick must not fire.
+    fire(containerLeft, 'pointermove', 150, 100, 1);
 
     expect(movesLeft.length).toBe(1);
     expect(movesLeft[0][0]).toBeCloseTo(1.0);
     expect(movesLeft[0][1]).toBeCloseTo(0.0);
   });
 
-  it('ignores touchend for a different touch identifier', () => {
+  it('ignores pointerup for a different pointer identifier', () => {
     let ended = false;
     new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => { ended = true; } });
-
-    const t1 = new Touch({ identifier: 1, target: container,
-      clientX: 100, clientY: 100, pageX: 100, pageY: 100,
-      screenX: 100, screenY: 100, radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-    container.dispatchEvent(new TouchEvent('touchstart',
-      { touches: [t1], changedTouches: [t1], bubbles: true }));
-
-    // A different finger lifts — identifier 2
-    const t2 = new Touch({ identifier: 2, target: container,
-      clientX: 200, clientY: 200, pageX: 200, pageY: 200,
-      screenX: 200, screenY: 200, radiusX: 0, radiusY: 0, rotationAngle: 0, force: 1 });
-    container.dispatchEvent(new TouchEvent('touchend',
-      { touches: [t1], changedTouches: [t2], bubbles: true }));
-
+    fire(container, 'pointerdown', 100, 100, 1);
+    fire(container, 'pointerup',   100, 100, 2); // different pointerId — must be ignored
     expect(ended).toBe(false);
   });
 });

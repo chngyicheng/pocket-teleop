@@ -503,13 +503,13 @@
     });
 
     [joystickLeftEl, joystickRightEl].forEach((zone) => {
-      zone.addEventListener('touchstart', () => {
-        if (inputSource !== 'touch') {
+      zone.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch' && inputSource !== 'touch') {
           inputSource = 'touch';
           showJoysticks();
           client.setGamepadEnabled(false);
         }
-      }, { passive: true });
+      });
     });
 
     // ── TeleopClient ──────────────────────────────────────────────────────────
