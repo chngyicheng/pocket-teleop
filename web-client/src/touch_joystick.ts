@@ -9,6 +9,7 @@ export class TouchJoystick {
   private readonly knob: HTMLDivElement;
   private originX = 0;
   private originY = 0;
+  private activeTouchId: number | null = null;
   private readonly options: TouchJoystickOptions;
 
   constructor(container: HTMLElement, options: TouchJoystickOptions) {
@@ -25,13 +26,15 @@ export class TouchJoystick {
 
     container.addEventListener('touchstart',  (e) => this.onTouchStart(e),  { passive: true });
     container.addEventListener('touchmove',   (e) => this.onTouchMove(e),   { passive: true });
-    container.addEventListener('touchend',    () => this.onTouchEnd(),      { passive: true });
-    container.addEventListener('touchcancel', () => this.onTouchEnd(),      { passive: true });
+    container.addEventListener('touchend',    (e) => this.onTouchEnd(e),    { passive: true });
+    container.addEventListener('touchcancel', (e) => this.onTouchEnd(e),    { passive: true });
   }
 
   private onTouchStart(e: TouchEvent): void {
-    const touch = e.touches[0];
+    if (this.activeTouchId !== null) return;
+    const touch = e.changedTouches[0];
     if (!touch) return;
+    this.activeTouchId = touch.identifier;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     this.originX = touch.clientX - rect.left;
     this.originY = touch.clientY - rect.top;
@@ -43,7 +46,8 @@ export class TouchJoystick {
   }
 
   private onTouchMove(e: TouchEvent): void {
-    const touch = e.touches[0];
+    if (this.activeTouchId === null) return;
+    const touch = Array.from(e.changedTouches).find(t => t.identifier === this.activeTouchId);
     if (!touch) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const dx = (touch.clientX - rect.left) - this.originX;
@@ -56,7 +60,11 @@ export class TouchJoystick {
     this.options.onMove(cdx / this.options.maxRadius, cdy / this.options.maxRadius);
   }
 
-  private onTouchEnd(): void {
+  private onTouchEnd(e: TouchEvent): void {
+    if (this.activeTouchId === null) return;
+    const ended = Array.from(e.changedTouches).find(t => t.identifier === this.activeTouchId);
+    if (!ended) return;
+    this.activeTouchId = null;
     this.base.style.display = 'none';
     this.knob.style.transform = 'translate(-50%, -50%)';
     this.options.onEnd();

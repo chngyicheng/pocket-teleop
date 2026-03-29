@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** All touch joystick tasks complete. 56 tests pass (10 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Touch joysticks, robot namespace, layout overhaul, and bug fixes shipped. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
+> **For the next agent:** All touch joystick tasks complete and post-ship bugs fixed. 58 tests pass (12 touch_joystick + 8 settings + 16 gamepad_profiles + 10 protocol + 12 integration). Bug fixes: dual-touch identifier tracking in `TouchJoystick`, CSS specificity fix for settings drawer nav. Tag v0.4.0 pending user confirmation — do NOT apply without explicit user approval.
 
-**Head SHA:** `75317ab` (as of 2026-03-29)
+**Head SHA:** `892b92f` (as of 2026-03-29)
 
 ### Completed milestones
 
@@ -47,6 +47,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
 | 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
 | 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
+| 7 — Post-ship bug fixes | ✅ Done | `touch_joystick.ts`: `activeTouchId` tracking fixes dual-touch; `index.html`: `.drawer-page[hidden]` CSS fixes settings nav; 58/58 tests pass |
 
 ### Known deviations (still relevant to future work)
 
@@ -61,6 +62,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `navigator` guard must check `getGamepads`, not just `navigator` | `web-client/src/gamepad_handler.ts` | Node 22 defines `navigator` globally but without `getGamepads`; bare `typeof navigator` guard crashes |
 | `TeleopClient` retry triggered from both `onError` and `onclose` | `web-client/src/teleop_client.ts` | Node.js 22 native WebSocket fires only `onerror` for rejected connections; `retryPending` guard prevents double-scheduling when browsers fire both |
 | `Touch` constructor shimmed in test; `jsdom` added to devDeps | `web-client/test/touch_joystick.test.ts`, `web-client/package.json` | jsdom 24 exposes `TouchEvent` but not `Touch` as a global constructor; shim defines a minimal class that satisfies the test's constructor calls |
+| `.drawer-page[hidden] { display: none }` required alongside `[hidden]` | `web-client/index.html` | Author CSS `.drawer-page { display: flex }` overrides UA `[hidden] { display: none }` due to cascade order; compound selector has higher specificity and restores correct behaviour |
 
 ---
 
