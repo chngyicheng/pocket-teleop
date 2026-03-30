@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** v0.5.0 complete. All 4 implementation tasks done; 63 unit tests passing. Task 5 (AGENTS.md update + push) is next — just tag v0.5.0 and push. Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`.
 
-**Head SHA:** `a6bc46b` (as of 2026-03-30)
+**Head SHA:** `2544f8a` (as of 2026-03-30)
 
 ### Completed milestones
 
