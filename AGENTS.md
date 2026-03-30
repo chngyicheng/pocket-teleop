@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** 60 tests pass. UI polish complete: robot namespace shown above video in Orbitron font (centered, accent colour); redundant `ns:` label removed; Press Start 2P title left-aligned in header. Brave dual-touch working. Tag v0.4.0 pending user confirmation.
+> **For the next agent:** v0.5.0 in progress — use subagent-driven development (see Execution Model section). Implementation plan at `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`. Tasks 1–4 pending (see table below). 60 unit tests currently passing. Tags v0.3.0 and v0.4.0 pushed.
 
-**Head SHA:** `80c9697` (as of 2026-03-30)
+**Head SHA:** `82a5163` (as of 2026-03-30)
 
 ### Completed milestones
 
@@ -34,8 +34,17 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Server (ROS2 WebSocket, command handler, teleop node) | — | `v0.1.0-server` |
 | Web client v0.1.0 (protocol, connection, gamepad handler, teleop client, integration tests) | 10 | `v0.1.0-client` |
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
-| Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | pending `v0.3.0` |
-| Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | pending `v0.4.0` |
+| Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
+| Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
+
+### v0.5.0 task progress
+
+| Task | Status | Notes |
+|---|---|---|
+| 1 — `keyboard_handler.ts` + unit tests | ⬜ Next | TDD: 12 tests; WASD + arrow keys; `onActivity`; `setEnabled` |
+| 2 — `TeleopClient` fixed retry + `onPong` | ⬜ | Remove `maxRetries`; rename `retryBaseDelayMs`→`retryIntervalMs`; `onPong` callback; update integration tests |
+| 3 — `TouchJoystick` hint indicator | ⬜ | Dot-ring on touch devices; 3 new tests; CSS in `index.html` |
+| 4 — `index.html` full wiring | ⬜ | Axis remap; input-mode bar; last-seen pill; keyboard wiring; vel-fill transition removed |
 
 ### Known deviations (still relevant to future work)
 
@@ -77,6 +86,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Frontend UI design spec | `docs/superpowers/specs/2026-03-28-frontend-ui-design.md` |
 | Touch joystick implementation plan | `docs/superpowers/plans/2026-03-29-touch-joystick-implementation.md` |
 | Touch joystick design spec | `docs/superpowers/specs/2026-03-28-touch-joystick-design.md` |
+| **v0.5.0 implementation plan** | `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` |
+| v0.5.0 design spec | `docs/superpowers/specs/2026-03-30-v0.5.0-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
