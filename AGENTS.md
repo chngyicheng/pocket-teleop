@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** v0.5.0 in progress. Use subagent-driven development (see Execution Model section). Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` — checkboxes show current progress. 63 unit tests passing (Tasks 1–3 done). Tags v0.3.0 and v0.4.0 pushed.
 
-**Head SHA:** `6d40a42` (as of 2026-03-30, pre-Task-3 commit — update after commit)
+**Head SHA:** `5511377` (as of 2026-03-30)
 
 ### Completed milestones
 
