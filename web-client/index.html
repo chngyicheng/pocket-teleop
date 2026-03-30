@@ -286,20 +286,20 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 80px;
-      height: 80px;
+      width: 52px;
+      height: 52px;
       border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.25);
+      border: 2px solid rgba(255,255,255,0.6);
       display: flex;
       align-items: center;
       justify-content: center;
       pointer-events: none;
     }
     .joystick-hint-dot {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.65);
     }
   </style>
 </head>
@@ -621,11 +621,9 @@
     client.connect(buildWsUrl());
 
     setInterval(() => {
-      if (statusPill.classList.contains('pill-connected')) {
+      if (statusPill.classList.contains('pill-danger')) {
         const secsAgo = Math.floor((Date.now() - lastReceivedAt) / 1000);
-        statusPill.textContent = secsAgo >= 2
-          ? `● Connected — ${connectedRobotType} · ${secsAgo}s ago`
-          : `● Connected — ${connectedRobotType}`;
+        statusPill.textContent = `○ Disconnected · ${secsAgo}s ago`;
       }
     }, 1000);
 

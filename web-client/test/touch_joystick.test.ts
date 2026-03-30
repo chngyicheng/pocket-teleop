@@ -181,23 +181,30 @@ describe('TouchJoystick', () => {
   });
 
   describe('hint indicator', () => {
-    it('no hint element created when maxTouchPoints is 0', () => {
-      // jsdom default is 0 — desktop browser simulation
+    function mockMatchMedia(coarse: boolean) {
+      Object.defineProperty(window, 'matchMedia', {
+        value: (query: string) => ({ matches: coarse && query === '(pointer: coarse)', media: query }),
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    it('no hint element created when pointer is not coarse', () => {
+      mockMatchMedia(false);
       new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
       expect(container.querySelector('.joystick-hint')).toBeNull();
     });
 
-    it('hint element created and visible when maxTouchPoints > 0', () => {
-      Object.defineProperty(navigator, 'maxTouchPoints', { value: 1, configurable: true });
+    it('hint element created and visible when pointer is coarse', () => {
+      mockMatchMedia(true);
       new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
       const hint = container.querySelector('.joystick-hint') as HTMLElement | null;
       expect(hint).not.toBeNull();
       expect(hint!.style.display).not.toBe('none');
-      Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
     });
 
     it('hint hidden on pointerdown, restored on pointerup', () => {
-      Object.defineProperty(navigator, 'maxTouchPoints', { value: 1, configurable: true });
+      mockMatchMedia(true);
       new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
       const hint = container.querySelector('.joystick-hint') as HTMLElement;
 
@@ -206,8 +213,6 @@ describe('TouchJoystick', () => {
 
       document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
       expect(hint.style.display).toBe('');
-
-      Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
     });
   });
 });

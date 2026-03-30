@@ -33,7 +33,9 @@ export class TouchJoystick {
     container.appendChild(this.base);
 
     // Dot-ring hint: shown on touch devices only; hidden while a finger is active.
-    if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) {
+    // Use matchMedia('(pointer: coarse)') rather than navigator.maxTouchPoints —
+    // Brave zeroes maxTouchPoints as a fingerprinting countermeasure.
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) {
       this.hint = document.createElement('div');
       this.hint.className = 'joystick-hint';
       const dot = document.createElement('div');
