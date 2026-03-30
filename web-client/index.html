@@ -264,6 +264,27 @@
       background: rgba(255,255,255,0.55);
       transform: translate(-50%, -50%);
     }
+    /* ── Joystick hint (touch devices only) ── */
+    .joystick-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .joystick-hint-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
+    }
   </style>
 </head>
 <body>

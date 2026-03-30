@@ -16,6 +16,7 @@ export class TouchJoystick {
   private originX = 0;
   private originY = 0;
   private activePointerId: number | null = null;
+  private readonly hint: HTMLDivElement | null;
   private readonly options: TouchJoystickOptions;
 
   constructor(container: HTMLElement, options: TouchJoystickOptions) {
@@ -30,6 +31,18 @@ export class TouchJoystick {
     this.knob.className = 'joystick-knob';
     this.base.appendChild(this.knob);
     container.appendChild(this.base);
+
+    // Dot-ring hint: shown on touch devices only; hidden while a finger is active.
+    if (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) {
+      this.hint = document.createElement('div');
+      this.hint.className = 'joystick-hint';
+      const dot = document.createElement('div');
+      dot.className = 'joystick-hint-dot';
+      this.hint.appendChild(dot);
+      container.appendChild(this.hint);
+    } else {
+      this.hint = null;
+    }
 
     // Listen on document rather than the container element.
     // This avoids setPointerCapture, which can cause Brave to route
@@ -51,6 +64,7 @@ export class TouchJoystick {
     if (_activeTouchIds.has(e.pointerId)) return;
     this.activePointerId = e.pointerId;
     _activeTouchIds.add(e.pointerId);
+    if (this.hint) this.hint.style.display = 'none';
     const rect = this.container.getBoundingClientRect();
     this.originX = e.clientX - rect.left;
     this.originY = e.clientY - rect.top;
@@ -78,6 +92,7 @@ export class TouchJoystick {
     if (e.pointerId !== this.activePointerId) return;
     _activeTouchIds.delete(e.pointerId);
     this.activePointerId = null;
+    if (this.hint) this.hint.style.display = '';
     this.base.style.display = 'none';
     this.knob.style.transform = 'translate(-50%, -50%)';
     this.options.onEnd();

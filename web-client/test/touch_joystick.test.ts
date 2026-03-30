@@ -179,4 +179,35 @@ describe('TouchJoystick', () => {
     fire(containerB, 'pointermove', 350, 300, 1);
     expect(activatedB).toBe(false);
   });
+
+  describe('hint indicator', () => {
+    it('no hint element created when maxTouchPoints is 0', () => {
+      // jsdom default is 0 — desktop browser simulation
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      expect(container.querySelector('.joystick-hint')).toBeNull();
+    });
+
+    it('hint element created and visible when maxTouchPoints > 0', () => {
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: 1, configurable: true });
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      const hint = container.querySelector('.joystick-hint') as HTMLElement | null;
+      expect(hint).not.toBeNull();
+      expect(hint!.style.display).not.toBe('none');
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
+    });
+
+    it('hint hidden on pointerdown, restored on pointerup', () => {
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: 1, configurable: true });
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      const hint = container.querySelector('.joystick-hint') as HTMLElement;
+
+      fire(container, 'pointerdown', 0, 0, 1);
+      expect(hint.style.display).toBe('none');
+
+      document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
+      expect(hint.style.display).toBe('');
+
+      Object.defineProperty(navigator, 'maxTouchPoints', { value: 0, configurable: true });
+    });
+  });
 });
