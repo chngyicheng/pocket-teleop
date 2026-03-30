@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** 60 tests pass. UI polish complete: robot namespace shown above video in Orbitron font (centered, accent colour); redundant `ns:` label removed; Press Start 2P title left-aligned in header. Brave dual-touch working. Tag v0.4.0 pending user confirmation.
 
-**Head SHA:** `TBD`
+**Head SHA:** `80c9697` (as of 2026-03-30)
 
 ### Completed milestones
 
