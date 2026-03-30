@@ -104,6 +104,22 @@ For build commands, test commands, and file structure → [repository-structure.
 
 ---
 
+## Execution Model — Subagent-Driven Development
+
+**All implementation work on this project uses the `superpowers:subagent-driven-development` skill.**
+
+The controller (orchestrating agent) dispatches a fresh subagent per task. Each subagent:
+1. Implements exactly what the plan specifies
+2. Runs tests (Docker only — never bare `npm`)
+3. Updates `AGENTS.md` handoff table in the same commit as the code
+4. Commits and reports back
+
+After each subagent completes, the controller runs two review passes (spec compliance, then code quality) before marking the task done and moving to the next.
+
+See `docs/superpowers/plans/` for the active implementation plan.
+
+---
+
 ## Task Completion Protocol — Mandatory After Every Task
 
 **This ritual is required after every task, every time, without exception.**
