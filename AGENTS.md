@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** 60 tests pass. Brave dual-touch fixed. Namespace display above video panel fixed (was broken — style.display='' doesn't override CSS display:none; fixed to 'block'). Title is now Press Start 2P pixel font, left-aligned next to hamburger. Tag v0.4.0 pending user confirmation.
+> **For the next agent:** 60 tests pass. UI polish complete: robot namespace shown above video in Orbitron font (centered, accent colour); redundant `ns:` label removed; Press Start 2P title left-aligned in header. Brave dual-touch working. Tag v0.4.0 pending user confirmation.
 
-**Head SHA:** `6959841` (as of 2026-03-29)
+**Head SHA:** `TBD`
 
 ### Completed milestones
 
@@ -35,21 +35,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Web client v0.1.0 (protocol, connection, gamepad handler, teleop client, integration tests) | 10 | `v0.1.0-client` |
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | pending `v0.3.0` |
-| Touch joystick (TouchJoystick module, namespace settings, gamepad switching, index.html rewrite) | 53 | pending `v0.4.0` |
-
-### Touch joystick task progress
-
-| Task | Status | Notes |
-|---|---|---|
-| 1 — `touch_joystick.ts` + unit tests | ✅ Done | `web-client/src/touch_joystick.ts` — `TouchJoystick` class; 8 unit tests; `jsdom` added to devDeps; `Touch` shim for jsdom 24 |
-| 2 — Settings namespace additions | ✅ Done | `web-client/src/settings.ts` — `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace`; +2 tests; 53 total |
-| 3 — `GamepadHandler` setEnabled + onActivity | ✅ Done | `web-client/src/gamepad_handler.ts` — `setEnabled(boolean)`, `onActivity` callback |
-| 4 — `TeleopClient` setGamepadEnabled + onGamepadActivity | ✅ Done | `web-client/src/teleop_client.ts` — `setGamepadEnabled(boolean)`, `onGamepadActivity` option |
-| 5 — Rewrite `index.html` | ✅ Done | Touch joysticks (fixed corners), robot name strip, velocity overlay, Connection page, input-source switching, all bug fixes |
-| 6 — Full verification + docs | ✅ Done | 56/56 tests pass; docker build healthy; AGENTS.md + repository-structure.md updated; 3 coverage gaps filled post-plan |
-| 7 — Post-ship bug fixes | ✅ Done | Settings nav CSS fixed; `TouchJoystick` rewritten to Pointer Events API; Chrome dual-touch works; 58/58 tests pass |
-| 8 — Brave dual-touch fix | ✅ Done | Document-level listeners + `e.target` routing + `_activeTouchIds` set + `setPointerCapture` removed; 60/60 tests pass; see Known deviations row below |
-| 9 — UI polish | ✅ Done | Namespace display fixed + shown above video; retro pixel title left-aligned; 60/60 tests pass |
+| Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | pending `v0.4.0` |
 
 ### Known deviations (still relevant to future work)
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>pocket-teleop</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -87,20 +87,14 @@
     /* ── Robot name strip ───────────────────────── */
     #robot-name-strip {
       flex: 0 0 auto;
-      padding: 4px 16px;
-      font-size: 12px;
+      padding: 6px 16px;
+      font-family: 'Orbitron', 'Courier New', monospace;
       font-weight: 500;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      display: none;
-    }
-
-    #namespace-display {
-      flex: 0 0 auto;
-      padding: 4px 16px;
       font-size: 11px;
-      color: var(--text-muted);
+      text-align: center;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      border-bottom: 1px solid var(--border);
       background: var(--bg);
       display: none;
     }
@@ -359,8 +353,6 @@
 
   <div id="robot-name-strip"></div>
 
-  <div id="namespace-display"></div>
-
   <main id="video-panel">
     <div id="vel-overlay">
       <div class="vel-row">
@@ -486,14 +478,11 @@
 
     // ── Robot name strip ──────────────────────────────────────────────────────
 
-    const robotNameStrip     = document.getElementById('robot-name-strip');
-    const namespaceDisplay   = document.getElementById('namespace-display');
+    const robotNameStrip = document.getElementById('robot-name-strip');
 
     function applyNamespace(ns) {
-      robotNameStrip.textContent       = ns || '';
-      robotNameStrip.style.display     = ns ? 'block' : 'none';
-      namespaceDisplay.textContent     = ns ? `ns: ${ns}` : '';
-      namespaceDisplay.style.display   = ns ? 'block' : 'none';
+      robotNameStrip.textContent   = ns || '';
+      robotNameStrip.style.display = ns ? 'block' : 'none';
     }
 
     applyNamespace(loadRobotNamespace());
