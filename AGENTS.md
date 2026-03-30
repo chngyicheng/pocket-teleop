@@ -55,6 +55,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `TouchJoystick` uses document-level Pointer Event listeners, no `setPointerCapture` | `web-client/src/touch_joystick.ts` | Brave routes a second finger's `pointerdown` to the capturing element when `setPointerCapture` is active, corrupting the second joystick's origin. Fix: listen on `document`; use `e.target` to route each `pointerdown` to the correct zone; `_activeTouchIds` module-level set prevents two zones from claiming the same `pointerId` if a browser reuses IDs. `touch-action: none` is still required on zone elements. |
 | `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
 | `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
+| `navigator.maxTouchPoints` returns 0 in Brave (fingerprinting protection) | `web-client/src/touch_joystick.ts` | Brave zeroes `maxTouchPoints` regardless of device; switched to `matchMedia('(pointer: coarse)')` which Brave does not suppress. However, Brave on Android still does not show the joystick hint — root cause unknown, further investigation needed. |
 
 ---
 
