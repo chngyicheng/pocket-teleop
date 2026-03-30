@@ -561,6 +561,7 @@
     window.addEventListener('gamepaddisconnected', () => {
       setInputSource('touch');
       showJoysticks();
+      client.setGamepadEnabled(false);
       keyboardHandler.setEnabled(false);
     });
 
