@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.5.0 in progress. Use subagent-driven development (see Execution Model section). Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` — checkboxes show current progress. 63 unit tests passing (Tasks 1–3 done). Tags v0.3.0 and v0.4.0 pushed.
+> **For the next agent:** v0.5.0 complete. All 4 implementation tasks done; 63 unit tests passing. Task 5 (AGENTS.md update + push) is next — just tag v0.5.0 and push. Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`.
 
-**Head SHA:** `5511377` (as of 2026-03-30)
+**Head SHA:** `a6bc46b` (as of 2026-03-30)
 
 ### Completed milestones
 
