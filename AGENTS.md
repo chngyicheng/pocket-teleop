@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.5.0 complete. All 4 implementation tasks done; 63 unit tests passing. Task 5 (AGENTS.md update + push) is next — just tag v0.5.0 and push. Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`.
+> **For the next agent:** v0.5.0 complete. All 5 tasks done; 63 unit tests passing. Branch `feature/v0.5.0` ready to merge to `main` and tag `v0.5.0`. Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`.
 
-**Head SHA:** `2544f8a` (as of 2026-03-30)
+**Head SHA:** `18f4c81` (as of 2026-03-30)
 
 ### Completed milestones
 
@@ -36,6 +36,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
+| v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
 
 ### Known deviations (still relevant to future work)
 
