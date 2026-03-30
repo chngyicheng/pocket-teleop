@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.5.0 in progress — use subagent-driven development (see Execution Model section). Implementation plan at `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`. Tasks 1–4 pending (see table below). 60 unit tests currently passing. Tags v0.3.0 and v0.4.0 pushed.
+> **For the next agent:** v0.5.0 in progress — Task 1 next. Use subagent-driven development (see Execution Model section). Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md`. 60 unit tests passing. Tags v0.3.0 and v0.4.0 pushed.
 
-**Head SHA:** `82a5163` (as of 2026-03-30)
+**Head SHA:** `4163edb` (as of 2026-03-30)
 
 ### Completed milestones
 
@@ -36,15 +36,6 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
-
-### v0.5.0 task progress
-
-| Task | Status | Notes |
-|---|---|---|
-| 1 — `keyboard_handler.ts` + unit tests | ⬜ Next | TDD: 12 tests; WASD + arrow keys; `onActivity`; `setEnabled` |
-| 2 — `TeleopClient` fixed retry + `onPong` | ⬜ | Remove `maxRetries`; rename `retryBaseDelayMs`→`retryIntervalMs`; `onPong` callback; update integration tests |
-| 3 — `TouchJoystick` hint indicator | ⬜ | Dot-ring on touch devices; 3 new tests; CSS in `index.html` |
-| 4 — `index.html` full wiring | ⬜ | Axis remap; input-mode bar; last-seen pill; keyboard wiring; vel-fill transition removed |
 
 ### Known deviations (still relevant to future work)
 
