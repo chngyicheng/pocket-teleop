@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Body -->
+  <rect x="8" y="2" width="48" height="58" rx="10" fill="#b8b896"/>
+  <!-- Shoulder bump (top-center raised area like original GB) -->
+  <rect x="18" y="2" width="28" height="6" rx="2" fill="#b8b896"/>
+
+  <!-- Screen bezel -->
+  <rect x="12" y="7" width="40" height="26" rx="4" fill="#6a6a50"/>
+  <!-- Screen -->
+  <rect x="17" y="11" width="30" height="18" rx="1" fill="#0d1f0d"/>
+  <!-- LCD pixel-grid shimmer rows -->
+  <rect x="17" y="11" width="30" height="2" fill="#183018" opacity="0.6"/>
+  <rect x="17" y="15" width="30" height="1" fill="#183018" opacity="0.3"/>
+  <rect x="17" y="19" width="30" height="1" fill="#183018" opacity="0.3"/>
+  <rect x="17" y="23" width="30" height="1" fill="#183018" opacity="0.3"/>
+  <!-- Screen glare -->
+  <rect x="18" y="12" width="8" height="4" rx="1" fill="#2a4a2a" opacity="0.5"/>
+
+  <!-- D-pad vertical bar -->
+  <rect x="15" y="40" width="6" height="16" rx="2" fill="#2a2a2a"/>
+  <!-- D-pad horizontal bar -->
+  <rect x="11" y="44" width="14" height="6" rx="2" fill="#2a2a2a"/>
+  <!-- D-pad center (darker overlap) -->
+  <rect x="15" y="44" width="6" height="6" fill="#1a1a1a"/>
+
+  <!-- A button -->
+  <circle cx="49" cy="43" r="5.5" fill="#cc1155"/>
+  <circle cx="49" cy="43" r="4" fill="#dd2266"/>
+  <!-- B button -->
+  <circle cx="39" cy="50" r="4.5" fill="#cc1155"/>
+  <circle cx="39" cy="50" r="3" fill="#dd2266"/>
+  <!-- Button labels -->
+  <text x="49" y="46.5" font-family="monospace" font-size="5" font-weight="bold" fill="#fff" text-anchor="middle">A</text>
+  <text x="39" y="53.5" font-family="monospace" font-size="5" font-weight="bold" fill="#fff" text-anchor="middle">B</text>
+
+  <!-- Select button -->
+  <rect x="22" y="36" width="8" height="3" rx="1.5" fill="#888870"/>
+  <text x="26" y="38.5" font-family="monospace" font-size="3" fill="#555540" text-anchor="middle">SEL</text>
+  <!-- Start button -->
+  <rect x="34" y="36" width="8" height="3" rx="1.5" fill="#888870"/>
+  <text x="38" y="38.5" font-family="monospace" font-size="3" fill="#555540" text-anchor="middle">STR</text>
+
+  <!-- Speaker grille dots (bottom-right) -->
+  <circle cx="46" cy="55" r="1.2" fill="#9a9a80"/>
+  <circle cx="50" cy="55" r="1.2" fill="#9a9a80"/>
+  <circle cx="54" cy="55" r="1.2" fill="#9a9a80"/>
+  <circle cx="48" cy="58.5" r="1.2" fill="#9a9a80"/>
+  <circle cx="52" cy="58.5" r="1.2" fill="#9a9a80"/>
+</svg>

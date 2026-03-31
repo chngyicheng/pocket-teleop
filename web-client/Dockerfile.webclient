@@ -13,4 +13,5 @@ RUN npm run build
 FROM nginx:alpine AS runtime
 COPY --from=builder /app/dist /usr/share/nginx/html/dist
 COPY --from=base /app/index.html /usr/share/nginx/html/
+COPY --from=base /app/favicon.svg /usr/share/nginx/html/
 EXPOSE 80
