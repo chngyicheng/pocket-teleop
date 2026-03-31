@@ -23,9 +23,11 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.5.0 in progress. Use subagent-driven development (see Execution Model section). Plan: `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` — checkboxes show current progress. 60 unit tests passing. Tags v0.3.0 and v0.4.0 pushed.
+> **For the next agent:** Two features planned and ready to implement. Use subagent-driven development (see Execution Model section). 60 unit tests passing.
+> - **Robot identity** (next up): plan at `docs/superpowers/plans/2026-03-31-robot-identity-implementation.md`, spec at `docs/superpowers/specs/2026-03-31-robot-identity-design.md` — 4 tasks, none started.
+> - **Token setup** (.env + client prompt): plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started.
 
-**Head SHA:** `4163edb` (as of 2026-03-30)
+**Head SHA:** `0395386` (as of 2026-03-31)
 
 ### Completed milestones
 
