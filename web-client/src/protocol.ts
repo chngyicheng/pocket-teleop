@@ -1,6 +1,6 @@
 export type InboundMessage =
   | { type: 'pong' }
-  | { type: 'status'; connected: boolean; robot_type: string }
+  | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string }
   | { type: 'error'; message: string }
   | { type: 'unknown'; raw: string };
 
@@ -20,9 +20,11 @@ export function parseMessage(raw: string): InboundMessage {
     }
     if (msg['type'] === 'status') {
       return {
-        type: 'status',
-        connected: msg['connected'] as boolean,
-        robot_type: msg['robot_type'] as string,
+        type:            'status',
+        connected:       msg['connected']       as boolean,
+        robot_type:      msg['robot_type']      as string,
+        robot_name:      (msg['robot_name']      as string | undefined) ?? '',
+        robot_namespace: (msg['robot_namespace'] as string | undefined) ?? '',
       };
     }
     if (msg['type'] === 'error') {

@@ -23,11 +23,11 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Two features planned and ready to implement. Use subagent-driven development (see Execution Model section). 60 unit tests passing.
-> - **Robot identity** (next up): plan at `docs/superpowers/plans/2026-03-31-robot-identity-implementation.md`, spec at `docs/superpowers/specs/2026-03-31-robot-identity-design.md` — 4 tasks, none started.
+> **For the next agent:** Robot identity feature in progress on branch `feature/robot-identity` (worktree at `.worktrees/robot-identity`). 61 unit tests passing.
+> - **Robot identity**: plan at `docs/superpowers/plans/2026-03-31-robot-identity-implementation.md`, spec at `docs/superpowers/specs/2026-03-31-robot-identity-design.md` — Tasks 1 and 2 done, Task 3 (TeleopClient onStatus + integration test) is next.
 > - **Token setup** (.env + client prompt): plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started.
 
-**Head SHA:** `0395386` (as of 2026-03-31)
+**Head SHA:** `5df6d31` (as of 2026-04-01)
 
 ### Completed milestones
 
