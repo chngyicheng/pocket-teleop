@@ -11,11 +11,15 @@ TeleopServer::TeleopServer(const std::string& token,
                            int port,
                            int timeout_ms,
                            const std::string& robot_type,
+                           const std::string& robot_name,
+                           const std::string& robot_namespace,
                            PublishCallback callback)
   : token_(token),
     port_(port),
     timeout_ms_(timeout_ms),
     robot_type_(robot_type),
+    robot_name_(robot_name),
+    robot_namespace_(robot_namespace),
     publish_callback_(std::move(callback)) {
   ws_server_.set_access_channels(websocketpp::log::alevel::none);
   ws_server_.set_error_channels(websocketpp::log::elevel::none);
@@ -99,9 +103,11 @@ void TeleopServer::on_open(ConnectionHdl hdl) {
   reset_watchdog();
 
   nlohmann::json status = {
-    {"type", "status"},
-    {"connected", true},
-    {"robot_type", robot_type_}
+    {"type",            "status"},
+    {"connected",       true},
+    {"robot_type",      robot_type_},
+    {"robot_name",      robot_name_},
+    {"robot_namespace", robot_namespace_}
   };
   ws_server_.send(hdl, status.dump(), websocketpp::frame::opcode::text);
 }
