@@ -229,6 +229,7 @@
     .field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
     .field-row { display: flex; gap: 8px; }
     .field-row input { flex: 1; }
+    .field-value { font-size: 14px; color: var(--text); }
     .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn-primary:hover { opacity: 0.9; background: var(--accent); }
 
@@ -334,14 +335,12 @@
     <!-- Connection page -->
     <div id="page-connection" class="drawer-page" hidden>
       <div class="field-group">
-        <span class="field-label">Robot namespace</span>
-        <div class="field-row">
-          <input id="namespace-input" type="text" placeholder="robot1" />
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button id="namespace-apply-btn" class="btn-primary">Apply</button>
-          <button id="namespace-clear-btn">Clear</button>
-        </div>
+        <span class="field-label">Robot name</span>
+        <span id="robot-name-display" class="field-value">—</span>
+      </div>
+      <div class="field-group">
+        <span class="field-label">ROS namespace</span>
+        <span id="robot-ns-display" class="field-value">—</span>
       </div>
     </div>
   </nav>
@@ -384,8 +383,7 @@
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
     import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
-    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl,
-             loadRobotNamespace, saveRobotNamespace, clearRobotNamespace } from '/dist/settings.js';
+    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '/dist/settings.js';
     import { TouchJoystick } from '/dist/touch_joystick.js';
 
     // ── Settings drawer ───────────────────────────────────────────────────────
@@ -422,9 +420,7 @@
     const token  = params.get('token') ?? '';
 
     function buildWsUrl() {
-      const ns   = loadRobotNamespace();
-      const base = `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
-      return ns ? `${base}&ns=${encodeURIComponent(ns)}` : base;
+      return `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
     }
 
     // ── Status pill ───────────────────────────────────────────────────────────
@@ -481,12 +477,12 @@
 
     const robotNameStrip = document.getElementById('robot-name-strip');
 
-    function applyNamespace(ns) {
-      robotNameStrip.textContent   = ns || '';
-      robotNameStrip.style.display = ns ? 'block' : 'none';
+    function applyRobotIdentity(name, namespace) {
+      robotNameStrip.textContent   = name || '';
+      robotNameStrip.style.display = name ? 'block' : 'none';
+      document.getElementById('robot-name-display').textContent = name      || '—';
+      document.getElementById('robot-ns-display').textContent   = namespace || '—';
     }
-
-    applyNamespace(loadRobotNamespace());
 
     // ── Input source switching ────────────────────────────────────────────────
 
@@ -531,8 +527,9 @@
     const client = new TeleopClient({
       maxRetries:       5,
       retryBaseDelayMs: 2000,
-      onStatus: (_connected, robotType) => {
+      onStatus: (_connected, robotType, robotName, robotNamespace) => {
         setStatus('connected', `● Connected — ${robotType}`);
+        applyRobotIdentity(robotName, robotNamespace);
       },
       onError: (msg) => {
         setStatus('warn', `Error: ${msg}`);
@@ -632,24 +629,6 @@
       clearVideoUrl();
       videoPlaceholder.textContent = 'No video stream — configure one in Settings (☰)';
       applyVideoUrl('');
-    });
-
-    // ── Namespace settings ────────────────────────────────────────────────────
-
-    const namespaceInput = document.getElementById('namespace-input');
-    const savedNs = loadRobotNamespace();
-    if (savedNs) namespaceInput.value = savedNs;
-
-    document.getElementById('namespace-apply-btn').addEventListener('click', () => {
-      const ns = namespaceInput.value.trim();
-      if (ns) saveRobotNamespace(ns); else clearRobotNamespace();
-      applyNamespace(ns);
-    });
-
-    document.getElementById('namespace-clear-btn').addEventListener('click', () => {
-      namespaceInput.value = '';
-      clearRobotNamespace();
-      applyNamespace('');
     });
 
     // ── Gamepad calibration UI ────────────────────────────────────────────────
