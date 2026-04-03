@@ -18,7 +18,7 @@ protected:
     callback_count_ = 0;
     last_lx_ = last_ly_ = last_az_ = 0.0;
     server_ = std::make_unique<TeleopServer>(
-      "testtoken", 19091, 300, "diff_drive",
+      "testtoken", 19091, 300, "diff_drive", "", "",
       [this](double lx, double ly, double az) {
         ++callback_count_;
         last_lx_ = lx; last_ly_ = ly; last_az_ = az;

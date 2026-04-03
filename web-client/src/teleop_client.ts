@@ -4,7 +4,7 @@ import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildPing, buildTwist, parseMessage } from './protocol.js';
 
 export interface TeleopClientOptions {
-  onStatus?: (connected: boolean, robotType: string) => void;
+  onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string) => void;
   onError?: (message: string) => void;
   onClose?: (code: number, reason: string) => void;
   onReconnecting?: (attempt: number, maxAttempts: number, delayMs: number) => void;
@@ -109,7 +109,7 @@ export class TeleopClient {
     const msg = parseMessage(raw);
     if (msg.type === 'status') {
       this.retryAttempt = 0; // fully connected; reset exponential backoff counter
-      this.options.onStatus?.(msg.connected, msg.robot_type);
+      this.options.onStatus?.(msg.connected, msg.robot_type, msg.robot_name, msg.robot_namespace);
     } else if (msg.type === 'error') {
       this.options.onError?.(msg.message);
     }

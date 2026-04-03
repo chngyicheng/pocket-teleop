@@ -39,13 +39,40 @@ describe('parseMessage', () => {
   });
 
   it('parses status message with connected=true', () => {
-    const result = parseMessage('{"type":"status","connected":true,"robot_type":"diff_drive"}');
-    expect(result).toEqual({ type: 'status', connected: true, robot_type: 'diff_drive' });
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Test Bot","robot_namespace":"test_ns"}'
+    );
+    expect(result).toEqual({
+      type: 'status',
+      connected: true,
+      robot_type: 'diff_drive',
+      robot_name: 'Test Bot',
+      robot_namespace: 'test_ns',
+    });
   });
 
   it('parses status message with connected=false', () => {
-    const result = parseMessage('{"type":"status","connected":false,"robot_type":"ackermann"}');
-    expect(result).toEqual({ type: 'status', connected: false, robot_type: 'ackermann' });
+    const result = parseMessage(
+      '{"type":"status","connected":false,"robot_type":"ackermann","robot_name":"","robot_namespace":""}'
+    );
+    expect(result).toEqual({
+      type: 'status',
+      connected: false,
+      robot_type: 'ackermann',
+      robot_name: '',
+      robot_namespace: '',
+    });
+  });
+
+  it('status message without robot_name or robot_namespace defaults to empty string', () => {
+    const result = parseMessage('{"type":"status","connected":true,"robot_type":"diff_drive"}');
+    expect(result).toEqual({
+      type: 'status',
+      connected: true,
+      robot_type: 'diff_drive',
+      robot_name: '',
+      robot_namespace: '',
+    });
   });
 
   it('parses error message', () => {

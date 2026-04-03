@@ -23,11 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Two features planned and ready to implement. Use subagent-driven development (see Execution Model section). 60 unit tests passing.
-> - **Robot identity** (next up): plan at `docs/superpowers/plans/2026-03-31-robot-identity-implementation.md`, spec at `docs/superpowers/specs/2026-03-31-robot-identity-design.md` — 4 tasks, none started.
-> - **Token setup** (.env + client prompt): plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started.
+> **For the next agent:** Robot identity complete on `feature/robot-identity` (worktree at `.worktrees/robot-identity`), ready to merge. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 61 unit tests passing.
 
-**Head SHA:** `0395386` (as of 2026-03-31)
+**Head SHA:** `c46ab34` (as of 2026-04-02)
 
 ### Completed milestones
 
@@ -56,6 +54,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `TouchJoystick` uses document-level Pointer Event listeners, no `setPointerCapture` | `web-client/src/touch_joystick.ts` | Brave routes a second finger's `pointerdown` to the capturing element when `setPointerCapture` is active, corrupting the second joystick's origin. Fix: listen on `document`; use `e.target` to route each `pointerdown` to the correct zone; `_activeTouchIds` module-level set prevents two zones from claiming the same `pointerId` if a browser reuses IDs. `touch-action: none` is still required on zone elements. |
 | `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
 | `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
+| `Dockerfile` CMD uses `${VAR:+-p name:=val}` for optional robot params | `Dockerfile` CMD | ROS2 rejects `-p robot_name:=` (empty value); unquoted values with spaces cause word-split; fix: `${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"}` — skips the param entirely when unset, quotes it when set; plan only updated `teleop.launch.py` — Dockerfile was a separate invocation path |
 
 ---
 

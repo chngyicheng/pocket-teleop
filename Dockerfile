@@ -37,4 +37,6 @@ CMD ["/bin/bash", "-c", \
      -p port:=9091 \
      -p timeout_ms:=500 \
      -p cmd_vel_topic:=/cmd_vel \
-     -p robot_type:=${ROBOT_TYPE:-diff_drive}"]
+     -p robot_type:=${ROBOT_TYPE:-diff_drive} \
+     ${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"} \
+     ${ROBOT_NAMESPACE:+-p \"robot_namespace:=${ROBOT_NAMESPACE}\"}"]

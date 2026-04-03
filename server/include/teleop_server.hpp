@@ -22,6 +22,8 @@ public:
                int port,
                int timeout_ms,
                const std::string& robot_type,
+               const std::string& robot_name,
+               const std::string& robot_namespace,
                PublishCallback callback);
   ~TeleopServer();
 
@@ -40,6 +42,8 @@ private:
   const int port_;
   const int timeout_ms_;
   const std::string robot_type_;
+  const std::string robot_name_;
+  const std::string robot_namespace_;
   PublishCallback publish_callback_;
 
   WsServer ws_server_;
