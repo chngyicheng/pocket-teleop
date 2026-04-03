@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Robot identity complete on `feature/robot-identity` (worktree at `.worktrees/robot-identity`), ready to merge. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 61 unit tests passing.
 
-**Head SHA:** `c8dc43e` (as of 2026-04-02)
+**Head SHA:** `c1f492a` (as of 2026-04-02)
 
 ### Completed milestones
 
@@ -54,6 +54,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `TouchJoystick` uses document-level Pointer Event listeners, no `setPointerCapture` | `web-client/src/touch_joystick.ts` | Brave routes a second finger's `pointerdown` to the capturing element when `setPointerCapture` is active, corrupting the second joystick's origin. Fix: listen on `document`; use `e.target` to route each `pointerdown` to the correct zone; `_activeTouchIds` module-level set prevents two zones from claiming the same `pointerId` if a browser reuses IDs. `touch-action: none` is still required on zone elements. |
 | `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
 | `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
+| `Dockerfile` CMD must quote `robot_name`/`robot_namespace` expansions | `Dockerfile` CMD | Unquoted `${ROBOT_NAME:-}` is word-split by bash when value contains spaces (e.g. "Test Bot"); fix: use `\"robot_name:=${ROBOT_NAME:-}\"` inside the bash -c string; plan only updated `teleop.launch.py` — Dockerfile was a separate invocation path |
 
 ---
 
