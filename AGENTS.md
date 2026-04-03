@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Robot identity complete on `feature/robot-identity` (worktree at `.worktrees/robot-identity`), ready to merge. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 61 unit tests passing.
 
-**Head SHA:** `22e1971` (as of 2026-04-02)
+**Head SHA:** `c46ab34` (as of 2026-04-02)
 
 ### Completed milestones
 
