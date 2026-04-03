@@ -82,6 +82,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Touch joystick design spec | `docs/superpowers/specs/2026-03-28-touch-joystick-design.md` |
 | **v0.5.0 implementation plan** | `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` |
 | v0.5.0 design spec | `docs/superpowers/specs/2026-03-30-v0.5.0-design.md` |
+| **Auth server implementation plan** | `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` |
+| Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
@@ -89,21 +91,24 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Level 1 — What Is This and How Do I Run It?
 
-**pocket-teleop** lets you drive a ROS2 robot from your phone browser via WebSocket. A token-authenticated WebSocket server on the robot receives velocity commands and publishes them to `/cmd_vel`.
+**pocket-teleop** lets you drive a ROS2 robot from your phone browser via WebSocket. An auth server handles login, proxies the web client and WebSocket, and publishes velocity commands to `/cmd_vel` via ROS2.
 
 **ROS2 runs inside Docker. The host only needs Docker and Docker Compose.**
 
 ```bash
-# Start the server (set a real token — no default)
-TELEOP_TOKEN=mysecrettoken docker compose up --build
+# Copy .env.example to .env and fill in all values first:
+cp .env.example .env
+# Edit .env: set TELEOP_ADMIN_USER, TELEOP_ADMIN_PASSWORD, SESSION_SECRET
+
+docker compose up --build
 
 # Stop
 docker compose down
 ```
 
-Phone connects to WebSocket: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
+Web client (phone browser): `http://<robot-ip>:8080` — login prompt on first visit.
 
-Web client (phone browser): `http://<robot-ip>:8080?token=mysecrettoken`
+> **Note:** Auth server is not yet implemented (plan at `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`). Until then, the old token-based flow applies: `TELEOP_TOKEN=mysecrettoken docker compose up --build`.
 
 For build commands, test commands, and file structure → [repository-structure.md](memory/agent-guides/repository-structure.md)
 

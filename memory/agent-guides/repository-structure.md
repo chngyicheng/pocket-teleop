@@ -128,15 +128,52 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 ## Build and test commands (client)
 
 ```bash
-# Full stack (server + client)
-TELEOP_TOKEN=mysecrettoken docker compose up --build
+# Full stack — requires .env with TELEOP_ADMIN_USER, TELEOP_ADMIN_PASSWORD, SESSION_SECRET
+# (until auth-server is implemented, use TELEOP_TOKEN=mysecrettoken instead)
+docker compose up --build
 
-# Integration tests (requires server running)
-TELEOP_TOKEN=testtoken docker compose --profile test run --rm webclient-test
+# Web-client unit + integration tests (connects directly to teleop-server, bypasses auth)
+docker compose --profile test run --rm webclient-test
+
+# Auth-server tests (self-contained, no other services needed)
+docker compose --profile test run --rm auth-server-test
 ```
 
 ## Port assignments (client)
 
 | Port | Reserved for |
 |---|---|
-| 8080 | nginx web client (host-mapped) |
+| 8080 | auth-server (host-mapped; proxies nginx and WebSocket) |
+
+> Note: once auth-server is implemented, nginx (port 80) and teleop-server (port 9091) become internal-only — not exposed to the host.
+
+---
+
+## Component layers (auth-server, once implemented)
+
+```
+Phone browser  http://<robot-ip>:8080
+    │
+    ▼ port 8080 (only exposed port)
+┌──────────────────────────────────────────┐
+│  auth-server (Node/Express)              │
+│  • session cookie validation             │
+│  • proxies HTTP → nginx:80 (internal)    │
+│  • proxies WS upgrades → teleop-server:9091 (internal) │
+└──────────────────────────────────────────┘
+```
+
+## Key files (auth-server)
+
+| File | What it does |
+|---|---|
+| `auth-server/src/credentials.ts` | bcrypt hash/verify; init and read/save credentials.json |
+| `auth-server/src/app.ts` | `createApp(AppOptions)` factory — testable Express wiring |
+| `auth-server/src/index.ts` | Entry point — env validation, server start, WS upgrade |
+| `auth-server/src/proxy.ts` | HTTP proxy to webclient; WS upgrade handler to teleop-server |
+| `auth-server/src/routes/auth.ts` | Login, logout, change-password routes |
+| `auth-server/views/login.html` | Login page |
+| `auth-server/views/change-password.html` | Force-change-on-first-login page |
+| `auth-server/test/credentials.test.ts` | Unit tests for credential functions |
+| `auth-server/test/auth.test.ts` | Integration tests for auth routes (supertest) |
+| `auth-server/Dockerfile.auth` | base → builder → runtime stages |
