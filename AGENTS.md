@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Robot identity and v0.5.0 both merged to `main`. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 63 unit tests passing.
+> **For the next agent:** Auth server implementation is next. Token-in-URL approach superseded by proper username/password auth. Spec at `docs/superpowers/specs/2026-04-03-auth-server-design.md`. Plan at `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` — 9 tasks, none started. Working branch: `feature/auth-server` at `.worktrees/auth-server`.
 
-**Head SHA:** `96ac3ec` (as of 2026-04-02)
+**Head SHA:** `3184ec6` (as of 2026-04-03)
 
 ### Completed milestones
 
