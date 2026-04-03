@@ -148,7 +148,6 @@
       height: 100%;
       background: rgba(255,255,255,0.8);
       border-radius: 3px;
-      transition: left 100ms, width 100ms;
       left: 50%;
       width: 0;
     }
@@ -245,6 +244,23 @@
     #joystick-left  { left: 0; }
     #joystick-right { right: 0; }
 
+    /* ── Input mode bar ─────────────────────────── */
+    #input-mode-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+      z-index: 18;
+      pointer-events: none;
+    }
+
     /* ── Joystick elements (rendered by TouchJoystick) ── */
     .joystick-base {
       position: absolute;
@@ -265,6 +281,27 @@
       border-radius: 50%;
       background: rgba(255,255,255,0.55);
       transform: translate(-50%, -50%);
+    }
+    /* ── Joystick hint (touch devices only) ── */
+    .joystick-hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .joystick-hint-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.3);
     }
   </style>
 </head>
@@ -379,12 +416,14 @@
 
   <div id="joystick-left"></div>
   <div id="joystick-right"></div>
+  <div id="input-mode-bar">◉ Touch</div>
 
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
     import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
     import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '/dist/settings.js';
     import { TouchJoystick } from '/dist/touch_joystick.js';
+    import { KeyboardHandler } from '/dist/keyboard_handler.js';
 
     // ── Settings drawer ───────────────────────────────────────────────────────
 
@@ -426,14 +465,8 @@
     // ── Status pill ───────────────────────────────────────────────────────────
 
     const statusPill = document.getElementById('status-pill');
-    let countdownInterval = null;
-
-    function clearCountdown() {
-      if (countdownInterval !== null) { clearInterval(countdownInterval); countdownInterval = null; }
-    }
 
     function setStatus(state, text) {
-      clearCountdown();
       statusPill.textContent = text;
       statusPill.className = 'pill';
       statusPill.disabled = state !== 'danger';
@@ -484,11 +517,26 @@
       document.getElementById('robot-ns-display').textContent   = namespace || '—';
     }
 
+    let lastReceivedAt   = Date.now();
+    let connectedRobotType = '';
+
+
     // ── Input source switching ────────────────────────────────────────────────
 
     let inputSource = 'touch';
     const joystickLeftEl  = document.getElementById('joystick-left');
     const joystickRightEl = document.getElementById('joystick-right');
+    const inputModeBar    = document.getElementById('input-mode-bar');
+    const INPUT_MODE_TEXT = {
+      touch:    '◉ Touch',
+      gamepad:  '⊞ Gamepad',
+      keyboard: '⌨  W/S fwd · A/D turn · ←/→ strafe',
+    };
+
+    function setInputSource(source) {
+      inputSource = source;
+      inputModeBar.textContent = INPUT_MODE_TEXT[source];
+    }
 
     function showJoysticks() {
       joystickLeftEl.style.display  = '';
@@ -499,23 +547,29 @@
       joystickRightEl.style.display = 'none';
     }
 
+    setInputSource('touch'); // initialise bar text
+
     window.addEventListener('gamepadconnected', () => {
-      inputSource = 'gamepad';
+      setInputSource('gamepad');
       hideJoysticks();
       client.setGamepadEnabled(true);
+      keyboardHandler.setEnabled(false);
     });
 
     window.addEventListener('gamepaddisconnected', () => {
-      inputSource = 'touch';
+      setInputSource('touch');
       showJoysticks();
+      client.setGamepadEnabled(false);
+      keyboardHandler.setEnabled(false);
     });
 
     [joystickLeftEl, joystickRightEl].forEach((zone) => {
       zone.addEventListener('pointerdown', (e) => {
         if (e.pointerType === 'touch' && inputSource !== 'touch') {
-          inputSource = 'touch';
+          setInputSource('touch');
           showJoysticks();
           client.setGamepadEnabled(false);
+          keyboardHandler.setEnabled(false);
         }
       });
     });
@@ -525,33 +579,23 @@
     let joyLx = 0, joyLy = 0, joyAz = 0;
 
     const client = new TeleopClient({
-      maxRetries:       5,
-      retryBaseDelayMs: 2000,
+      retryIntervalMs: 5000,
       onStatus: (_connected, robotType, robotName, robotNamespace) => {
+        lastReceivedAt     = Date.now();
+        connectedRobotType = robotType;
         setStatus('connected', `● Connected — ${robotType}`);
         applyRobotIdentity(robotName, robotNamespace);
       },
+      onPong: () => { lastReceivedAt = Date.now(); },
       onError: (msg) => {
         setStatus('warn', `Error: ${msg}`);
       },
-      onReconnecting: (attempt, maxAttempts, delayMs) => {
-        clearCountdown();
-        let remaining = Math.ceil(delayMs / 1000);
-        statusPill.disabled = true;
-        statusPill.className = 'pill pill-warn';
-        statusPill.textContent = `⟳ Reconnecting in ${remaining}s (${attempt}/${maxAttempts})`;
-        countdownInterval = setInterval(() => {
-          remaining -= 1;
-          if (remaining <= 0) {
-            clearCountdown();
-            statusPill.textContent = `⟳ Reconnecting… (${attempt}/${maxAttempts})`;
-          } else {
-            statusPill.textContent = `⟳ Reconnecting in ${remaining}s (${attempt}/${maxAttempts})`;
-          }
-        }, 1000);
+      onReconnecting: (attempt) => {
+        statusPill.disabled   = true;
+        statusPill.className  = 'pill pill-warn';
+        statusPill.textContent = `⟳ Reconnecting… (attempt ${attempt})`;
       },
       onClose: () => {
-        clearCountdown();
         clearVelBars();
         setStatus('danger', '○ Disconnected');
       },
@@ -564,31 +608,56 @@
         console.log(`Button action: ${action}`);
       },
       onGamepadActivity: () => {
-        if (inputSource === 'touch') {
-          inputSource = 'gamepad';
+        if (inputSource !== 'gamepad') {
+          setInputSource('gamepad');
           hideJoysticks();
           client.setGamepadEnabled(true);
+          keyboardHandler.setEnabled(false);
         }
       },
     });
 
     client.connect(buildWsUrl());
 
+    setInterval(() => {
+      if (statusPill.classList.contains('pill-danger')) {
+        const secsAgo = Math.floor((Date.now() - lastReceivedAt) / 1000);
+        statusPill.textContent = `○ Disconnected · ${secsAgo}s ago`;
+      }
+    }, 1000);
+
     // ── Touch joysticks ───────────────────────────────────────────────────────
 
-    // Left joystick: lx = forward/back (invert Y), ly = strafe left/right
-    // Right joystick: az = rotate (invert X for clockwise = positive)
+    // Left joystick: lx = forward/back (−y), az = rotate (−x). One-handed driving.
+    // Right joystick: ly = strafe (x). Vertical axis unused.
     new TouchJoystick(joystickLeftEl, {
       maxRadius: 60,
-      onMove: (x, y) => { joyLx = -y; joyLy = x; client.sendTwist(joyLx, joyLy, joyAz); },
-      onEnd:  ()     => { joyLx = 0; joyLy = 0;  client.sendTwist(0, 0, joyAz); },
+      onMove: (x, y) => { joyLx = -y; joyAz = -x; client.sendTwist(joyLx, joyLy, joyAz); },
+      onEnd:  ()     => { joyLx = 0;  joyAz = 0;  client.sendTwist(0, joyLy, 0); },
     });
 
     new TouchJoystick(joystickRightEl, {
       maxRadius: 60,
-      onMove: (x, _) => { joyAz = -x; client.sendTwist(joyLx, joyLy, joyAz); },
-      onEnd:  ()     => { joyAz = 0;  client.sendTwist(joyLx, joyLy, 0); },
+      onMove: (x, _) => { joyLy = x;  client.sendTwist(joyLx, joyLy, joyAz); },
+      onEnd:  ()     => { joyLy = 0;  client.sendTwist(joyLx, 0, joyAz); },
     });
+
+    // ── Keyboard handler ──────────────────────────────────────────────────────
+
+    const keyboardHandler = new KeyboardHandler({
+      velocity: 0.5,
+      onTwist: (lx, ly, az) => { client.sendTwist(lx, ly, az); },
+      onActivity: () => {
+        if (inputSource !== 'keyboard') {
+          setInputSource('keyboard');
+          hideJoysticks();
+          client.setGamepadEnabled(false);
+          keyboardHandler.setEnabled(true);
+        }
+      },
+    });
+    keyboardHandler.start();
+    keyboardHandler.setEnabled(false); // disabled until first keypress switches source
 
     // ── Video panel ───────────────────────────────────────────────────────────
 

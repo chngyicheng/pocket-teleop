@@ -56,6 +56,26 @@ describe('Connection', () => {
     expect(result.robotType).toBeTruthy();
   });
 
+  it('status message passes robot_name and robot_namespace to onStatus', async () => {
+    const result = await new Promise<{ robotName: string; robotNamespace: string }>(
+      (resolve, reject) => {
+        const client = new TeleopClient({
+          onStatus: (_connected, _robotType, robotName, robotNamespace) => {
+            client.disconnect();
+            resolve({ robotName, robotNamespace });
+          },
+          onClose: () => reject(new Error('closed before status')),
+          onError: (msg) => reject(new Error(msg)),
+        });
+        client.connect(VALID_URL);
+        setTimeout(() => reject(new Error('timeout')), 4000);
+      }
+    );
+
+    expect(typeof result.robotName).toBe('string');
+    expect(typeof result.robotNamespace).toBe('string');
+  });
+
   it('invalid token is rejected without opening', async () => {
     const outcome = await new Promise<string>((resolve) => {
       const conn = new Connection({
@@ -231,8 +251,7 @@ describe('Safety', () => {
     const result = await new Promise<{ reconnected: boolean; reconnectingCount: number }>(
       (resolve, reject) => {
         const client = new TeleopClient({
-          maxRetries: 3,
-          retryBaseDelayMs: 200,
+          retryIntervalMs: 200,
           keepaliveIntervalMs: 1000,
           onStatus: () => {
             if (!initialStatusReceived) {
@@ -255,32 +274,6 @@ describe('Safety', () => {
 
     expect(result.reconnected).toBe(true);
     expect(result.reconnectingCount).toBeGreaterThanOrEqual(1);
-  }, 6000);
-
-  it('onClose fires with "max retries exceeded" after all retries are exhausted', async () => {
-    // Uses INVALID_URL so the server rejects the connection before the WebSocket
-    // handshake completes — onOpen never fires, so retryAttempt is not reset.
-    // maxRetries=2 → 3 failed attempts → onClose('max retries exceeded').
-    let closeCode = -1;
-    let closeReason = '';
-
-    await new Promise<void>((resolve, reject) => {
-      const client = new TeleopClient({
-        maxRetries: 2,
-        retryBaseDelayMs: 200,
-        onClose: (code, reason) => {
-          closeCode = code;
-          closeReason = reason;
-          resolve();
-        },
-        onError: () => {}, // silence per-attempt connection errors
-      });
-      client.connect(INVALID_URL);
-      setTimeout(() => reject(new Error('timeout')), 5000);
-    });
-
-    expect(closeReason).toBe('max retries exceeded');
-    expect(closeCode).toBe(0);
   }, 6000);
 
   it('second client is rejected while first is connected', async () => {

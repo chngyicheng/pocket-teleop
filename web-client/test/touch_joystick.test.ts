@@ -179,4 +179,40 @@ describe('TouchJoystick', () => {
     fire(containerB, 'pointermove', 350, 300, 1);
     expect(activatedB).toBe(false);
   });
+
+  describe('hint indicator', () => {
+    function mockMatchMedia(coarse: boolean) {
+      Object.defineProperty(window, 'matchMedia', {
+        value: (query: string) => ({ matches: coarse && query === '(pointer: coarse)', media: query }),
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    it('no hint element created when pointer is not coarse', () => {
+      mockMatchMedia(false);
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      expect(container.querySelector('.joystick-hint')).toBeNull();
+    });
+
+    it('hint element created and visible when pointer is coarse', () => {
+      mockMatchMedia(true);
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      const hint = container.querySelector('.joystick-hint') as HTMLElement | null;
+      expect(hint).not.toBeNull();
+      expect(hint!.style.display).not.toBe('none');
+    });
+
+    it('hint hidden on pointerdown, restored on pointerup', () => {
+      mockMatchMedia(true);
+      new TouchJoystick(container, { maxRadius: 50, onMove: () => {}, onEnd: () => {} });
+      const hint = container.querySelector('.joystick-hint') as HTMLElement;
+
+      fire(container, 'pointerdown', 0, 0, 1);
+      expect(hint.style.display).toBe('none');
+
+      document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, bubbles: true }));
+      expect(hint.style.display).toBe('');
+    });
+  });
 });

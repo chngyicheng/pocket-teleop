@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Robot identity merged to `main`. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 61 unit tests passing.
+> **For the next agent:** Robot identity and v0.5.0 both merged to `main`. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 63 unit tests passing.
 
-**Head SHA:** `a9e8f1e` (as of 2026-04-02)
+**Head SHA:** `96ac3ec` (as of 2026-04-02)
 
 ### Completed milestones
 
@@ -36,6 +36,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
+| v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
 
 ### Known deviations (still relevant to future work)
 
@@ -55,6 +56,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `PointerEvent` shimmed in test; `jsdom` shim pattern reused | `web-client/test/touch_joystick.test.ts` | jsdom 24 does not expose `PointerEvent` as a global constructor; shim pattern mirrors the earlier `Touch` shim |
 | `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
 | `Dockerfile` CMD uses `${VAR:+-p name:=val}` for optional robot params | `Dockerfile` CMD | ROS2 rejects `-p robot_name:=` (empty value); unquoted values with spaces cause word-split; fix: `${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"}` — skips the param entirely when unset, quotes it when set; plan only updated `teleop.launch.py` — Dockerfile was a separate invocation path |
+| `navigator.maxTouchPoints` returns 0 in Brave (fingerprinting protection) | `web-client/src/touch_joystick.ts` | Brave zeroes `maxTouchPoints` regardless of device; switched to `matchMedia('(pointer: coarse)')` which Brave does not suppress. However, Brave on Android still does not show the joystick hint — root cause unknown, further investigation needed. |
 
 ---
 

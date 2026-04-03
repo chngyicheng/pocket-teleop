@@ -7,12 +7,12 @@ export interface TeleopClientOptions {
   onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string) => void;
   onError?: (message: string) => void;
   onClose?: (code: number, reason: string) => void;
-  onReconnecting?: (attempt: number, maxAttempts: number, delayMs: number) => void;
+  retryIntervalMs?: number;
+  onReconnecting?: (attempt: number) => void;
+  onPong?: () => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
-  maxRetries?: number;
-  retryBaseDelayMs?: number;
   keepaliveIntervalMs?: number;
 }
 
@@ -28,15 +28,13 @@ export class TeleopClient {
   // Prevents double-scheduling when both onerror and onclose fire (browser behaviour).
   // Node.js 22 native WebSocket only fires onerror for rejected connections, not onclose.
   private retryPending = false;
-  private readonly maxRetries: number;
-  private readonly retryBaseDelayMs: number;
+  private readonly retryIntervalMs: number;
   private readonly keepaliveIntervalMs: number;
   private readonly options: TeleopClientOptions;
 
   constructor(options: TeleopClientOptions = {}) {
     this.options = options;
-    this.maxRetries = options.maxRetries ?? 5;
-    this.retryBaseDelayMs = options.retryBaseDelayMs ?? 2000;
+    this.retryIntervalMs = options.retryIntervalMs ?? 5000;
     this.keepaliveIntervalMs = options.keepaliveIntervalMs ?? 200;
     this.connection = new Connection({
       onMessage: (raw) => this.handleMessage(raw),
@@ -112,24 +110,21 @@ export class TeleopClient {
       this.options.onStatus?.(msg.connected, msg.robot_type, msg.robot_name, msg.robot_namespace);
     } else if (msg.type === 'error') {
       this.options.onError?.(msg.message);
+    } else if (msg.type === 'pong') {
+      this.options.onPong?.();
     }
   }
 
   private scheduleRetry(): void {
     this.retryAttempt += 1;
-    if (this.retryAttempt > this.maxRetries) {
-      this.options.onClose?.(0, 'max retries exceeded');
-      return;
-    }
-    const delayMs = this.retryBaseDelayMs * Math.pow(2, this.retryAttempt - 1);
-    this.options.onReconnecting?.(this.retryAttempt, this.maxRetries, delayMs);
+    this.options.onReconnecting?.(this.retryAttempt);
     this.retryTimeoutId = setTimeout(() => {
       this.retryTimeoutId = null;
-      this.retryPending = false; // allow next close/error to schedule a retry
+      this.retryPending = false;
       this.connection.connect(this.url);
       this.startKeepalive();
       this.gamepadHandler.start();
-    }, delayMs);
+    }, this.retryIntervalMs);
   }
 
   private startKeepalive(): void {
