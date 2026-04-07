@@ -35,3 +35,12 @@ services:
     depends_on:
       - teleop-server
     command: ["npm", "test"]
+
+  auth-server-test:
+    profiles: ["test"]
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile.auth
+      target: base
+      network: host
+    command: ["npm", "test"]

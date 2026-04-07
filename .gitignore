@@ -1,2 +1,4 @@
 .worktrees/
 .superpowers/
+auth-server/node_modules/
+auth-server/dist/

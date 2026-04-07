@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Robot identity and v0.5.0 both merged to `main`. Token setup (.env + client prompt) is next: plan at `docs/superpowers/plans/2026-03-31-token-setup.md` — 3 tasks, none started. 63 unit tests passing.
+> **For the next agent:** Auth server implementation is in progress on `feature/auth-server` at `.worktrees/auth-server`. Task 1 (scaffold) done. Task 2 (credentials.ts + unit tests) is next. Plan at `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`.
 
-**Head SHA:** `96ac3ec` (as of 2026-04-02)
+**Head SHA:** `96ac3ec` (as of 2026-04-07) — will update after commit
 
 ### Completed milestones
 
@@ -82,6 +82,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Touch joystick design spec | `docs/superpowers/specs/2026-03-28-touch-joystick-design.md` |
 | **v0.5.0 implementation plan** | `docs/superpowers/plans/2026-03-30-v0.5.0-implementation.md` |
 | v0.5.0 design spec | `docs/superpowers/specs/2026-03-30-v0.5.0-design.md` |
+| **Auth server implementation plan** | `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` |
+| Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 

@@ -1,0 +1,20 @@
+# ---- base stage: deps + source ----
+FROM node:22-slim AS base
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+
+# ---- builder stage: compile TypeScript ----
+FROM base AS builder
+RUN npm run build
+
+# ---- runtime stage ----
+FROM node:22-slim AS runtime
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/views ./views
+COPY package.json .
+EXPOSE 3000
+CMD ["node", "dist/index.js"]
