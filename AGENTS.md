@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Auth server implementation is in progress on `feature/auth-server` at `.worktrees/auth-server`. Task 1 (scaffold) done. Task 2 (credentials.ts + unit tests) is next. Plan at `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`.
 
-**Head SHA:** `96ac3ec` (as of 2026-04-07) — will update after commit
+**Head SHA:** `ff8198d` (as of 2026-04-07)
 
 ### Completed milestones
 
