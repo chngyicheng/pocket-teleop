@@ -34,7 +34,11 @@ export async function initCredentials(
 
 export async function readCredentials(credPath: string): Promise<Credentials> {
   const raw = await fs.readFile(credPath, 'utf-8');
-  return JSON.parse(raw) as Credentials;
+  try {
+    return JSON.parse(raw) as Credentials;
+  } catch (err) {
+    throw new Error(`credentials file is corrupt: ${credPath}`, { cause: err });
+  }
 }
 
 export async function saveCredentials(
