@@ -4,18 +4,11 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   : Node("teleop_node", options) {
 
   declare_parameter("port",            9091);
-  declare_parameter("token",           std::string(""));
   declare_parameter("timeout_ms",      500);
   declare_parameter("cmd_vel_topic",   std::string("/cmd_vel"));
   declare_parameter("robot_type",      std::string("diff_drive"));
   declare_parameter("robot_name",      std::string(""));
   declare_parameter("robot_namespace", std::string(""));
-
-  const auto token = get_parameter("token").as_string();
-  if (token.empty()) {
-    RCLCPP_FATAL(get_logger(), "Parameter 'token' is required but not set. Exiting.");
-    throw std::runtime_error("token parameter is required");
-  }
 
   const auto port            = get_parameter("port").as_int();
   const auto timeout_ms      = get_parameter("timeout_ms").as_int();
@@ -31,7 +24,6 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   publisher_ = create_publisher<geometry_msgs::msg::Twist>(topic, 10);
 
   server_ = std::make_unique<TeleopServer>(
-    token,
     static_cast<int>(port),
     static_cast<int>(timeout_ms),
     robot_type,
