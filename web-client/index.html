@@ -303,6 +303,51 @@
       border-radius: 50%;
       background: rgba(255,255,255,0.3);
     }
+    /* ── Account page ────────────────────────── */
+    .account-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .account-username { font-size: 15px; font-weight: 600; }
+    .btn-logout {
+      padding: 6px 12px; background: #ef4444; color: #fff;
+      border: none; border-radius: 6px; font-size: 13px; cursor: pointer;
+    }
+    .btn-logout:active { opacity: 0.85; }
+
+    .accordion { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .accordion + .accordion { margin-top: 8px; }
+    .accordion-header {
+      width: 100%; display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 14px; background: none; border: none; font-size: 14px;
+      font-weight: 500; color: var(--text); cursor: pointer; text-align: left;
+    }
+    .accordion-header:hover { background: var(--border); }
+    .accordion-chevron { transition: transform 0.2s; }
+    .accordion-header[aria-expanded="true"] .accordion-chevron { transform: rotate(180deg); }
+    .accordion-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); }
+    .accordion-body[hidden] { display: none; }
+
+    .pw-wrap { display: flex; align-items: center; gap: 8px; }
+    .pw-wrap input { flex: 1; }
+    .eyeball {
+      flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+      background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 0;
+    }
+    .eyeball:hover { color: var(--text); }
+    .form-error { font-size: 12px; color: #ef4444; margin: 0; }
+    #form-change-username,
+    #form-change-password { display: flex; flex-direction: column; gap: 10px; }
+    #page-account input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 14px; background: var(--surface); color: var(--text);
+    }
+    #page-account input:focus { outline: none; border-color: var(--accent); }
+    #page-account button[type="submit"] {
+      width: 100%; padding: 10px; background: var(--accent); color: #fff;
+      border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+    }
+    #page-account button[type="submit"]:active { opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -314,6 +359,7 @@
       <li class="nav-item active" data-page="gamepad">Gamepad</li>
       <li class="nav-item" data-page="video">Video</li>
       <li class="nav-item" data-page="connection">Connection</li>
+      <li class="nav-item" data-page="account">Account</li>
     </ul>
 
     <!-- Gamepad page -->
@@ -379,6 +425,63 @@
         <span class="field-label">ROS namespace</span>
         <span id="robot-ns-display" class="field-value">—</span>
       </div>
+    </div>
+
+    <!-- Account page -->
+    <div id="page-account" class="drawer-page" hidden>
+
+      <!-- Header: username + logout -->
+      <div class="account-header">
+        <span class="account-username" id="account-username">—</span>
+        <form method="POST" action="/auth/logout" style="margin:0">
+          <button type="submit" class="btn-logout">Log out</button>
+        </form>
+      </div>
+
+      <!-- Change Username accordion -->
+      <div class="accordion">
+        <button type="button" class="accordion-header" id="acc-username-btn" aria-expanded="false">
+          Change username <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="acc-username-body" hidden>
+          <form id="form-change-username" method="POST" action="/auth/change-username">
+            <div class="pw-wrap">
+              <input type="password" name="currentPassword" placeholder="Current password" autocomplete="current-password" required>
+              <button type="button" class="eyeball" aria-label="Show password"></button>
+            </div>
+            <input type="text" name="newUsername" placeholder="New username" autocomplete="username" required>
+            <button type="submit">Save</button>
+            <p class="form-error" hidden></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Change Password accordion -->
+      <div class="accordion">
+        <button type="button" class="accordion-header" id="acc-password-btn" aria-expanded="false">
+          Change password <span class="accordion-chevron">▾</span>
+        </button>
+        <div class="accordion-body" id="acc-password-body" hidden>
+          <form id="form-change-password" method="POST" action="/auth/change-password">
+            <input type="hidden" name="newUsername" id="cp-hidden-username">
+            <div class="pw-wrap">
+              <input type="password" name="currentPassword" placeholder="Current password" autocomplete="current-password" required>
+              <button type="button" class="eyeball" aria-label="Show password"></button>
+            </div>
+            <div class="pw-wrap">
+              <input type="password" name="newPassword" id="cp-new-password" placeholder="New password (min 6 chars)" autocomplete="new-password" minlength="6" required>
+              <button type="button" class="eyeball" aria-label="Show password"></button>
+            </div>
+            <div class="pw-wrap">
+              <input type="password" id="cp-confirm-password" placeholder="Confirm new password" autocomplete="new-password" required><!-- no name: client-side validation only, not submitted -->
+              <button type="button" class="eyeball" aria-label="Show password"></button>
+            </div>
+            <button type="submit">Save</button>
+            <p class="form-error" hidden></p>
+          </form>
+        </div>
+      </div>
+
     </div>
   </nav>
 
@@ -447,11 +550,73 @@
       document.getElementById(`page-${page}`).hidden = false;
       document.querySelectorAll('.nav-item').forEach((el) => el.classList.remove('active'));
       document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+      if (page === 'account') loadAccountPage();
     };
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.addEventListener('click', () => router.navigate(item.dataset.page));
     });
     router.navigate('gamepad'); // initialise: ensures only gamepad page is visible
+
+    // ── Account page ─────────────────────────────────────────────────────────
+
+    const EYE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    const EYE_SLASH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+    // Initialise eyeball icons and toggles
+    document.querySelectorAll('.eyeball').forEach((btn) => {
+      btn.innerHTML = EYE_SVG;
+      btn.addEventListener('click', () => {
+        const input = btn.previousElementSibling;
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+        btn.innerHTML = show ? EYE_SLASH_SVG : EYE_SVG;
+      });
+    });
+
+    // Accordion (only one open at a time)
+    const accPanels = [
+      { btn: document.getElementById('acc-username-btn'), body: document.getElementById('acc-username-body') },
+      { btn: document.getElementById('acc-password-btn'), body: document.getElementById('acc-password-body') },
+    ];
+    accPanels.forEach(({ btn, body }) => {
+      btn.addEventListener('click', () => {
+        const opening = body.hidden;
+        accPanels.forEach(({ btn: b, body: bo }) => {
+          bo.hidden = true;
+          b.setAttribute('aria-expanded', 'false');
+        });
+        if (opening) {
+          body.hidden = false;
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
+
+    // Change-password client-side validation (passwords must match)
+    document.getElementById('form-change-password').addEventListener('submit', (e) => {
+      const newPw     = document.getElementById('cp-new-password').value;
+      const confirmPw = document.getElementById('cp-confirm-password').value;
+      const errEl     = e.currentTarget.querySelector('.form-error');
+      if (newPw !== confirmPw) {
+        e.preventDefault();
+        errEl.textContent = 'Passwords do not match.';
+        errEl.hidden = false;
+      } else {
+        errEl.hidden = true;
+      }
+    });
+
+    // Load current username from server when account page is opened
+    async function loadAccountPage() {
+      try {
+        const res = await fetch('/auth/me');
+        if (!res.ok) return;
+        const { username } = await res.json();
+        document.getElementById('account-username').textContent = username;
+        document.getElementById('cp-hidden-username').value = username;
+      } catch (_) { /* network error — leave placeholder */ }
+    }
 
     // ── Connection URL builder ────────────────────────────────────────────────
 
