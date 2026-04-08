@@ -24,6 +24,10 @@ services:
       dockerfile: Dockerfile.webclient
       target: runtime
       network: host
+    ports:
+      # Expose nginx on loopback only — auth-server (host network) proxies to it.
+      # Not accessible from the network directly; all traffic goes through auth-server:8080.
+      - "127.0.0.1:18080:80"
     restart: unless-stopped
 
   auth-server:
@@ -32,15 +36,16 @@ services:
       dockerfile: Dockerfile.auth
       target: runtime
       network: host
-    ports:
-      - "8080:3000"
+    # Host networking: auth-server reaches teleop-server at localhost:9091 and
+    # webclient at localhost:18080 without crossing Docker bridge/UFW boundaries.
+    network_mode: "host"
     environment:
       - "TELEOP_ADMIN_USER=${TELEOP_ADMIN_USER:?Error: TELEOP_ADMIN_USER must be set}"
       - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
       - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
-      - "TELEOP_SERVER_URL=${TELEOP_SERVER_URL:-http://host.docker.internal:9091}"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - PORT=8080
+      - TELEOP_SERVER_URL=http://localhost:9091
+      - WEBCLIENT_URL=http://localhost:18080
     volumes:
       - auth-data:/data
     depends_on:
@@ -48,7 +53,7 @@ services:
       - teleop-server
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -60,8 +65,10 @@ services:
       dockerfile: Dockerfile.webclient
       target: base
       network: host
+    # auth-server is on host network; reach it via the test container's gateway
+    network_mode: "host"
     environment:
-      - TELEOP_SERVER_URL=ws://auth-server:3000/ws
+      - TELEOP_SERVER_URL=ws://localhost:8080/ws
     depends_on:
       - auth-server
     command: ["npm", "test"]

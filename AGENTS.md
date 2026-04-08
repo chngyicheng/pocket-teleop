@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth bugfixes complete. Account-page form errors display inline (no more plaintext pages). Back-button after logout redirects to login via visibilitychange + pageshow check. Docker healthchecks fixed (node for auth-server, bash TCP for teleop-server). 99 tests passing (28 auth-server + 71 web-client). Two deployment fixes: TELEOP_SERVER_URL now configurable from .env (fixes host.docker.internal on Docker < 20.10); fastrtps_profiles_observer.xml added for cross-machine ROS2 topic inspection when multicast is broken.
+> **For the next agent:** Auth bugfixes complete. 99 tests passing. Deployment fixes: auth-server now uses host networking (bypasses UFW/bridge iptables blocking) and proxies webclient at localhost:18080 and teleop-server at localhost:9091; fastrtps_profiles_observer.xml added for cross-machine ROS2 inspection when multicast is broken; PORT env var in auth-server enables port configuration.
 
-**Head SHA:** `509587c` (as of 2026-04-09)
+**Head SHA:** `abb3563` (as of 2026-04-09)
 
 ### Completed milestones
 
@@ -75,6 +75,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Docker healthcheck for teleop-server uses `bash /dev/tcp` | `docker-compose.yml` | ROS humble base image has `bash` but no HTTP client tools; `/dev/tcp` is a bash built-in that tests TCP connectivity without extra dependencies |
 | `TELEOP_SERVER_URL` now configurable from `.env` | `docker-compose.yml` | `host-gateway` (used to resolve `host.docker.internal`) requires Docker >= 20.10; older Docker silently fails; making the URL overridable via `.env` lets users substitute the host's LAN IP without editing compose |
 | `fastrtps_profiles_observer.xml` added for cross-machine ROS2 observation | `server/fastrtps_profiles_observer.xml` | Machines with multicast broken (`[Errno 19] No such device`) cannot discover ROS2 participants via the default SPDP multicast; unicast-only profile with `useBuiltinTransports=false` + `initialPeersList` pointing to robot IP is required; the main server profile did not need changes since it already accepts unicast SPDP from any peer on its whitelisted interface |
+| `auth-server` switched to `network_mode: host`; `webclient` exposes port 18080 on loopback | `docker-compose.yml` | UFW (active on host) blocks inbound TCP from Docker bridge networks to the host's bridge-gateway IP (`172.18.0.1`) via the INPUT chain; `host.docker.internal` maps to docker0 (`172.17.0.1`) which is on a separate bridge, also blocked; the only reliable path from auth-server to teleop-server (host network) is host-mode networking, where both see `localhost:9091`; webclient exposes port 18080 on `127.0.0.1` so auth-server can proxy to it without crossing bridge boundaries; `webclient-test` also switched to host network to reach `localhost:8080` |
+| `auth-server/src/index.ts` `PORT` env var and `detectGateway()` removed | `auth-server/src/index.ts` | `PORT` added to support host-network deployment on port 8080; `detectGateway()` added earlier as workaround for UFW-blocked bridge→host traffic but proved unnecessary once host networking was used |
 
 ---
 

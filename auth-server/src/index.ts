@@ -15,7 +15,8 @@ if (!adminUser || !adminPassword || !sessionSecret) {
 
 const CRED_PATH     = '/data/credentials.json';
 const SESSIONS_PATH = '/data/sessions';
-const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'http://teleop-server:9091';
+const PORT          = parseInt(process.env['PORT'] ?? '3000', 10);
+const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'http://localhost:9091';
 
 await initCredentials(adminUser, adminPassword, CRED_PATH);
 
@@ -25,8 +26,8 @@ const app = createApp({
   sessionSecret,
 });
 
-const server = app.listen(3000, () => {
-  console.log('auth-server listening on port 3000');
+const server = app.listen(PORT, () => {
+  console.log(`auth-server listening on port ${PORT}`);
 });
 
 server.on('upgrade', makeWsUpgradeHandler(TELEOP_URL));

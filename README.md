@@ -87,22 +87,20 @@ Set these in `.env` before starting (all optional):
 
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
 
-The auth-server proxies WebSocket connections to the teleop-server via `host.docker.internal:9091`. This relies on Docker's `host-gateway` feature, which requires **Docker >= 20.10**.
+The auth-server proxies WebSocket connections to the teleop-server. At startup it auto-detects the Docker bridge gateway from `/proc/net/route` and uses that as the target host, so no manual configuration is needed on most machines.
 
-To diagnose, check whether `host.docker.internal` resolves inside the container:
-
-```bash
-docker exec pocket-teleop-auth-server-1 getent hosts host.docker.internal
-```
-
-If it prints nothing, your Docker version does not support `host-gateway`. Fix: set `TELEOP_SERVER_URL` in your `.env` to the host machine's LAN IP:
+If the auto-detection is wrong, override it in `.env`:
 
 ```bash
-# .env
+# .env — set to the host machine's LAN IP
 TELEOP_SERVER_URL=http://192.168.1.50:9091
 ```
 
-Check your Docker version with `docker --version` — upgrade to >= 20.10 to use the default.
+To see which URL auth-server resolved at startup, check the logs:
+
+```bash
+docker compose logs auth-server | grep 'Proxy created'
+```
 
 ### Inspecting ROS2 topics from another machine (multicast broken)
 
