@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Account page feature complete and tested on branch `feature/account-page`. All UI bugs fixed (accordion collapse, input styling, favicon), eyeball toggles on all password fields, validation for credentials (min 6 char password, cannot use admin/admin). 99 tests passing. Ready to merge to main.
+> **For the next agent:** Auth bugfixes complete. Account-page form errors display inline (no more plaintext pages). Back-button after logout redirects to login via visibilitychange + pageshow check. Docker healthchecks fixed (node for auth-server, bash TCP for teleop-server). 99 tests passing (28 auth-server + 71 web-client).
 
-**Head SHA:** `ab63f9c` (as of 2026-04-08)
+**Head SHA:** `31e419e` (as of 2026-04-08)
 
 ### Completed milestones
 
@@ -68,6 +68,11 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `.accordion-body[hidden] { display: none }` required | `web-client/index.html` | Author CSS `.accordion-body { display: flex }` overrides UA `[hidden]` attribute; compound selector restores correct behavior (same pattern as `.drawer-page[hidden]`) |
 | Eyeball SVG duplicated across three files | `login.html`, `change-password.html`, `index.html` | Each is a standalone server-rendered HTML document; shared extraction not worth complexity; SVG size is ~500 bytes per copy |
 | Change-password route behaves differently by context | `auth-server/src/routes/auth.ts` | Forced first-login (mustChangePassword=true) keeps session + redirects to `/`; voluntary account-page change destroys session + redirects to `/auth/login` to force re-auth with new credentials |
+| `Cache-Control: no-store` set on all authenticated proxy responses | `auth-server/src/app.ts` | Prevents browser disk cache and bfcache (Chrome/Firefox) from serving stale pages after logout; trade-off is no caching of static assets through the proxy — acceptable since nginx serves assets directly in production |
+| Account-page forms use `fetch()` not native HTML POST | `web-client/index.html` | Native form POST navigates browser to plaintext error responses from server (e.g. `res.status(401).send('...')`); fetch allows inline error display in existing `.form-error` elements |
+| Auth check on `visibilitychange` fires a fetch on every tab-switch | `web-client/index.html` | `/auth/me` is a trivial JSON response (~50 bytes); frequency is bounded by user actions (tab switch, phone wake), not polling; trade-off is one extra request per visibility change — acceptable for session security |
+| Docker healthcheck for auth-server uses inline `node -e` | `docker-compose.yml` | `node:22-slim` base image does not include `wget` or `curl`; inline Node.js HTTP request is zero-dependency |
+| Docker healthcheck for teleop-server uses `bash /dev/tcp` | `docker-compose.yml` | ROS humble base image has `bash` but no HTTP client tools; `/dev/tcp` is a bash built-in that tests TCP connectivity without extra dependencies |
 
 ---
 
