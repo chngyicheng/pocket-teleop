@@ -32,6 +32,9 @@ EXPOSE 9091
 CMD ["/bin/bash", "-c", \
   ". /opt/ros/humble/setup.sh && \
    . /ros2_ws/install/setup.sh && \
+   sed \"s|\\$ENV{ROS_NETWORK_INTERFACE}|${ROS_NETWORK_INTERFACE:-eth0}|g\" \
+     /fastrtps_profiles.xml > /tmp/fastrtps_resolved.xml && \
+   export FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/fastrtps_resolved.xml && \
    ros2 run pocket_teleop teleop_node \
      --ros-args \
      -p port:=9091 \

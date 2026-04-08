@@ -15,6 +15,7 @@
       <transport_id>udp_lan</transport_id>
       <type>UDPv4</type>
       <interfaceWhiteList>
+        <address>127.0.0.1</address>
         <address>$ENV{ROS_NETWORK_INTERFACE}</address>
       </interfaceWhiteList>
     </transport_descriptor>
