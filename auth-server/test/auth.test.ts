@@ -119,6 +119,16 @@ describe('GET / authenticated', () => {
     expect(res.status).not.toBe(302);
     expect(res.headers['location']).not.toBe('/auth/login');
   });
+
+  it('sets Cache-Control: no-store on authenticated responses', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent.get('/');
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
 });
 
 describe('POST /auth/logout', () => {
