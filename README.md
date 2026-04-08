@@ -1,51 +1,93 @@
 # pocket-teleop
 
-Control a ROS2 robot from your phone instead of hauling a laptop around.
+Control a ROS2 robot from your phone browser — no laptop required.
 
-WebSocket bridge from phone browser → ROS2 `/cmd_vel`. Token-authenticated, single-client, with a safety watchdog that stops the robot on disconnect.
+WebSocket bridge from phone → ROS2 `/cmd_vel`. Session-authenticated with a login page, single-operator, with a safety watchdog that stops the robot on disconnect.
+
+## Architecture
+
+```
+Phone browser  http://<robot-ip>:8080
+    │
+    ▼ port 8080 (only public port)
+┌──────────────────────────────────────────────┐
+│  auth-server (Node/Express)                  │
+│  • login page + session cookie auth          │
+│  • proxies HTTP → webclient nginx (internal) │
+│  • proxies WebSocket → teleop-server (internal) │
+└──────────────────────────────────────────────┘
+         │                      │
+         ▼                      ▼
+  webclient (nginx)      teleop-server (ROS2 + C++)
+  serves compiled TS     publishes geometry_msgs/Twist
+                         to /cmd_vel
+```
+
+ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
 
 ## Quick start
 
 ```bash
-TELEOP_TOKEN=mysecrettoken docker compose up --build
+# 1. Create your .env file
+cp .env.example .env
 ```
 
-- Server WebSocket: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
-- Web client: `http://<robot-ip>:8080?token=mysecrettoken`
+Edit `.env` and fill in all three required values:
 
-ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
+```bash
+TELEOP_ADMIN_USER=operator       # login username
+TELEOP_ADMIN_PASSWORD=changeme   # initial password
+SESSION_SECRET=<random hex>      # generate: openssl rand -hex 32
+```
 
-## Status
+```bash
+# 2. Start the stack
+docker compose up --build
 
-| Component | Status |
-|---|---|
-| Server (ROS2 + WebSocket) | Complete — `v0.1.0-server` |
-| Web client (browser UI) | Complete — responsive UI, settings drawer, velocity bars, video panel (`v0.2.0` / `v0.3.0` pending) |
-| Android app | Stretch goal |
+# 3. Open in browser
+# http://<robot-ip>:8080
+```
+
+On first login you will be prompted to change the password. After that, credentials persist in the `auth-data` Docker volume across reboots and image rebuilds.
+
+**To reset credentials:** `docker compose down -v` (deletes the volume) then restart.
+
+## Optional robot configuration
+
+Set these in `.env` before starting (all optional):
+
+| Variable | Default | Description |
+|---|---|---|
+| `ROBOT_TYPE` | `diff_drive` | `diff_drive` or `holonomic` |
+| `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
+| `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
 
 ## Running tests
 
 ```bash
-# Integration tests (client against real server)
-TELEOP_TOKEN=testtoken docker compose --profile test run --rm webclient-test
+# Web-client unit + integration tests
+docker compose --profile test run --rm webclient-test
+
+# Auth-server tests
+docker compose --profile test run --rm auth-server-test
 ```
+
+Both suites run entirely inside Docker — no local Node.js installation needed.
+
+## Supported robots
+
+| Drive type | Axes used |
+|---|---|
+| Differential drive | `linear_x`, `angular_z` |
+| Holonomic / omnidirectional | `linear_x`, `linear_y`, `angular_z` |
+
+Input sources: gamepad (USB or Bluetooth), on-screen touch joysticks, keyboard.
 
 ## Documentation
 
 | Document | Description |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Architecture, dev workflow, task guides (progressive disclosure) |
-| [`docs/superpowers/specs/2026-03-27-server-design.md`](docs/superpowers/specs/2026-03-27-server-design.md) | Server design spec |
-| [`docs/superpowers/specs/2026-03-28-client-design.md`](docs/superpowers/specs/2026-03-28-client-design.md) | Web client design spec |
-| [`docs/superpowers/plans/2026-03-27-server-implementation.md`](docs/superpowers/plans/2026-03-27-server-implementation.md) | Server implementation plan |
-| [`docs/superpowers/plans/2026-03-28-client-implementation.md`](docs/superpowers/plans/2026-03-28-client-implementation.md) | Web client implementation plan |
-| [`docs/superpowers/specs/2026-03-28-practical-gaps-design.md`](docs/superpowers/specs/2026-03-28-practical-gaps-design.md) | Practical gaps design spec (gamepad profiles, reconnection, calibration UI) |
-| [`docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md`](docs/superpowers/plans/2026-03-28-practical-gaps-implementation.md) | Practical gaps implementation plan |
-| [`docs/superpowers/specs/2026-03-28-frontend-ui-design.md`](docs/superpowers/specs/2026-03-28-frontend-ui-design.md) | Frontend UI design spec |
-| [`docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md`](docs/superpowers/plans/2026-03-28-frontend-ui-implementation.md) | Frontend UI implementation plan |
-
-## Supported robots
-
-- Differential drive (`linear_x`, `angular_z`)
-- Holonomic / omnidirectional (`linear_x`, `linear_y`, `angular_z`)
-- Arm/manipulator — stretch goal, not yet designed
+| [`AGENTS.md`](AGENTS.md) | Architecture, dev workflow, agent handoff state |
+| [`memory/agent-guides/repository-structure.md`](memory/agent-guides/repository-structure.md) | File map, build commands, port assignments |
+| [`memory/agent-guides/techstack.md`](memory/agent-guides/techstack.md) | Language, runtime, and dependency details |
+| [`memory/agent-guides/data-schema.md`](memory/agent-guides/data-schema.md) | Message protocol, ROS2 parameters, env vars |
