@@ -1,9 +1,20 @@
-import { RequestHandler } from 'express';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import type { RequestHandler } from 'express';
+import type { IncomingMessage } from 'http';
+import type { Socket } from 'net';
 
-export function makeHttpProxy(_target: string): RequestHandler {
-  return (_req, res) => res.status(502).send('proxy not yet implemented');
+export function makeHttpProxy(target: string): RequestHandler {
+  return createProxyMiddleware({ target, changeOrigin: true }) as unknown as RequestHandler;
 }
 
-export function makeWsUpgradeHandler(_target: string) {
-  return (_req: unknown, _socket: unknown, _head: unknown) => {};
+export function makeWsUpgradeHandler(target: string) {
+  const wsProxy = createProxyMiddleware({
+    target,
+    changeOrigin: true,
+    ws: true,
+    pathRewrite: { '^/ws': '/teleop' },
+  });
+  return (req: IncomingMessage, socket: Socket, head: Buffer) => {
+    (wsProxy as any).upgrade!(req, socket, head);
+  };
 }
