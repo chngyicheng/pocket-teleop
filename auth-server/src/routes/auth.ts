@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type NextFunction, type Request, type Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readCredentials, saveCredentials, verifyPassword, hashPassword } from '../credentials.js';
@@ -13,22 +13,26 @@ export function authRouter(credPath: string): Router {
     res.sendFile(path.join(VIEWS_DIR, 'login.html'));
   });
 
-  router.post('/login', async (req, res) => {
-    const { username, password } = req.body as { username?: string; password?: string };
-    if (!username || !password) {
-      return res.redirect('/auth/login?error=1');
+  router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { username, password } = req.body as { username?: string; password?: string };
+      if (!username || !password) {
+        return res.redirect('/auth/login?error=1');
+      }
+      const creds = await readCredentials(credPath);
+      const valid = username === creds.username && await verifyPassword(password, creds.passwordHash);
+      if (!valid) {
+        return res.redirect('/auth/login?error=1');
+      }
+      req.session.userId = username;
+      req.session.mustChangePassword = creds.mustChangePassword;
+      if (creds.mustChangePassword) {
+        return res.redirect('/auth/change-password');
+      }
+      return res.redirect('/');
+    } catch (err) {
+      next(err);
     }
-    const creds = await readCredentials(credPath);
-    const valid = username === creds.username && await verifyPassword(password, creds.passwordHash);
-    if (!valid) {
-      return res.redirect('/auth/login?error=1');
-    }
-    req.session.userId = username;
-    req.session.mustChangePassword = creds.mustChangePassword;
-    if (creds.mustChangePassword) {
-      return res.redirect('/auth/change-password');
-    }
-    return res.redirect('/');
   });
 
   router.post('/logout', (req, res) => {
@@ -40,27 +44,31 @@ export function authRouter(credPath: string): Router {
     res.sendFile(path.join(VIEWS_DIR, 'change-password.html'));
   });
 
-  router.post('/change-password', async (req, res) => {
-    if (!req.session.userId) return res.status(401).send('Unauthorized');
-    const { currentPassword, newUsername, newPassword } = req.body as {
-      currentPassword?: string;
-      newUsername?: string;
-      newPassword?: string;
-    };
-    if (!currentPassword || !newPassword) return res.status(400).send('Missing fields');
-    const creds = await readCredentials(credPath);
-    if (!await verifyPassword(currentPassword, creds.passwordHash)) {
-      return res.status(401).send('Current password incorrect');
+  router.post('/change-password', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.session.userId) return res.status(401).send('Unauthorized');
+      const { currentPassword, newUsername, newPassword } = req.body as {
+        currentPassword?: string;
+        newUsername?: string;
+        newPassword?: string;
+      };
+      if (!currentPassword || !newPassword) return res.status(400).send('Missing fields');
+      const creds = await readCredentials(credPath);
+      if (!await verifyPassword(currentPassword, creds.passwordHash)) {
+        return res.status(401).send('Current password incorrect');
+      }
+      const updated = {
+        username: newUsername ?? creds.username,
+        passwordHash: await hashPassword(newPassword),
+        mustChangePassword: false,
+      };
+      await saveCredentials(updated, credPath);
+      req.session.userId = updated.username;
+      req.session.mustChangePassword = false;
+      return res.redirect('/');
+    } catch (err) {
+      next(err);
     }
-    const updated = {
-      username: newUsername ?? creds.username,
-      passwordHash: await hashPassword(newPassword),
-      mustChangePassword: false,
-    };
-    await saveCredentials(updated, credPath);
-    req.session.userId = updated.username;
-    req.session.mustChangePassword = false;
-    return res.redirect('/');
   });
 
   return router;
