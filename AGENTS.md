@@ -23,9 +23,15 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth-server merged to main. All planned milestones complete — no active implementation plan. Last completed plan: `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`. Tag `v1.0.0` has not been cut yet.
+> **For the next agent:** Account-page feature in progress on branch `feature/account-page` at `.worktrees/account-page`. Active plan: `docs/superpowers/plans/2026-04-07-account-page-implementation.md`. 0 of 2 tasks complete. Start with **Task 1** (backend routes). Auth-server is merged to main (`a6364d0`). Tag `v1.0.0` has not been cut yet.
+>
+> **Worktree setup:** The worktree already exists — do NOT create it again.
+> ```bash
+> cd /home/pi5/pocket-teleop/.worktrees/account-page
+> ```
+> All implementation commits must be made in the worktree, on branch `feature/account-page`.
 
-**Head SHA:** `f09a13e` (as of 2026-04-07)
+**Head SHA:** `a6364d0` (as of 2026-04-08)
 
 ### Completed milestones
 
@@ -92,6 +98,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | v0.5.0 design spec | `docs/superpowers/specs/2026-03-30-v0.5.0-design.md` |
 | **Auth server implementation plan** | `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` |
 | Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
+| **Account page implementation plan** ← active | `docs/superpowers/plans/2026-04-07-account-page-implementation.md` |
+| Account page design spec | `docs/superpowers/specs/2026-04-07-account-page-design.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
