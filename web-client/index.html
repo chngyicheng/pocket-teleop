@@ -593,17 +593,61 @@
       });
     });
 
-    // Change-password client-side validation (passwords must match)
-    document.getElementById('form-change-password').addEventListener('submit', (e) => {
-      const newPw     = document.getElementById('cp-new-password').value;
+    // Change-username: fetch-based submission to show errors inline
+    document.getElementById('form-change-username').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form  = e.currentTarget;
+      const errEl = form.querySelector('.form-error');
+      errEl.hidden = true;
+      try {
+        const res = await fetch('/auth/change-username', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)),
+        });
+        if (res.ok) {
+          window.location.href = '/auth/login';
+        } else {
+          errEl.textContent = await res.text();
+          errEl.hidden = false;
+        }
+      } catch (_) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.hidden = false;
+      }
+    });
+
+    // Change-password: validate then fetch; show errors inline
+    document.getElementById('form-change-password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form     = e.currentTarget;
+      const newPw    = document.getElementById('cp-new-password').value;
       const confirmPw = document.getElementById('cp-confirm-password').value;
-      const errEl     = e.currentTarget.querySelector('.form-error');
+      const errEl    = form.querySelector('.form-error');
       if (newPw !== confirmPw) {
-        e.preventDefault();
         errEl.textContent = 'Passwords do not match.';
         errEl.hidden = false;
-      } else {
-        errEl.hidden = true;
+        return;
+      }
+      errEl.hidden = true;
+      try {
+        const res = await fetch('/auth/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams(new FormData(form)),
+        });
+        if (!res.ok) {
+          errEl.textContent = await res.text();
+          errEl.hidden = false;
+        } else if (res.redirected && new URL(res.url).searchParams.has('error')) {
+          errEl.textContent = 'Wrong current password.';
+          errEl.hidden = false;
+        } else {
+          window.location.href = '/auth/login';
+        }
+      } catch (_) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.hidden = false;
       }
     });
 
@@ -1026,6 +1070,18 @@
       const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
       if (gp !== null) { gamepadDetected = true; populateProfileDropdown(); applySelectedProfile(); }
     }, 500);
+
+    // When the page regains visibility (back-button, tab-switch, phone wake),
+    // verify the session is still valid. Redirect to login if not.
+    function checkAuth() {
+      fetch('/auth/me').then((res) => { if (!res.ok) window.location.replace('/auth/login'); });
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') checkAuth();
+    });
+    window.addEventListener('pageshow', (event) => {
+      if (event.persisted) checkAuth();
+    });
   </script>
 </body>
 </html>
