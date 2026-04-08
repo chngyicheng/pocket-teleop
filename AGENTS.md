@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth-server merged to main. All planned milestones complete — no active implementation plan. Last completed plan: `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`. Tag `v1.0.0` has not been cut yet.
+> **For the next agent:** Account page feature complete on branch `feature/account-page`. Both tasks done. Ready to merge to main. No active implementation plan.
 
-**Head SHA:** `f09a13e` (as of 2026-04-07)
+**Head SHA:** `5f246f1` (as of 2026-04-08)
 
 ### Completed milestones
 
