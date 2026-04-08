@@ -55,7 +55,7 @@ export function authRouter(credPath: string): Router {
       if (!currentPassword || !newPassword) return res.status(400).send('Missing fields');
       const creds = await readCredentials(credPath);
       if (!await verifyPassword(currentPassword, creds.passwordHash)) {
-        return res.status(401).send('Current password incorrect');
+        return res.redirect('/auth/change-password?error=1');
       }
       const updated = {
         username: newUsername ?? creds.username,

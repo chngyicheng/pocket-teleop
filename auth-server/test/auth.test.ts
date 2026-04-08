@@ -173,7 +173,7 @@ describe('POST /auth/change-password', () => {
     expect(await bcrypt.compare('newpass', creds.passwordHash)).toBe(true);
   });
 
-  it('wrong current password returns 401', async () => {
+  it('wrong current password redirects to change-password with error', async () => {
     const agent = supertest.agent(getApp());
     await agent
       .post('/auth/login')
@@ -183,7 +183,8 @@ describe('POST /auth/change-password', () => {
       .post('/auth/change-password')
       .send('currentPassword=wrongpass&newUsername=admin&newPassword=newpass')
       .set('Content-Type', 'application/x-www-form-urlencoded');
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(302);
+    expect(res.headers['location']).toBe('/auth/change-password?error=1');
   });
 });
 
