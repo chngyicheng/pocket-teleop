@@ -145,6 +145,23 @@ describe('POST /auth/logout', () => {
     const check = await agent.get('/');
     expect(check.headers['location']).toBe('/auth/login');
   });
+
+  it('/auth/me returns 401 after logout (client-side auth check path)', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    // Session is valid — /auth/me works
+    const before = await agent.get('/auth/me');
+    expect(before.status).toBe(200);
+    expect(before.body.username).toBe('admin');
+    // Logout destroys session
+    await agent.post('/auth/logout');
+    // /auth/me now rejects — this is what visibilitychange checkAuth() calls
+    const after = await agent.get('/auth/me');
+    expect(after.status).toBe(401);
+  });
 });
 
 describe('GET /auth/change-password', () => {
