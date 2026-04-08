@@ -1,21 +1,17 @@
 #include "teleop_server.hpp"
 #include <nlohmann/json.hpp>
-#include <sstream>
-#include <iostream>
 
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
 using websocketpp::lib::bind;
 
-TeleopServer::TeleopServer(const std::string& token,
-                           int port,
+TeleopServer::TeleopServer(int port,
                            int timeout_ms,
                            const std::string& robot_type,
                            const std::string& robot_name,
                            const std::string& robot_namespace,
                            PublishCallback callback)
-  : token_(token),
-    port_(port),
+  : port_(port),
     timeout_ms_(timeout_ms),
     robot_type_(robot_type),
     robot_name_(robot_name),
@@ -26,7 +22,6 @@ TeleopServer::TeleopServer(const std::string& token,
   ws_server_.init_asio();
   ws_server_.set_reuse_addr(true);
 
-  ws_server_.set_validate_handler(bind(&TeleopServer::on_validate, this, _1));
   ws_server_.set_open_handler(bind(&TeleopServer::on_open, this, _1));
   ws_server_.set_close_handler(bind(&TeleopServer::on_close, this, _1));
   ws_server_.set_message_handler(bind(&TeleopServer::on_message, this, _1, _2));
@@ -61,32 +56,6 @@ void TeleopServer::reset_watchdog() {
   timed_out_ = false;
 }
 
-bool TeleopServer::on_validate(ConnectionHdl hdl) {
-  auto con = ws_server_.get_con_from_hdl(hdl);
-  const std::string resource = con->get_resource();
-
-  // Extract token from query string (/teleop?token=xxx)
-  std::string token;
-  const auto q = resource.find('?');
-  if (q != std::string::npos) {
-    std::istringstream ss(resource.substr(q + 1));
-    std::string pair;
-    while (std::getline(ss, pair, '&')) {
-      const auto eq = pair.find('=');
-      if (eq != std::string::npos && pair.substr(0, eq) == "token") {
-        token = pair.substr(eq + 1);
-        break;
-      }
-    }
-  }
-
-  if (token != token_) {
-    con->set_status(websocketpp::http::status_code::unauthorized);
-    return false;
-  }
-
-  return true;
-}
 
 void TeleopServer::on_open(ConnectionHdl hdl) {
   std::lock_guard<std::mutex> lock(client_mutex_);

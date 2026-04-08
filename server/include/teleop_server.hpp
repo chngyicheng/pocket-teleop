@@ -18,8 +18,7 @@ class TeleopServer {
 public:
   using PublishCallback = std::function<void(double, double, double)>;
 
-  TeleopServer(const std::string& token,
-               int port,
+  TeleopServer(int port,
                int timeout_ms,
                const std::string& robot_type,
                const std::string& robot_name,
@@ -31,14 +30,12 @@ public:
   void stop();
 
 private:
-  bool on_validate(ConnectionHdl hdl);
   void on_open(ConnectionHdl hdl);
   void on_close(ConnectionHdl hdl);
   void on_message(ConnectionHdl hdl, WsServer::message_ptr msg);
   void watchdog_loop();
   void reset_watchdog();
 
-  const std::string token_;
   const int port_;
   const int timeout_ms_;
   const std::string robot_type_;

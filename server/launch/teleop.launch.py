@@ -17,7 +17,6 @@ def generate_launch_description():
             name='teleop_node',
             parameters=[{
                 'port':            LaunchConfiguration('port'),
-                'token':           EnvironmentVariable('TELEOP_TOKEN'),
                 'timeout_ms':      LaunchConfiguration('timeout_ms'),
                 'cmd_vel_topic':   LaunchConfiguration('cmd_vel_topic'),
                 'robot_type':      LaunchConfiguration('robot_type'),

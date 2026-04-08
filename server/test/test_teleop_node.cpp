@@ -16,7 +16,6 @@ protected:
   void SetUp() override {
     rclcpp::init(0, nullptr);
     rclcpp::NodeOptions opts;
-    opts.append_parameter_override("token", "nodetest");
     opts.append_parameter_override("port", 19092);
     opts.append_parameter_override("timeout_ms", 500);
     node_ = std::make_shared<TeleopNode>(opts);
@@ -57,7 +56,7 @@ TEST_F(TeleopNodeTest, TwistPublishedToCmdVel) {
       websocketpp::frame::opcode::text);
   });
   websocketpp::lib::error_code ec;
-  auto con = client.get_connection("ws://localhost:19092/teleop?token=nodetest", ec);
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
   client.connect(con);
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -79,7 +78,7 @@ TEST_F(TeleopNodeTest, DisconnectPublishesZeroVelocity) {
   client.set_error_channels(websocketpp::log::elevel::none);
   client.init_asio();
   websocketpp::lib::error_code ec;
-  auto con = client.get_connection("ws://localhost:19092/teleop?token=nodetest", ec);
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
   client.connect(con);
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(700)); // > timeout_ms

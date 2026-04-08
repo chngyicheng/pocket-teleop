@@ -33,7 +33,6 @@ CMD ["/bin/bash", "-c", \
    . /ros2_ws/install/setup.sh && \
    ros2 run pocket_teleop teleop_node \
      --ros-args \
-     -p token:=${TELEOP_TOKEN} \
      -p port:=9091 \
      -p timeout_ms:=500 \
      -p cmd_vel_topic:=/cmd_vel \

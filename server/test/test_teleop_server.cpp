@@ -18,7 +18,7 @@ protected:
     callback_count_ = 0;
     last_lx_ = last_ly_ = last_az_ = 0.0;
     server_ = std::make_unique<TeleopServer>(
-      "testtoken", 19091, 300, "diff_drive", "", "",
+      19091, 300, "diff_drive", "", "",
       [this](double lx, double ly, double az) {
         ++callback_count_;
         last_lx_ = lx; last_ly_ = ly; last_az_ = az;
@@ -41,47 +41,6 @@ protected:
 TEST_F(TeleopServerTest, ServerStartsAndStops) {
   // If we reach here, start/stop worked
   SUCCEED();
-}
-
-// Helper: attempt a WebSocket connection and return the HTTP status code
-// Returns 101 on successful upgrade, 401/503 on rejection
-static int attempt_connect(const std::string& uri) {
-  WsClient client;
-  client.set_access_channels(websocketpp::log::alevel::none);
-  client.set_error_channels(websocketpp::log::elevel::none);
-  client.init_asio();
-
-  int status_code = 0;
-  client.set_fail_handler([&](websocketpp::connection_hdl hdl) {
-    auto con = client.get_con_from_hdl(hdl);
-    status_code = con->get_response_code();
-  });
-  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
-    status_code = 101;
-    client.close(hdl, websocketpp::close::status::normal, "");
-  });
-
-  websocketpp::lib::error_code ec;
-  auto con = client.get_connection(uri, ec);
-  if (ec) return -1;
-  client.connect(con);
-  client.run();
-  return status_code;
-}
-
-TEST_F(TeleopServerTest, ValidTokenAccepted) {
-  int code = attempt_connect("ws://localhost:19091/teleop?token=testtoken");
-  EXPECT_EQ(code, 101);
-}
-
-TEST_F(TeleopServerTest, InvalidTokenRejectedWith401) {
-  int code = attempt_connect("ws://localhost:19091/teleop?token=wrongtoken");
-  EXPECT_EQ(code, 401);
-}
-
-TEST_F(TeleopServerTest, MissingTokenRejectedWith401) {
-  int code = attempt_connect("ws://localhost:19091/teleop");
-  EXPECT_EQ(code, 401);
 }
 
 // Helper: connect, collect messages for up to wait_ms, then close
@@ -113,7 +72,7 @@ static std::vector<std::string> connect_and_collect(
 }
 
 TEST_F(TeleopServerTest, ConnectReceivesStatusMessage) {
-  auto msgs = connect_and_collect("ws://localhost:19091/teleop?token=testtoken");
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop");
   ASSERT_FALSE(msgs.empty());
   auto j = nlohmann::json::parse(msgs[0]);
   EXPECT_EQ(j["type"], "status");
@@ -152,7 +111,7 @@ static std::vector<std::string> connect_send_collect(
 
 TEST_F(TeleopServerTest, TwistFiresCallback) {
   auto msgs = connect_send_collect(
-    "ws://localhost:19091/teleop?token=testtoken",
+    "ws://localhost:19091/teleop",
     R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":-0.3})");
   EXPECT_GE(callback_count_, 1);
   EXPECT_DOUBLE_EQ(last_lx_, 0.5);
@@ -163,7 +122,7 @@ TEST_F(TeleopServerTest, TwistFiresCallback) {
 TEST_F(TeleopServerTest, PingReturnsPongCallbackNotFired) {
   int before = callback_count_;
   auto msgs = connect_send_collect(
-    "ws://localhost:19091/teleop?token=testtoken",
+    "ws://localhost:19091/teleop",
     R"({"type":"ping"})");
   EXPECT_EQ(callback_count_, before);
   bool got_pong = false;
@@ -179,7 +138,7 @@ TEST_F(TeleopServerTest, PingReturnsPongCallbackNotFired) {
 TEST_F(TeleopServerTest, MalformedMessageReturnsErrorCallbackNotFired) {
   int before = callback_count_;
   auto msgs = connect_send_collect(
-    "ws://localhost:19091/teleop?token=testtoken",
+    "ws://localhost:19091/teleop",
     "not json at all");
   EXPECT_EQ(callback_count_, before);
   bool got_error = false;
@@ -199,7 +158,7 @@ TEST_F(TeleopServerTest, WatchdogFiresZeroVelocityOnTimeout) {
   client.set_error_channels(websocketpp::log::elevel::none);
   client.init_asio();
   websocketpp::lib::error_code ec;
-  auto con = client.get_connection("ws://localhost:19091/teleop?token=testtoken", ec);
+  auto con = client.get_connection("ws://localhost:19091/teleop", ec);
   client.connect(con);
   std::thread t([&]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -223,14 +182,14 @@ TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
   client1.init_asio();
   client1.set_open_handler([](websocketpp::connection_hdl) {});
   websocketpp::lib::error_code ec1;
-  auto con1 = client1.get_connection("ws://localhost:19091/teleop?token=testtoken", ec1);
+  auto con1 = client1.get_connection("ws://localhost:19091/teleop", ec1);
   client1.connect(con1);
   std::thread t1([&]() { client1.run(); });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Second client
-  auto msgs = connect_and_collect("ws://localhost:19091/teleop?token=testtoken", 300);
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop", 300);
 
   client1.stop();
   t1.join();

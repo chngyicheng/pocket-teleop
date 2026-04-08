@@ -3,10 +3,7 @@ import { TeleopClient } from '../src/teleop_client.js';
 import { Connection } from '../src/connection.js';
 import { buildPing } from '../src/protocol.js';
 
-const SERVER_URL = process.env['TELEOP_SERVER_URL'] ?? 'ws://localhost:9091/teleop';
-const TOKEN = process.env['TELEOP_TOKEN'] ?? 'testtoken';
-const VALID_URL = `${SERVER_URL}?token=${TOKEN}`;
-const INVALID_URL = `${SERVER_URL}?token=wrongtoken`;
+const VALID_URL = process.env['TELEOP_SERVER_URL'] ?? 'ws://localhost:9091/teleop';
 
 async function waitForServer(maxRetries = 40): Promise<void> {
   for (let i = 0; i < maxRetries; i++) {
@@ -76,21 +73,6 @@ describe('Connection', () => {
     expect(typeof result.robotNamespace).toBe('string');
   });
 
-  it('invalid token is rejected without opening', async () => {
-    const outcome = await new Promise<string>((resolve) => {
-      const conn = new Connection({
-        onMessage: () => {},
-        onOpen: () => resolve('open'),
-        onClose: (code) => resolve(`close:${code}`),
-        onError: () => resolve('error'),
-      });
-      conn.connect(INVALID_URL);
-      setTimeout(() => resolve('timeout'), 3000);
-    });
-
-    expect(outcome).not.toBe('open');
-    expect(outcome).not.toBe('timeout');
-  });
 });
 
 describe('Messaging', () => {

@@ -455,11 +455,8 @@
 
     // ── Connection URL builder ────────────────────────────────────────────────
 
-    const params = new URLSearchParams(window.location.search);
-    const token  = params.get('token') ?? '';
-
     function buildWsUrl() {
-      return `ws://${window.location.hostname}:9091/teleop?token=${encodeURIComponent(token)}`;
+      return `ws://${window.location.hostname}:${window.location.port}/ws`;
     }
 
     // ── Status pill ───────────────────────────────────────────────────────────
