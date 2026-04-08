@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Account page feature complete on branch `feature/account-page`. Both tasks done. Ready to merge to main. No active implementation plan.
+> **For the next agent:** Account page feature complete and tested on branch `feature/account-page`. All UI bugs fixed (accordion collapse, input styling, favicon), eyeball toggles on all password fields, validation for credentials (min 6 char password, cannot use admin/admin). 99 tests passing. Ready to merge to main.
 
-**Head SHA:** `5f246f1` (as of 2026-04-08)
+**Head SHA:** `ab63f9c` (as of 2026-04-08)
 
 ### Completed milestones
 
@@ -65,6 +65,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `auth-server/Dockerfile.auth` creates `/data` with app ownership | `auth-server/Dockerfile.auth` | Without explicit `mkdir + chown`, volume mount at `/data` defaults to root ownership and `app` user cannot write credentials |
 | `webclient-test` routes through auth-server proxy | `docker-compose.yml` | Integration tests now exercise the full path (browser→auth-server→teleop-server) matching production topology; discovered during Task 8 |
 | `Dockerfile` (C++ server) removes `token` launch param | `Dockerfile` | Token param removal was required after TELEOP_TOKEN retired in Task 7; Dockerfile CMD had a separate invocation path from launch.py that was missed in the plan |
+| `.accordion-body[hidden] { display: none }` required | `web-client/index.html` | Author CSS `.accordion-body { display: flex }` overrides UA `[hidden]` attribute; compound selector restores correct behavior (same pattern as `.drawer-page[hidden]`) |
+| Eyeball SVG duplicated across three files | `login.html`, `change-password.html`, `index.html` | Each is a standalone server-rendered HTML document; shared extraction not worth complexity; SVG size is ~500 bytes per copy |
+| Change-password route behaves differently by context | `auth-server/src/routes/auth.ts` | Forced first-login (mustChangePassword=true) keeps session + redirects to `/`; voluntary account-page change destroys session + redirects to `/auth/login` to force re-auth with new credentials |
 
 ---
 
