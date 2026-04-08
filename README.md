@@ -52,6 +52,27 @@ On first login you will be prompted to change the password. After that, credenti
 
 **To reset credentials:** `docker compose down -v` (deletes the volume) then restart.
 
+## Managing the stack
+
+```bash
+# Stop the stack (keeps credentials)
+docker compose down
+
+# Restart after pulling new code (rebuilds images)
+docker compose down && docker compose up --build
+
+# Run in the background (logs go to Docker, not the terminal)
+docker compose up --build -d
+
+# View live logs
+docker compose logs -f
+
+# Reset everything including credentials
+docker compose down -v
+```
+
+> **Finding your robot's IP:** run `hostname -I` on the robot — use the first address shown.
+
 ## Optional robot configuration
 
 Set these in `.env` before starting (all optional):
