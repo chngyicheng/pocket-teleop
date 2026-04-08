@@ -335,6 +335,8 @@
     }
     .eyeball:hover { color: var(--text); }
     .form-error { font-size: 12px; color: #ef4444; margin: 0; }
+    #form-change-username,
+    #form-change-password { display: flex; flex-direction: column; gap: 10px; }
   </style>
 </head>
 <body>
@@ -460,7 +462,7 @@
               <button type="button" class="eyeball" aria-label="Show password"></button>
             </div>
             <div class="pw-wrap">
-              <input type="password" id="cp-confirm-password" placeholder="Confirm new password" autocomplete="new-password" required>
+              <input type="password" id="cp-confirm-password" placeholder="Confirm new password" autocomplete="new-password" required><!-- no name: client-side validation only, not submitted -->
               <button type="button" class="eyeball" aria-label="Show password"></button>
             </div>
             <button type="submit">Save</button>
@@ -537,6 +539,7 @@
       document.getElementById(`page-${page}`).hidden = false;
       document.querySelectorAll('.nav-item').forEach((el) => el.classList.remove('active'));
       document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+      if (page === 'account') loadAccountPage();
     };
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.addEventListener('click', () => router.navigate(item.dataset.page));
@@ -603,13 +606,6 @@
         document.getElementById('cp-hidden-username').value = username;
       } catch (_) { /* network error — leave placeholder */ }
     }
-
-    // Hook into router to load account data on navigate
-    const _origOnNavigate = router.onNavigate;
-    router.onNavigate = (page) => {
-      _origOnNavigate(page);
-      if (page === 'account') loadAccountPage();
-    };
 
     // ── Connection URL builder ────────────────────────────────────────────────
 
