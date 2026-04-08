@@ -3,10 +3,7 @@ services:
     build:
       context: .
       network: host
-    ports:
-      - "9091:9091"
     environment:
-      - "TELEOP_TOKEN=${TELEOP_TOKEN:?Error: TELEOP_TOKEN must be set before starting the server}"
       - ROBOT_TYPE=${ROBOT_TYPE:-diff_drive}
       - ROBOT_NAME=${ROBOT_NAME:-}
       - ROBOT_NAMESPACE=${ROBOT_NAMESPACE:-}
@@ -18,9 +15,31 @@ services:
       dockerfile: Dockerfile.webclient
       target: runtime
       network: host
-    ports:
-      - "8080:80"
     restart: unless-stopped
+
+  auth-server:
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile.auth
+      target: runtime
+      network: host
+    ports:
+      - "8080:3000"
+    environment:
+      - "TELEOP_ADMIN_USER=${TELEOP_ADMIN_USER:?Error: TELEOP_ADMIN_USER must be set}"
+      - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
+      - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
+    volumes:
+      - auth-data:/data
+    depends_on:
+      - webclient
+      - teleop-server
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   webclient-test:
     profiles: ["test"]
@@ -31,7 +50,6 @@ services:
       network: host
     environment:
       - TELEOP_SERVER_URL=ws://teleop-server:9091/teleop
-      - "TELEOP_TOKEN=${TELEOP_TOKEN:?Error: TELEOP_TOKEN must be set}"
     depends_on:
       - teleop-server
     command: ["npm", "test"]
@@ -44,3 +62,6 @@ services:
       target: base
       network: host
     command: ["npm", "test"]
+
+volumes:
+  auth-data:
