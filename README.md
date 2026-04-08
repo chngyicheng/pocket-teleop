@@ -83,6 +83,42 @@ Set these in `.env` before starting (all optional):
 | `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
 | `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
 
+## Troubleshooting
+
+### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
+
+The auth-server proxies WebSocket connections to the teleop-server via `host.docker.internal:9091`. This relies on Docker's `host-gateway` feature, which requires **Docker >= 20.10**.
+
+To diagnose, check whether `host.docker.internal` resolves inside the container:
+
+```bash
+docker exec pocket-teleop-auth-server-1 getent hosts host.docker.internal
+```
+
+If it prints nothing, your Docker version does not support `host-gateway`. Fix: set `TELEOP_SERVER_URL` in your `.env` to the host machine's LAN IP:
+
+```bash
+# .env
+TELEOP_SERVER_URL=http://192.168.1.50:9091
+```
+
+Check your Docker version with `docker --version` — upgrade to >= 20.10 to use the default.
+
+### Inspecting ROS2 topics from another machine (multicast broken)
+
+If `ros2 multicast receive` fails with `[Errno 19] No such device`, multicast is disabled on your machine or network (common with VMs, certain Wi-Fi configs). Use the unicast-only observer profile:
+
+```bash
+export TELEOP_HOST_IP=192.168.1.50           # robot's LAN IP
+export ROS_NETWORK_INTERFACE=192.168.1.51    # your machine's LAN IP
+export ROS_DOMAIN_ID=0                       # must match the robot's domain
+export FASTRTPS_DEFAULT_PROFILES_FILE=$(pwd)/server/fastrtps_profiles_observer.xml
+
+ros2 topic list
+```
+
+This profile (`server/fastrtps_profiles_observer.xml`) disables multicast and sends unicast DDS discovery packets directly to the robot, bypassing the broken multicast path.
+
 ## Running tests
 
 ```bash

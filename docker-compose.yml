@@ -38,7 +38,7 @@ services:
       - "TELEOP_ADMIN_USER=${TELEOP_ADMIN_USER:?Error: TELEOP_ADMIN_USER must be set}"
       - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
       - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
-      - "TELEOP_SERVER_URL=http://host.docker.internal:9091"
+      - "TELEOP_SERVER_URL=${TELEOP_SERVER_URL:-http://host.docker.internal:9091}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

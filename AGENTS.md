@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth bugfixes complete. Account-page form errors display inline (no more plaintext pages). Back-button after logout redirects to login via visibilitychange + pageshow check. Docker healthchecks fixed (node for auth-server, bash TCP for teleop-server). 99 tests passing (28 auth-server + 71 web-client).
+> **For the next agent:** Auth bugfixes complete. Account-page form errors display inline (no more plaintext pages). Back-button after logout redirects to login via visibilitychange + pageshow check. Docker healthchecks fixed (node for auth-server, bash TCP for teleop-server). 99 tests passing (28 auth-server + 71 web-client). Two deployment fixes: TELEOP_SERVER_URL now configurable from .env (fixes host.docker.internal on Docker < 20.10); fastrtps_profiles_observer.xml added for cross-machine ROS2 topic inspection when multicast is broken.
 
-**Head SHA:** `31e419e` (as of 2026-04-08)
+**Head SHA:** `509587c` (as of 2026-04-09)
 
 ### Completed milestones
 
@@ -73,6 +73,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Auth check on `visibilitychange` fires a fetch on every tab-switch | `web-client/index.html` | `/auth/me` is a trivial JSON response (~50 bytes); frequency is bounded by user actions (tab switch, phone wake), not polling; trade-off is one extra request per visibility change — acceptable for session security |
 | Docker healthcheck for auth-server uses inline `node -e` | `docker-compose.yml` | `node:22-slim` base image does not include `wget` or `curl`; inline Node.js HTTP request is zero-dependency |
 | Docker healthcheck for teleop-server uses `bash /dev/tcp` | `docker-compose.yml` | ROS humble base image has `bash` but no HTTP client tools; `/dev/tcp` is a bash built-in that tests TCP connectivity without extra dependencies |
+| `TELEOP_SERVER_URL` now configurable from `.env` | `docker-compose.yml` | `host-gateway` (used to resolve `host.docker.internal`) requires Docker >= 20.10; older Docker silently fails; making the URL overridable via `.env` lets users substitute the host's LAN IP without editing compose |
+| `fastrtps_profiles_observer.xml` added for cross-machine ROS2 observation | `server/fastrtps_profiles_observer.xml` | Machines with multicast broken (`[Errno 19] No such device`) cannot discover ROS2 participants via the default SPDP multicast; unicast-only profile with `useBuiltinTransports=false` + `initialPeersList` pointing to robot IP is required; the main server profile did not need changes since it already accepts unicast SPDP from any peer on its whitelisted interface |
 
 ---
 
