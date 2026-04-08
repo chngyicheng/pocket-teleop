@@ -1,4 +1,5 @@
 .git
 web-client/
+auth-server/
 docs/
 *.md

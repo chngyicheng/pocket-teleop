@@ -11,7 +11,7 @@ WORKDIR /ros2_ws/src/pocket_teleop
 COPY server/ .
 
 WORKDIR /ros2_ws
-RUN . /opt/ros/humble/setup.sh && colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+RUN . /opt/ros/humble/setup.sh && MAKEFLAGS="-j2" colcon build --parallel-workers 1 --cmake-args -DCMAKE_BUILD_TYPE=Release
 
 # ---- runtime stage ----
 FROM ros:humble
