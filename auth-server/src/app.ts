@@ -60,6 +60,8 @@ export function createApp(options: AppOptions): express.Application {
   // Unauthenticated: redirect to login
   app.use((req, res, next) => {
     if (!req.session.userId) return res.redirect('/auth/login');
+    // Prevent browser from caching authenticated pages so back-button forces re-auth check
+    res.setHeader('Cache-Control', 'no-store');
     next();
   });
 
