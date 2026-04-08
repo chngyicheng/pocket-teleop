@@ -186,3 +186,66 @@ describe('POST /auth/change-password', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /auth/me', () => {
+  it('unauthenticated returns 401', async () => {
+    const res = await supertest(getApp()).get('/auth/me');
+    expect(res.status).toBe(401);
+  });
+
+  it('authenticated returns current username', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent.get('/auth/me');
+    expect(res.status).toBe(200);
+    expect(res.body.username).toBe('admin');
+  });
+});
+
+describe('POST /auth/change-username', () => {
+  it('unauthenticated returns 401', async () => {
+    const res = await supertest(getApp())
+      .post('/auth/change-username')
+      .send('currentPassword=correctpass&newUsername=newadmin')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(401);
+  });
+
+  it('wrong current password returns 401', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-username')
+      .send('currentPassword=wrongpass&newUsername=newadmin')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(401);
+  });
+
+  it('correct password changes username, preserves password hash, destroys session, redirects to /auth/login', async () => {
+    seedCreds(false);
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-username')
+      .send('currentPassword=correctpass&newUsername=newadmin')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(302);
+    expect(res.headers['location']).toBe('/auth/login');
+    // File updated: username changed, password hash preserved
+    const creds = JSON.parse(fs.readFileSync(credPath, 'utf-8'));
+    expect(creds.username).toBe('newadmin');
+    expect(await bcrypt.compare('correctpass', creds.passwordHash)).toBe(true);
+    // Session destroyed
+    const check = await agent.get('/');
+    expect(check.headers['location']).toBe('/auth/login');
+  });
+});

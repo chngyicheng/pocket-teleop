@@ -71,5 +71,32 @@ export function authRouter(credPath: string): Router {
     }
   });
 
+  router.get('/me', (req: Request, res: Response) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+    return res.json({ username: req.session.userId });
+  });
+
+  router.post('/change-username', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.session.userId) return res.status(401).send('Unauthorized');
+      const { currentPassword, newUsername } = req.body as {
+        currentPassword?: string;
+        newUsername?: string;
+      };
+      if (!currentPassword || !newUsername) return res.status(400).send('Missing fields');
+      const creds = await readCredentials(credPath);
+      if (!await verifyPassword(currentPassword, creds.passwordHash)) {
+        return res.status(401).send('Current password incorrect');
+      }
+      await saveCredentials(
+        { username: newUsername, passwordHash: creds.passwordHash, mustChangePassword: false },
+        credPath,
+      );
+      req.session.destroy(() => res.redirect('/auth/login'));
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }
