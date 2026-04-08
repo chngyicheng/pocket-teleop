@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth server implementation is in progress on `feature/auth-server` at `.worktrees/auth-server`. Task 1 (scaffold) done. Task 2 (credentials.ts + unit tests) is next. Plan at `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`.
+> **For the next agent:** Auth-server implementation complete. All 9 tasks done. Branch `feature/auth-server` ready to merge to main. Plan: `docs/superpowers/plans/2026-04-03-auth-server-implementation.md`.
 
-**Head SHA:** `ff8198d` (as of 2026-04-07)
+**Head SHA:** `d983651` (as of 2026-04-07)
 
 ### Completed milestones
 
@@ -57,6 +57,14 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `style.display = ''` does not show elements with CSS `display:none` | `web-client/index.html` applyNamespace | Setting inline display to '' removes inline override, CSS display:none wins; use 'block' explicitly to show |
 | `Dockerfile` CMD uses `${VAR:+-p name:=val}` for optional robot params | `Dockerfile` CMD | ROS2 rejects `-p robot_name:=` (empty value); unquoted values with spaces cause word-split; fix: `${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"}` — skips the param entirely when unset, quotes it when set; plan only updated `teleop.launch.py` — Dockerfile was a separate invocation path |
 | `navigator.maxTouchPoints` returns 0 in Brave (fingerprinting protection) | `web-client/src/touch_joystick.ts` | Brave zeroes `maxTouchPoints` regardless of device; switched to `matchMedia('(pointer: coarse)')` which Brave does not suppress. However, Brave on Android still does not show the joystick hint — root cause unknown, further investigation needed. |
+| `vitest.config.ts` added with explicit `include: ['test/**/*.test.ts']` | `auth-server/vitest.config.ts` | Vitest default glob did not discover tests in `test/` subdirectory without explicit config; harmless addition |
+| `(FileStoreCreator as any)(session)` cast required | `auth-server/src/app.ts` | session-file-store typedefs declare export as class rather than factory function; `as any` cast is the accepted community workaround |
+| `store.reapAsync` call omitted from `createApp` | `auth-server/src/app.ts` | `reapAsync` is optional maintenance; periodic reap still runs via `reapInterval: 3600`; omission has no correctness impact |
+| `(wsProxy as any).upgrade!` non-null assertion used | `auth-server/src/proxy.ts` | http-proxy-middleware v2 typedefs mark `upgrade` as optional but always assign it in constructor; guard removed for simplicity after external review |
+| `TELEOP_SERVER_URL` defaults to `http://` not `ws://` | `auth-server/src/index.ts` | http-proxy-middleware requires HTTP target URL for WebSocket proxying; `ws://` caused protocol errors |
+| `auth-server/Dockerfile.auth` creates `/data` with app ownership | `auth-server/Dockerfile.auth` | Without explicit `mkdir + chown`, volume mount at `/data` defaults to root ownership and `app` user cannot write credentials |
+| `webclient-test` routes through auth-server proxy | `docker-compose.yml` | Integration tests now exercise the full path (browser→auth-server→teleop-server) matching production topology; discovered during Task 8 |
+| `Dockerfile` (C++ server) removes `token` launch param | `Dockerfile` | Token param removal was required after TELEOP_TOKEN retired in Task 7; Dockerfile CMD had a separate invocation path from launch.py that was missed in the plan |
 
 ---
 
@@ -91,21 +99,22 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Level 1 — What Is This and How Do I Run It?
 
-**pocket-teleop** lets you drive a ROS2 robot from your phone browser via WebSocket. A token-authenticated WebSocket server on the robot receives velocity commands and publishes them to `/cmd_vel`.
+**pocket-teleop** lets you drive a ROS2 robot from your phone browser via WebSocket. An auth server handles login, proxies the web client and WebSocket, and publishes velocity commands to `/cmd_vel` via ROS2.
 
 **ROS2 runs inside Docker. The host only needs Docker and Docker Compose.**
 
 ```bash
-# Start the server (set a real token — no default)
-TELEOP_TOKEN=mysecrettoken docker compose up --build
+# Copy .env.example to .env and fill in all values first:
+cp .env.example .env
+# Edit .env: set TELEOP_ADMIN_USER, TELEOP_ADMIN_PASSWORD, SESSION_SECRET
+
+docker compose up --build
 
 # Stop
 docker compose down
 ```
 
-Phone connects to WebSocket: `ws://<robot-ip>:9091/teleop?token=mysecrettoken`
-
-Web client (phone browser): `http://<robot-ip>:8080?token=mysecrettoken`
+Web client (phone browser): `http://<robot-ip>:8080` — login prompt on first visit.
 
 For build commands, test commands, and file structure → [repository-structure.md](memory/agent-guides/repository-structure.md)
 
