@@ -15,7 +15,7 @@ if (!adminUser || !adminPassword || !sessionSecret) {
 
 const CRED_PATH     = '/data/credentials.json';
 const SESSIONS_PATH = '/data/sessions';
-const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'ws://teleop-server:9091';
+const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'http://teleop-server:9091';
 
 await initCredentials(adminUser, adminPassword, CRED_PATH);
 

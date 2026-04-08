@@ -29,6 +29,7 @@ services:
       - "TELEOP_ADMIN_USER=${TELEOP_ADMIN_USER:?Error: TELEOP_ADMIN_USER must be set}"
       - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
       - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
+      - "TELEOP_SERVER_URL=http://teleop-server:9091"
     volumes:
       - auth-data:/data
     depends_on:
@@ -49,9 +50,9 @@ services:
       target: base
       network: host
     environment:
-      - TELEOP_SERVER_URL=ws://teleop-server:9091/teleop
+      - TELEOP_SERVER_URL=ws://auth-server:3000/ws
     depends_on:
-      - teleop-server
+      - auth-server
     command: ["npm", "test"]
 
   auth-server-test:

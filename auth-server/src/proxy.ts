@@ -14,8 +14,7 @@ export function makeWsUpgradeHandler(target: string) {
     ws: true,
     pathRewrite: { '^/ws': '/teleop' },
   });
-  const upgrade = (wsProxy as any).upgrade as
-    ((req: IncomingMessage, socket: Socket, head: Buffer) => void) | undefined;
-  if (!upgrade) throw new Error('http-proxy-middleware: upgrade handler not available');
-  return (req: IncomingMessage, socket: Socket, head: Buffer) => upgrade(req, socket, head);
+  return (req: IncomingMessage, socket: Socket, head: Buffer) => {
+    (wsProxy as any).upgrade!(req, socket, head);
+  };
 }

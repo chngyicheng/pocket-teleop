@@ -17,6 +17,7 @@ COPY --from=base /app/node_modules ./node_modules
 COPY --from=base /app/views ./views
 COPY package.json .
 EXPOSE 3000
-RUN addgroup --system app && adduser --system --ingroup app app
+RUN addgroup --system app && adduser --system --ingroup app app && \
+    mkdir -p /data && chown -R app:app /data
 USER app
 CMD ["node", "dist/index.js"]
