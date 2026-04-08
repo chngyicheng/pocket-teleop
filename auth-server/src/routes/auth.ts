@@ -53,19 +53,29 @@ export function authRouter(credPath: string): Router {
         newPassword?: string;
       };
       if (!currentPassword || !newPassword) return res.status(400).send('Missing fields');
+      if (newPassword.length < 6) return res.status(400).send('Password must be at least 6 characters');
       const creds = await readCredentials(credPath);
       if (!await verifyPassword(currentPassword, creds.passwordHash)) {
         return res.redirect('/auth/change-password?error=1');
       }
+      const newUsernameVal = newUsername ?? creds.username;
+      if (newUsernameVal === 'admin' && newPassword === 'admin') {
+        return res.status(400).send('Cannot use default admin credentials');
+      }
       const updated = {
-        username: newUsername ?? creds.username,
+        username: newUsernameVal,
         passwordHash: await hashPassword(newPassword),
         mustChangePassword: false,
       };
       await saveCredentials(updated, credPath);
-      req.session.userId = updated.username;
-      req.session.mustChangePassword = false;
-      return res.redirect('/');
+      // First-login forced change: keep session, go to app
+      if (req.session.mustChangePassword) {
+        req.session.userId = updated.username;
+        req.session.mustChangePassword = false;
+        return res.redirect('/');
+      }
+      // Account-page change: destroy session, force re-login
+      req.session.destroy(() => res.redirect('/auth/login'));
     } catch (err) {
       next(err);
     }
@@ -87,6 +97,9 @@ export function authRouter(credPath: string): Router {
       const creds = await readCredentials(credPath);
       if (!await verifyPassword(currentPassword, creds.passwordHash)) {
         return res.status(401).send('Current password incorrect');
+      }
+      if (newUsername === 'admin') {
+        return res.status(400).send('Cannot use default admin username');
       }
       await saveCredentials(
         { username: newUsername, passwordHash: creds.passwordHash, mustChangePassword: false },

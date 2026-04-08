@@ -173,6 +173,21 @@ describe('POST /auth/change-password', () => {
     expect(await bcrypt.compare('newpass', creds.passwordHash)).toBe(true);
   });
 
+  it('account-page change (no mustChangePassword) destroys session and redirects to login', async () => {
+    seedCreds(false);
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-password')
+      .send('currentPassword=correctpass&newUsername=admin&newPassword=newpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(302);
+    expect(res.headers['location']).toBe('/auth/login');
+  });
+
   it('wrong current password redirects to change-password with error', async () => {
     const agent = supertest.agent(getApp());
     await agent
@@ -185,6 +200,32 @@ describe('POST /auth/change-password', () => {
       .set('Content-Type', 'application/x-www-form-urlencoded');
     expect(res.status).toBe(302);
     expect(res.headers['location']).toBe('/auth/change-password?error=1');
+  });
+
+  it('password shorter than 6 chars returns 400', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-password')
+      .send('currentPassword=correctpass&newUsername=newadmin&newPassword=short')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(400);
+  });
+
+  it('cannot use admin/admin credentials returns 400', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-password')
+      .send('currentPassword=correctpass&newUsername=admin&newPassword=admin')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(400);
   });
 });
 
@@ -248,5 +289,18 @@ describe('POST /auth/change-username', () => {
     // Session destroyed
     const check = await agent.get('/');
     expect(check.headers['location']).toBe('/auth/login');
+  });
+
+  it('cannot change to admin username returns 400', async () => {
+    const agent = supertest.agent(getApp());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .post('/auth/change-username')
+      .send('currentPassword=correctpass&newUsername=admin')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    expect(res.status).toBe(400);
   });
 });
