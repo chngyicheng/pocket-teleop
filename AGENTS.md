@@ -116,6 +116,8 @@ docker compose down
 
 Web client (phone browser): `http://<robot-ip>:8080` — login prompt on first visit.
 
+**Credentials:** Single operator per robot. On first run, login with the values from `.env` — the server forces an immediate password change. After that, the new credentials are stored in the `auth-data` Docker volume and persist across reboots and image rebuilds. To reset credentials, run `docker compose down -v` (deletes the volume) and restart.
+
 For build commands, test commands, and file structure → [repository-structure.md](memory/agent-guides/repository-structure.md)
 
 ---
