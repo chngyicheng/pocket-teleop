@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  FastDDS transport profile — constrains DDS discovery to a single network interface.
+
+  Without this, FastDDS broadcasts on ALL interfaces including docker0 (172.17.x.x),
+  which means ROS2 topics are invisible to other machines on the LAN even though
+  the container is on host networking.
+
+  ROS_NETWORK_INTERFACE must be set in the environment (e.g. eth0 or wlan0).
+  Set it in .env: ROS_NETWORK_INTERFACE=eth0
+-->
+<profiles xmlns="http://www.eprosima.com/XMLSchemas/fastRTPS_Profiles">
+  <transport_descriptors>
+    <transport_descriptor>
+      <transport_id>udp_lan</transport_id>
+      <type>UDPv4</type>
+      <interfaceWhiteList>
+        <address>$ENV{ROS_NETWORK_INTERFACE}</address>
+      </interfaceWhiteList>
+    </transport_descriptor>
+  </transport_descriptors>
+  <participant profile_name="default_profile" is_default_profile="true">
+    <rtps>
+      <userTransports>
+        <transport_id>udp_lan</transport_id>
+      </userTransports>
+      <!-- Must be false — otherwise FastDDS adds this transport on top of the
+           defaults (which still include docker0), defeating the whitelist. -->
+      <useBuiltinTransports>false</useBuiltinTransports>
+    </rtps>
+  </participant>
+</profiles>

@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ros2_ws/install /ros2_ws/install
+COPY server/fastrtps_profiles.xml /fastrtps_profiles.xml
 
 WORKDIR /ros2_ws
 

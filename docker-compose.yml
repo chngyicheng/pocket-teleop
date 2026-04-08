@@ -7,7 +7,11 @@ services:
       - ROBOT_TYPE=${ROBOT_TYPE:-diff_drive}
       - ROBOT_NAME=${ROBOT_NAME:-}
       - ROBOT_NAMESPACE=${ROBOT_NAMESPACE:-}
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-eth0}
+      - FASTRTPS_DEFAULT_PROFILES_FILE=/fastrtps_profiles.xml
     restart: unless-stopped
+    network_mode: "host"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9091"]
       interval: 30s
@@ -34,7 +38,9 @@ services:
       - "TELEOP_ADMIN_USER=${TELEOP_ADMIN_USER:?Error: TELEOP_ADMIN_USER must be set}"
       - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
       - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
-      - "TELEOP_SERVER_URL=http://teleop-server:9091"
+      - "TELEOP_SERVER_URL=http://host.docker.internal:9091"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - auth-data:/data
     depends_on:
