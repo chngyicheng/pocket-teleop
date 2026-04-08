@@ -35,12 +35,9 @@ Callers use `std::holds_alternative<>` to dispatch on the variant.
 
 ## ROS2 parameters (TeleopNode)
 
-> **Auth-server plan:** `token` parameter will be removed once the auth-server is implemented. See `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` Task 7.
-
 | Parameter | Default | Description |
 |---|---|---|
-| `port` | `9091` | WebSocket listen port |
-| `token` | **required** | Must be set; node exits (throws) if missing. **Retired once auth-server is live.** |
+| `port` | `9091` | WebSocket listen port (internal only — not exposed; auth-server proxies) |
 | `timeout_ms` | `500` | Watchdog timeout in ms |
 | `cmd_vel_topic` | `/cmd_vel` | Base ROS2 publish topic (overridden by `robot_namespace` if set) |
 | `robot_type` | `diff_drive` | Sent to client in status message on connect |
@@ -49,19 +46,24 @@ Callers use `std::holds_alternative<>` to dispatch on the variant.
 
 ## Environment variables
 
-### auth-server (once implemented)
+### auth-server
 
 | Variable | Required | Description |
 |---|---|---|
-| `TELEOP_ADMIN_USER` | Yes | Admin username — no default, must be set explicitly |
-| `TELEOP_ADMIN_PASSWORD` | Yes | Admin password — no default, must be set explicitly |
+| `TELEOP_ADMIN_USER` | Yes | Initial admin username — used only on first run to seed credentials |
+| `TELEOP_ADMIN_PASSWORD` | Yes | Initial admin password — used only on first run; user is forced to change it on first login |
 | `SESSION_SECRET` | Yes | Signs session cookies; generate with `openssl rand -hex 32` |
+| `TELEOP_SERVER_URL` | No (default: `http://teleop-server:9091`) | URL of the teleop WebSocket server for proxying |
+| `WEBCLIENT_URL` | No (default: `http://webclient:80`) | URL of the nginx webclient for HTTP proxying |
 
-### teleop-server (current; `TELEOP_TOKEN` retired when auth-server is live)
+**Credential persistence:** Credentials are stored in the `auth-data` Docker volume at `/data/credentials.json`. They survive reboots and `docker compose up --build`. Only `docker compose down -v` deletes the volume and resets to the `.env` defaults.
+
+**Single-operator model:** One credential set per robot instance. Multi-user support is not implemented.
+
+### teleop-server
 
 | Variable | Required | Description |
 |---|---|---|
-| `TELEOP_TOKEN` | Yes | Shared secret; clients pass as `?token=` query param. **Retired once auth-server is live.** |
 | `ROBOT_TYPE` | No (default: `diff_drive`) | Reported to client on connect; `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | No (default: `""`) | Display name shown in UI; omit or leave empty for no label |
 | `ROBOT_NAMESPACE` | No (default: `""`) | ROS2 namespace; routes cmd_vel to `/<ns>/cmd_vel` when set |
