@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 > **For the next agent:** Video streaming milestone complete. 72 webclient + 29 auth-server tests passing. mediamtx (WebRTC/WHEP) + video-bridge (ROS2→GStreamer→RTSP) services added; /video proxy in auth-server; WhepClient in web-client; WebRTC video panel auto-connects in browser. Set VIDEO_TOPIC in .env to enable; sudo ufw allow 8891/udp required for WebRTC UDP ICE.
 
-**Head SHA:** `a9c3ac9` (pre-commit; update after committing)
+**Head SHA:** `b757fda` (as of 2026-04-09)
 
 ### Completed milestones
 
