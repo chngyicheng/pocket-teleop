@@ -30,6 +30,29 @@ services:
       - "127.0.0.1:18080:80"
     restart: unless-stopped
 
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    network_mode: "host"
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml:ro
+    restart: unless-stopped
+
+  video-bridge:
+    build:
+      context: .
+      dockerfile: video-bridge/Dockerfile.video_bridge
+      network: host
+    network_mode: "host"
+    environment:
+      - VIDEO_TOPIC=${VIDEO_TOPIC:-}
+      - VIDEO_TOPIC_TYPE=${VIDEO_TOPIC_TYPE:-compressed}
+      - MEDIAMTX_RTSP=rtsp://localhost:8554/teleop
+      - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
+      - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-}
+    restart: unless-stopped
+    depends_on:
+      - mediamtx
+
   auth-server:
     build:
       context: ./auth-server
@@ -46,6 +69,7 @@ services:
       - PORT=8080
       - TELEOP_SERVER_URL=http://localhost:9091
       - WEBCLIENT_URL=http://localhost:18080
+      - MEDIAMTX_URL=http://localhost:8889
     volumes:
       - auth-data:/data
     depends_on:

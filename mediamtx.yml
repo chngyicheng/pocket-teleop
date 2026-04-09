@@ -1,0 +1,27 @@
+# MediaMTX configuration for pocket-teleop
+# Full reference: https://github.com/bluenviron/mediamtx
+logLevel: warn
+logDestinations: [stdout]
+
+# Bind addresses — host network, so these are on the host directly.
+# Only RTSP (ingest) and WebRTC HTTP (WHEP) ports are used.
+rtspAddress: :8554
+rtmpAddress: :1935     # disabled below
+hlsAddress: :8888      # disabled below
+webrtcAddress: :8889
+srtAddress: :8890      # disabled below
+
+rtmpDisable: yes
+hlsDisable: yes
+srtDisable: yes
+
+# WebRTC — single fixed UDP port so the user only needs one UFW rule.
+# ICE candidates advertise the host's own LAN IP automatically (host network).
+webrtcICEUDPMuxAddress: :8891
+webrtcICETCPMuxAddress: ""
+
+paths:
+  teleop:
+    # video-bridge pushes RTSP here; mediamtx waits for the publisher.
+    source: publisher
+    # Clients that connect before video-bridge is ready get a 404 — WhepClient retries.

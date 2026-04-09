@@ -83,6 +83,29 @@ Set these in `.env` before starting (all optional):
 | `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
 | `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
 
+## Video streaming
+
+Set `VIDEO_TOPIC` in `.env` to enable the robot camera in the web UI:
+
+```bash
+# .env
+VIDEO_TOPIC=/camera/image_raw/compressed   # adjust to your camera's topic
+```
+
+To find the right topic name, run on the robot while the stack is up:
+
+```bash
+ros2 topic list | grep -i image
+```
+
+One additional UFW rule is required for WebRTC UDP media:
+
+```bash
+sudo ufw allow 8891/udp
+```
+
+The video stream uses WebRTC (via MediaMTX). Latency is typically 100–300 ms on a local network. Video auto-connects in the browser and retries automatically if the stream is interrupted.
+
 ## Troubleshooting
 
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
