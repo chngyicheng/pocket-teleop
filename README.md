@@ -10,17 +10,23 @@ WebSocket bridge from phone → ROS2 `/cmd_vel`. Session-authenticated with a lo
 Phone browser  http://<robot-ip>:8080
     │
     ▼ port 8080 (only public port)
-┌──────────────────────────────────────────────┐
-│  auth-server (Node/Express)                  │
-│  • login page + session cookie auth          │
-│  • proxies HTTP → webclient nginx (internal) │
-│  • proxies WebSocket → teleop-server (internal) │
-└──────────────────────────────────────────────┘
-         │                      │
-         ▼                      ▼
-  webclient (nginx)      teleop-server (ROS2 + C++)
-  serves compiled TS     publishes geometry_msgs/Twist
-                         to /cmd_vel
+┌─────────────────────────────────────────────────────┐
+│  auth-server (Node/Express)                         │
+│  • login page + session cookie auth                 │
+│  • /         → webclient nginx (HTTP)               │
+│  • /ws       → teleop-server (WebSocket)            │
+│  • /video    → mediamtx WHEP (WebRTC SDP exchange)  │
+│  • /mediamtx-api → mediamtx config API              │
+└─────────────────────────────────────────────────────┘
+      │           │           │
+      ▼           ▼           ▼
+ webclient   teleop-server  mediamtx
+ (nginx)     (ROS2 + C++)   (WebRTC)
+             publishes        │ UDP 8891 direct
+             /cmd_vel         ▼ to browser
+                          video-bridge
+                          (ROS2 → GStreamer
+                           → RTSP → mediamtx)
 ```
 
 ROS2 runs inside Docker — the host only needs Docker and Docker Compose.
@@ -83,6 +89,44 @@ Set these in `.env` before starting (all optional):
 | `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
 | `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
 
+## Video streaming
+
+The video panel auto-connects in the browser using WebRTC (via MediaMTX). Latency is typically 100–300 ms on a local network. The source can be changed at runtime from the Settings drawer — no restart needed.
+
+### UFW rule (required once)
+
+```bash
+sudo ufw allow 8891/udp   # WebRTC UDP media — phone ↔ robot direct
+```
+
+### Source: ROS2 topic (default)
+
+Set `VIDEO_TOPIC` in `.env` to stream from a ROS2 camera topic:
+
+```bash
+# .env
+VIDEO_TOPIC=/camera/image_raw/compressed   # adjust to your camera's topic
+VIDEO_TOPIC_TYPE=compressed                # or: raw  (sensor_msgs/Image)
+```
+
+To find your camera's topic name:
+
+```bash
+ros2 topic list | grep -i image
+```
+
+Common topics:
+- TurtleBot3 (Pi Camera): `/raspicam_node/image/compressed`
+- TurtleBot4 (OAK-D): `/oakd/rgb/preview/image_raw/compressed`
+
+### Source: RTSP camera (IP camera, no ROS2 required)
+
+In the browser: Settings → Video → select **RTSP URL**, enter the camera's RTSP address, and click Apply. MediaMTX pulls the stream directly — `video-bridge` is bypassed.
+
+### Disabling video
+
+Settings → Video → select **Disabled** and click Apply. The placeholder is shown in the browser; no stream is consumed.
+
 ## Troubleshooting
 
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
@@ -119,15 +163,18 @@ This profile (`server/fastrtps_profiles_observer.xml`) disables multicast and se
 
 ## Running tests
 
+All suites run entirely inside Docker — no local Node.js or Python installation needed.
+
 ```bash
-# Web-client unit + integration tests
+# Web-client unit + integration tests (85 tests)
 docker compose --profile test run --rm webclient-test
 
-# Auth-server tests
+# Auth-server tests (31 tests)
 docker compose --profile test run --rm auth-server-test
-```
 
-Both suites run entirely inside Docker — no local Node.js installation needed.
+# video-bridge Python tests (19 tests)
+docker compose --profile test run --rm video-bridge-test
+```
 
 ## Supported robots
 

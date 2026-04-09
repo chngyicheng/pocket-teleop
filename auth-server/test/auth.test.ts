@@ -331,3 +331,35 @@ describe('POST /auth/change-username', () => {
     expect(res.status).toBe(400);
   });
 });
+
+// ── /video proxy ─────────────────────────────────────────────────────────────
+
+function getAppWithVideo() {
+  seedCreds(false);
+  return createApp({
+    credPath,
+    sessionsPath,
+    sessionSecret: 'test-secret',
+    webClientUrl: `http://localhost:${mockPort}`,
+    mediaMtxUrl:  `http://localhost:${mockPort}`,
+  });
+}
+
+describe('GET /video proxy', () => {
+  it('unauthenticated redirects to /auth/login', async () => {
+    const res = await supertest(getAppWithVideo()).get('/video/teleop/whep');
+    expect(res.status).toBe(302);
+    expect(res.headers['location']).toBe('/auth/login');
+  });
+
+  it('authenticated forwards to mediaMtxUrl (not redirected)', async () => {
+    const agent = supertest.agent(getAppWithVideo());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent.get('/video/teleop/whep');
+    expect(res.status).not.toBe(302);
+    expect(res.headers['location']).not.toBe('/auth/login');
+  });
+});

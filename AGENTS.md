@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Auth bugfixes complete. 99 tests passing. Deployment fixes: auth-server now uses host networking (bypasses UFW/bridge iptables blocking) and proxies webclient at localhost:18080 and teleop-server at localhost:9091; fastrtps_profiles_observer.xml added for cross-machine ROS2 inspection when multicast is broken; PORT env var in auth-server enables port configuration.
+> **For the next agent:** Video streaming complete (85 webclient / 31 auth-server / 19 video-bridge tests). Branch: `video-streaming`. Next task: implement the **video source picker** — runtime switching between ROS2 topic, RTSP URL, and disabled via MediaMTX config API. Full plan at `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md`. Start at Task 1 (auth-server `/mediamtx-api` proxy route). All test counts in the completion checklist at the bottom of that plan.
 
-**Head SHA:** `abb3563` (as of 2026-04-09)
+**Head SHA:** `807f70e` (as of 2026-04-09)
 
 ### Completed milestones
 
@@ -37,6 +37,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
+| Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
 
 ### Known deviations (still relevant to future work)
 
@@ -77,6 +78,13 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `fastrtps_profiles_observer.xml` added for cross-machine ROS2 observation | `server/fastrtps_profiles_observer.xml` | Machines with multicast broken (`[Errno 19] No such device`) cannot discover ROS2 participants via the default SPDP multicast; unicast-only profile with `useBuiltinTransports=false` + `initialPeersList` pointing to robot IP is required; the main server profile did not need changes since it already accepts unicast SPDP from any peer on its whitelisted interface |
 | `auth-server` switched to `network_mode: host`; `webclient` exposes port 18080 on loopback | `docker-compose.yml` | UFW (active on host) blocks inbound TCP from Docker bridge networks to the host's bridge-gateway IP (`172.18.0.1`) via the INPUT chain; `host.docker.internal` maps to docker0 (`172.17.0.1`) which is on a separate bridge, also blocked; the only reliable path from auth-server to teleop-server (host network) is host-mode networking, where both see `localhost:9091`; webclient exposes port 18080 on `127.0.0.1` so auth-server can proxy to it without crossing bridge boundaries; `webclient-test` also switched to host network to reach `localhost:8080` |
 | `auth-server/src/index.ts` `PORT` env var and `detectGateway()` removed | `auth-server/src/index.ts` | `PORT` added to support host-network deployment on port 8080; `detectGateway()` added earlier as workaround for UFW-blocked bridge→host traffic but proved unnecessary once host networking was used |
+| `WhepClient` tested via mocked `RTCPeerConnection` shim | `web-client/test/whep_client.test.ts` | jsdom 24 does not provide `RTCPeerConnection`; shim defined in test file (same pattern as `Touch` and `PointerEvent` shims); 13 tests cover connect, retry, stop, back-off, onStream, onClose |
+| `video-bridge` tested via pytest on pure pipeline functions | `video-bridge/test_video_bridge.py` | GStreamer plumbing untestable without hardware; pipeline-string builder functions (`_compressed_pipeline`, `_raw_pipeline`, `_FORMAT_MAP`) are pure and fully covered by 19 pytest tests |
+| `<img id="video-img">` removed without replacement | `web-client/index.html` | Manual MJPEG URL input had no users (feature existed but stream URL was never persisted from prior sessions); WebRTC/WHEP supersedes it; MJPEG URL support can be re-added when RTSP/UDP input sources are implemented |
+| `loadVideoUrl` / `saveVideoUrl` / `clearVideoUrl` removed from settings.ts imports | `web-client/index.html` | No longer needed after MJPEG path removed; `settings.ts` functions remain in source for future use |
+| `vi.runAllMicrotasksAsync` replaced with `flushPromises` loop | `web-client/test/whep_client.test.ts` | `vi.runAllMicrotasksAsync` was added in Vitest 2.x; this project uses Vitest 1.6.1; ten sequential `await Promise.resolve()` calls flush all pending microtasks reliably |
+| `monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', ...)` used instead of `importlib.reload` | `video-bridge/test_video_bridge.py` | `importlib.reload` rewrites the module dict in-place and is not restored after the test; `monkeypatch.setattr` patches and restores the module-level constant cleanly |
+| `video-bridge-test` compose service runs `python3 -m pytest` (not `pytest`) | `docker-compose.yml`, `video-bridge/Dockerfile.video_bridge` | `pip3 install pytest` puts the binary in a non-`$PATH` location in the ROS Humble base image; `python3 -m pytest` always works because it invokes the installed module directly |
 
 ---
 
@@ -105,6 +113,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | **Auth server implementation plan** | `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` |
 | Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
 | **Video streaming implementation plan** | `docs/superpowers/plans/2026-04-09-video-streaming-implementation.md` |
+| **Video source picker implementation plan** | `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 

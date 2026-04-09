@@ -17,6 +17,7 @@ export interface AppOptions {
   sessionsPath: string;
   sessionSecret: string;
   webClientUrl?: string;
+  mediaMtxUrl?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -26,6 +27,10 @@ export function createApp(options: AppOptions): express.Application {
   const webClientUrl = options.webClientUrl
     ?? process.env['WEBCLIENT_URL']
     ?? 'http://webclient:80';
+
+  const mediaMtxUrl = options.mediaMtxUrl
+    ?? process.env['MEDIAMTX_URL']
+    ?? 'http://localhost:8889';
 
   fs.mkdirSync(options.sessionsPath, { recursive: true });
 
@@ -73,7 +78,12 @@ export function createApp(options: AppOptions): express.Application {
     next();
   });
 
-  // Proxy authenticated requests to nginx
+  // Video stream proxy — authenticated; /video/* → MediaMTX WHEP/HTTP.
+  // Express strips the '/video' prefix from req.url before handing off,
+  // so MediaMTX receives the path relative to its root (e.g. /teleop/whep).
+  app.use('/video', makeHttpProxy(mediaMtxUrl));
+
+  // Proxy authenticated requests to nginx (catch-all — must be last)
   app.use(makeHttpProxy(webClientUrl));
 
   return app;

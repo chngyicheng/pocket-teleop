@@ -119,7 +119,6 @@
       justify-content: center;
     }
     #video-placeholder { color: var(--text-muted); font-size: 14px; text-align: center; padding: 16px; }
-    #video-img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
 
     /* ── Velocity overlay ───────────────────────── */
     #vel-overlay {
@@ -404,15 +403,13 @@
     <!-- Video page -->
     <div id="page-video" class="drawer-page" hidden>
       <div class="field-group">
-        <span class="field-label">Stream URL</span>
-        <div class="field-row">
-          <input id="stream-url-input" type="text" placeholder="http://robot.local:8081/stream" />
-        </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button id="video-apply-btn" class="btn-primary">Apply</button>
-          <button id="video-clear-btn">Clear</button>
-        </div>
+        <span class="field-label">Video stream</span>
+        <span id="video-status" class="field-value">Connecting…</span>
       </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
+        Set <code>VIDEO_TOPIC</code> in <code>.env</code> to enable the robot camera.
+        Run <code>ros2 topic list | grep image</code> on the robot to find the topic name.
+      </p>
     </div>
 
     <!-- Connection page -->
@@ -512,9 +509,13 @@
       </div>
     </div>
     <div id="video-placeholder-box">
-      <p id="video-placeholder">No video stream — configure one in Settings (☰)</p>
+      <p id="video-placeholder">No video stream</p>
     </div>
-    <img id="video-img" alt="video stream" style="display:none" />
+    <!-- WebRTC stream (primary, auto-connects when mediamtx is up) -->
+    <video id="video-el"
+           autoplay muted playsinline
+           style="max-width:100%;max-height:100%;object-fit:contain;display:none">
+    </video>
   </main>
 
   <div id="joystick-left"></div>
@@ -524,7 +525,8 @@
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
     import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
-    import { SettingsRouter, loadVideoUrl, saveVideoUrl, clearVideoUrl } from '/dist/settings.js';
+    import { SettingsRouter } from '/dist/settings.js';
+    import { WhepClient } from '/dist/whep_client.js';
     import { TouchJoystick } from '/dist/touch_joystick.js';
     import { KeyboardHandler } from '/dist/keyboard_handler.js';
 
@@ -865,46 +867,37 @@
     keyboardHandler.start();
     keyboardHandler.setEnabled(false); // disabled until first keypress switches source
 
-    // ── Video panel ───────────────────────────────────────────────────────────
+    // ── Video panel (WebRTC / WHEP) ───────────────────────────────────────────
 
-    const videoImg           = document.getElementById('video-img');
-    const videoPlaceholder   = document.getElementById('video-placeholder');
+    const videoEl             = document.getElementById('video-el');
+    const videoPlaceholder    = document.getElementById('video-placeholder');
     const videoPlaceholderBox = document.getElementById('video-placeholder-box');
-    const streamUrlInput     = document.getElementById('stream-url-input');
+    const videoStatus         = document.getElementById('video-status');
 
-    function applyVideoUrl(url) {
-      if (!url) {
-        videoImg.style.display         = 'none';
-        videoPlaceholderBox.style.display = '';
-        return;
-      }
-      videoImg.src                    = url;
-      videoImg.style.display          = 'block';
+    function showVideoStream(stream) {
+      videoEl.srcObject = stream;
+      videoEl.style.display = 'block';
       videoPlaceholderBox.style.display = 'none';
+      if (videoStatus) videoStatus.textContent = 'Connected';
     }
 
-    videoImg.onerror = () => {
-      videoImg.style.display            = 'none';
+    function hideVideoStream(reason) {
+      videoEl.style.display = 'none';
+      videoEl.srcObject = null;
       videoPlaceholderBox.style.display = '';
-      videoPlaceholder.textContent      = 'Stream unavailable';
-    };
+      videoPlaceholder.textContent = reason ?? 'No video stream';
+      if (videoStatus) videoStatus.textContent = reason ?? 'Not available';
+    }
 
-    const savedUrl = loadVideoUrl();
-    if (savedUrl) { streamUrlInput.value = savedUrl; applyVideoUrl(savedUrl); }
+    const whepUrl = `${window.location.protocol}//${window.location.host}/video/teleop/whep`;
 
-    document.getElementById('video-apply-btn').addEventListener('click', () => {
-      const url = streamUrlInput.value.trim();
-      if (url) saveVideoUrl(url); else clearVideoUrl();
-      videoPlaceholder.textContent = 'No video stream — configure one in Settings (☰)';
-      applyVideoUrl(url);
+    const whepClient = new WhepClient(whepUrl, {
+      onStream: (stream) => showVideoStream(stream),
+      onError:  (msg)    => hideVideoStream(msg === 'stream not available' ? 'No video stream' : `Video: ${msg}`),
+      onClose:  ()       => hideVideoStream('Stream closed'),
     });
 
-    document.getElementById('video-clear-btn').addEventListener('click', () => {
-      streamUrlInput.value = '';
-      clearVideoUrl();
-      videoPlaceholder.textContent = 'No video stream — configure one in Settings (☰)';
-      applyVideoUrl('');
-    });
+    whepClient.start();
 
     // ── Gamepad calibration UI ────────────────────────────────────────────────
 
