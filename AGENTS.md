@@ -37,7 +37,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
-| Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | pending `v0.6.0` |
+| Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
 
 ### Known deviations (still relevant to future work)
 
