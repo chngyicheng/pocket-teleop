@@ -106,5 +106,14 @@ services:
       network: host
     command: ["npm", "test"]
 
+  video-bridge-test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: video-bridge/Dockerfile.video_bridge
+      target: test
+      network: host
+    command: ["/bin/bash", "-c", ". /opt/ros/humble/setup.sh && python3 -m pytest /test_video_bridge.py -v"]
+
 volumes:
   auth-data:

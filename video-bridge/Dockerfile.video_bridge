@@ -1,4 +1,4 @@
-FROM ros:humble
+FROM ros:humble AS base
 
 # GStreamer with H.264 support and Python bindings
 RUN apt-get update && apt-get install -y \
@@ -10,12 +10,17 @@ RUN apt-get update && apt-get install -y \
     gstreamer1.0-plugins-bad \
     gstreamer1.0-plugins-ugly \
     python3-gst-1.0 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN pip3 install --no-cache-dir pytest
 
 # Reuse the same FastDDS LAN-whitelist profile as teleop-server
 COPY server/fastrtps_profiles.xml /fastrtps_profiles.xml
 COPY video-bridge/video_bridge.py /video_bridge.py
+COPY video-bridge/test_video_bridge.py /test_video_bridge.py
 
+FROM base AS runtime
 CMD ["/bin/bash", "-c", "\
   . /opt/ros/humble/setup.sh && \
   if [ -n \"${ROS_NETWORK_INTERFACE}\" ]; then \
@@ -24,3 +29,7 @@ CMD ["/bin/bash", "-c", "\
     export FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/fastrtps_resolved.xml; \
   fi && \
   python3 /video_bridge.py"]
+
+FROM base AS test
+WORKDIR /
+CMD ["/bin/bash", "-c", ". /opt/ros/humble/setup.sh && python3 -m pytest /test_video_bridge.py -v"]

@@ -23,7 +23,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Video streaming milestone complete. 72 webclient + 29 auth-server tests passing. mediamtx (WebRTC/WHEP) + video-bridge (ROS2→GStreamer→RTSP) services added; /video proxy in auth-server; WhepClient in web-client; WebRTC video panel auto-connects in browser. Set VIDEO_TOPIC in .env to enable; sudo ufw allow 8891/udp required for WebRTC UDP ICE.
+> **For the next agent:** Video streaming milestone complete. 85 webclient + 31 auth-server + 19 video-bridge tests passing. mediamtx (WebRTC/WHEP) + video-bridge (ROS2→GStreamer→RTSP) services added; /video proxy in auth-server; WhepClient in web-client; WebRTC video panel auto-connects in browser. Set VIDEO_TOPIC in .env to enable; sudo ufw allow 8891/udp required for WebRTC UDP ICE.
 
 **Head SHA:** `b757fda` (as of 2026-04-09)
 
@@ -37,7 +37,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
-| Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 72 webclient / 29 auth | pending `v0.6.0` |
+| Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | pending `v0.6.0` |
 
 ### Known deviations (still relevant to future work)
 
@@ -82,6 +82,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `video-bridge` has no unit tests | `video-bridge/video_bridge.py` | The node is a thin GStreamer + ROS2 plumbing layer with no testable business logic; correctness is verified by the running stream |
 | `<img id="video-img">` removed without replacement | `web-client/index.html` | Manual MJPEG URL input had no users (feature existed but stream URL was never persisted from prior sessions); WebRTC/WHEP supersedes it; MJPEG URL support can be re-added when RTSP/UDP input sources are implemented |
 | `loadVideoUrl` / `saveVideoUrl` / `clearVideoUrl` removed from settings.ts imports | `web-client/index.html` | No longer needed after MJPEG path removed; `settings.ts` functions remain in source for future use |
+| `vi.runAllMicrotasksAsync` replaced with `flushPromises` loop | `web-client/test/whep_client.test.ts` | `vi.runAllMicrotasksAsync` was added in Vitest 2.x; this project uses Vitest 1.6.1; ten sequential `await Promise.resolve()` calls flush all pending microtasks reliably |
+| `monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', ...)` used instead of `importlib.reload` | `video-bridge/test_video_bridge.py` | `importlib.reload` rewrites the module dict in-place and is not restored after the test; `monkeypatch.setattr` patches and restores the module-level constant cleanly |
+| `video-bridge-test` compose service runs `python3 -m pytest` (not `pytest`) | `docker-compose.yml`, `video-bridge/Dockerfile.video_bridge` | `pip3 install pytest` puts the binary in a non-`$PATH` location in the ROS Humble base image; `python3 -m pytest` always works because it invokes the installed module directly |
 
 ---
 
