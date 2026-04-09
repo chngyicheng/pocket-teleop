@@ -113,6 +113,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | **Auth server implementation plan** | `docs/superpowers/plans/2026-04-03-auth-server-implementation.md` |
 | Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
 | **Video streaming implementation plan** | `docs/superpowers/plans/2026-04-09-video-streaming-implementation.md` |
+| **Video source picker implementation plan** | `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md` |
 
 **When to go deeper:** If a guide file doesn't answer your question, read the relevant section of the spec. If the spec doesn't answer it, read the plan. Don't read all three up front.
 
