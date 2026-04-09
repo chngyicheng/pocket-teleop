@@ -363,3 +363,23 @@ describe('GET /video proxy', () => {
     expect(res.headers['location']).not.toBe('/auth/login');
   });
 });
+
+describe('GET /mediamtx-api proxy', () => {
+  it('unauthenticated redirects to /auth/login', async () => {
+    const res = await supertest(getAppWithVideo())
+      .get('/mediamtx-api/config/paths/list');
+    expect(res.status).toBe(302);
+    expect(res.headers['location']).toBe('/auth/login');
+  });
+
+  it('authenticated forwards to mediaMtxUrl/v3 (not redirected)', async () => {
+    const agent = supertest.agent(getAppWithVideo());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent.get('/mediamtx-api/config/paths/list');
+    expect(res.status).not.toBe(302);
+    expect(res.headers['location']).not.toBe('/auth/login');
+  });
+});

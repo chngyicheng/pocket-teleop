@@ -78,10 +78,12 @@ export function createApp(options: AppOptions): express.Application {
     next();
   });
 
-  // Video stream proxy — authenticated; /video/* → MediaMTX WHEP/HTTP.
-  // Express strips the '/video' prefix from req.url before handing off,
-  // so MediaMTX receives the path relative to its root (e.g. /teleop/whep).
+  // Video stream proxy (WHEP media)
   app.use('/video', makeHttpProxy(mediaMtxUrl));
+
+  // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxUrl/v3/*
+  // Express strips '/mediamtx-api' from req.url; the proxy target includes '/v3'.
+  app.use('/mediamtx-api', makeHttpProxy(`${mediaMtxUrl}/v3`));
 
   // Proxy authenticated requests to nginx (catch-all — must be last)
   app.use(makeHttpProxy(webClientUrl));
