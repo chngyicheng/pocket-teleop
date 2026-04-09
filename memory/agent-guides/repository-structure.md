@@ -1,6 +1,6 @@
 # Repository Structure
 
-> **Scope note:** Server and web client v0.1.0 both complete. All practical gaps tasks complete. Frontend UI + touch joysticks complete (v0.4.0 pending tag). Tags so far: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`.
+> **Scope note:** Video streaming milestone complete (v0.6.0 pending tag). Tags so far: `v0.1.0-server`, `v0.1.0-client`, `v0.2.0`, `v0.3.0`, `v0.4.0`.
 
 ## Component layers (server)
 
@@ -117,7 +117,7 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 | `web-client/src/teleop_client.ts` | Orchestrates all modules; reconnection loop; public API |
 | `web-client/test/gamepad_profiles.test.ts` | Unit tests for `matchProfile` and `loadCustomProfiles` (6 tests) |
 | `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
-| `web-client/src/settings.ts` | `SettingsRouter`, `loadVideoUrl`, `saveVideoUrl`, `clearVideoUrl`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and persistence |
+| `web-client/src/settings.ts` | `SettingsRouter`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and localStorage persistence; `loadVideoUrl`/`saveVideoUrl`/`clearVideoUrl` remain but are no longer imported by `index.html` |
 | `web-client/src/touch_joystick.ts` | `TouchJoystick` class — floating touch joystick, normalised -1..1 output, jsdom-testable |
 | `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (8 tests; `vi.stubGlobal` for localStorage) |
 | `web-client/test/touch_joystick.test.ts` | 14 unit tests using jsdom PointerEvent simulation |
@@ -146,6 +146,62 @@ docker compose --profile test run --rm auth-server-test
 | 8080 | auth-server (host-mapped; proxies nginx and WebSocket) |
 
 > Note: once auth-server is implemented, nginx (port 80) and teleop-server (port 9091) become internal-only — not exposed to the host.
+
+---
+
+## Component layers (video streaming)
+
+```
+ROS2 topic (CompressedImage or Image)
+    │ rclpy subscriber
+    ▼
+video-bridge container (host network)
+GStreamer: appsrc → jpegdec/videoconvert → x264enc → rtph264pay → rtspclientsink
+    │ RTSP push → localhost:8554
+    ▼
+mediamtx container (host network)
+• receives RTSP from video-bridge (or pulls from RTSP source directly)
+• serves WHEP at localhost:8889/teleop/whep
+• WebRTC UDP ICE at *:8891
+    │ HTTP (SDP exchange)     │ UDP (media)
+    ▼ proxied via auth-server ▼ direct browser ↔ robot
+auth-server: /video → localhost:8889
+    │
+    ▼ HTTP at :8080
+phone browser
+WhepClient: RTCPeerConnection + POST /video/teleop/whep → <video> element
+```
+
+## Key files (video streaming)
+
+| File | What it does |
+|---|---|
+| `video-bridge/video_bridge.py` | Python rclpy node — subscribes to ROS2 image topic, feeds GStreamer pipeline, pushes RTSP to MediaMTX; sleeps if `VIDEO_TOPIC` unset |
+| `video-bridge/Dockerfile.video_bridge` | ROS2 Humble + GStreamer + python3-gst-1.0; multi-stage: `base`, `runtime`, `test` |
+| `video-bridge/test_video_bridge.py` | 19 pytest tests for pipeline-string functions and format map |
+| `mediamtx.yml` | MediaMTX config — RTSP at 8554, WHEP at 8889, UDP ICE at 8891, path `teleop` |
+| `web-client/src/whep_client.ts` | `WhepClient` class — vanilla WHEP gather-then-offer, exponential back-off retry |
+| `web-client/test/whep_client.test.ts` | 13 vitest tests with mocked RTCPeerConnection and fetch |
+
+## Build and test commands (video streaming)
+
+```bash
+# Run video-bridge Python tests
+docker compose --profile test run --rm video-bridge-test
+
+# Run all test suites
+docker compose --profile test run --rm webclient-test
+docker compose --profile test run --rm auth-server-test
+docker compose --profile test run --rm video-bridge-test
+```
+
+## Port assignments (video streaming)
+
+| Port | Protocol | Used for |
+|---|---|---|
+| 8554 | TCP | MediaMTX RTSP ingest (video-bridge → mediamtx) — internal only |
+| 8889 | HTTP | MediaMTX WHEP + config API — proxied via auth-server at `/video` |
+| 8891 | UDP | WebRTC ICE media — direct browser ↔ robot; requires `sudo ufw allow 8891/udp` |
 
 ---
 

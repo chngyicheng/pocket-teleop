@@ -67,3 +67,17 @@ Callers use `std::holds_alternative<>` to dispatch on the variant.
 | `ROBOT_TYPE` | No (default: `diff_drive`) | Reported to client on connect; `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | No (default: `""`) | Display name shown in UI; omit or leave empty for no label |
 | `ROBOT_NAMESPACE` | No (default: `""`) | ROS2 namespace; routes cmd_vel to `/<ns>/cmd_vel` when set |
+
+### auth-server (video proxy)
+
+| Variable | Required | Description |
+|---|---|---|
+| `MEDIAMTX_URL` | No (default: `http://localhost:8889`) | URL of MediaMTX HTTP API + WHEP endpoint; proxied at `/video` |
+
+### video-bridge
+
+| Variable | Required | Description |
+|---|---|---|
+| `VIDEO_TOPIC` | No (empty = disabled) | Full ROS2 topic path, e.g. `/camera/image_raw/compressed`; if empty the node sleeps |
+| `VIDEO_TOPIC_TYPE` | No (default: `compressed`) | `compressed` for `sensor_msgs/CompressedImage`; `raw` for `sensor_msgs/Image` |
+| `MEDIAMTX_RTSP` | No (default: `rtsp://localhost:8554/teleop`) | RTSP push URL inside MediaMTX |
