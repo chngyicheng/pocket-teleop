@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Video streaming milestone complete. 85 webclient + 31 auth-server + 19 video-bridge tests passing. mediamtx (WebRTC/WHEP) + video-bridge (ROS2→GStreamer→RTSP) services added; /video proxy in auth-server; WhepClient in web-client; WebRTC video panel auto-connects in browser. Set VIDEO_TOPIC in .env to enable; sudo ufw allow 8891/udp required for WebRTC UDP ICE.
+> **For the next agent:** Video streaming complete (85 webclient / 31 auth-server / 19 video-bridge tests). Branch: `video-streaming`. Next task: implement the **video source picker** — runtime switching between ROS2 topic, RTSP URL, and disabled via MediaMTX config API. Full plan at `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md`. Start at Task 1 (auth-server `/mediamtx-api` proxy route). All test counts in the completion checklist at the bottom of that plan.
 
-**Head SHA:** `dfbefeb` (as of 2026-04-09)
+**Head SHA:** `807f70e` (as of 2026-04-09)
 
 ### Completed milestones
 
@@ -78,8 +78,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `fastrtps_profiles_observer.xml` added for cross-machine ROS2 observation | `server/fastrtps_profiles_observer.xml` | Machines with multicast broken (`[Errno 19] No such device`) cannot discover ROS2 participants via the default SPDP multicast; unicast-only profile with `useBuiltinTransports=false` + `initialPeersList` pointing to robot IP is required; the main server profile did not need changes since it already accepts unicast SPDP from any peer on its whitelisted interface |
 | `auth-server` switched to `network_mode: host`; `webclient` exposes port 18080 on loopback | `docker-compose.yml` | UFW (active on host) blocks inbound TCP from Docker bridge networks to the host's bridge-gateway IP (`172.18.0.1`) via the INPUT chain; `host.docker.internal` maps to docker0 (`172.17.0.1`) which is on a separate bridge, also blocked; the only reliable path from auth-server to teleop-server (host network) is host-mode networking, where both see `localhost:9091`; webclient exposes port 18080 on `127.0.0.1` so auth-server can proxy to it without crossing bridge boundaries; `webclient-test` also switched to host network to reach `localhost:8080` |
 | `auth-server/src/index.ts` `PORT` env var and `detectGateway()` removed | `auth-server/src/index.ts` | `PORT` added to support host-network deployment on port 8080; `detectGateway()` added earlier as workaround for UFW-blocked bridge→host traffic but proved unnecessary once host networking was used |
-| `WhepClient` has no unit tests | `web-client/src/whep_client.ts` | `RTCPeerConnection` is not available in jsdom 24; mocking it adds no correctness value for an API-thin adapter; deferred to a follow-up with a real browser test harness |
-| `video-bridge` has no unit tests | `video-bridge/video_bridge.py` | The node is a thin GStreamer + ROS2 plumbing layer with no testable business logic; correctness is verified by the running stream |
+| `WhepClient` tested via mocked `RTCPeerConnection` shim | `web-client/test/whep_client.test.ts` | jsdom 24 does not provide `RTCPeerConnection`; shim defined in test file (same pattern as `Touch` and `PointerEvent` shims); 13 tests cover connect, retry, stop, back-off, onStream, onClose |
+| `video-bridge` tested via pytest on pure pipeline functions | `video-bridge/test_video_bridge.py` | GStreamer plumbing untestable without hardware; pipeline-string builder functions (`_compressed_pipeline`, `_raw_pipeline`, `_FORMAT_MAP`) are pure and fully covered by 19 pytest tests |
 | `<img id="video-img">` removed without replacement | `web-client/index.html` | Manual MJPEG URL input had no users (feature existed but stream URL was never persisted from prior sessions); WebRTC/WHEP supersedes it; MJPEG URL support can be re-added when RTSP/UDP input sources are implemented |
 | `loadVideoUrl` / `saveVideoUrl` / `clearVideoUrl` removed from settings.ts imports | `web-client/index.html` | No longer needed after MJPEG path removed; `settings.ts` functions remain in source for future use |
 | `vi.runAllMicrotasksAsync` replaced with `flushPromises` loop | `web-client/test/whep_client.test.ts` | `vi.runAllMicrotasksAsync` was added in Vitest 2.x; this project uses Vitest 1.6.1; ten sequential `await Promise.resolve()` calls flush all pending microtasks reliably |
