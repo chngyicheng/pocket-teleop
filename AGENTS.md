@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Video streaming complete (85 webclient / 31 auth-server / 19 video-bridge tests). Branch: `video-streaming`. Next task: implement the **video source picker** — runtime switching between ROS2 topic, RTSP URL, and disabled via MediaMTX config API. Full plan at `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md`. Start at Task 1 (auth-server `/mediamtx-api` proxy route). All test counts in the completion checklist at the bottom of that plan.
+> **For the next agent:** Video source picker complete (33 auth-server / 99 webclient / 19 video-bridge tests). Branch: `video-source-picker` (pending merge to `main`). Settings drawer → Video page now has a runtime source picker: ROS2 topic, RTSP URL, or disabled — PATCH to MediaMTX config API via auth-server proxy. No outstanding tasks.
 
-**Head SHA:** `807f70e` (as of 2026-04-09)
+**Head SHA:** `ab57dd8` (as of 2026-04-09)
 
 ### Completed milestones
 
@@ -38,6 +38,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
 | Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
+| Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) | 33 auth / 99 webclient / 19 video-bridge | pending `v0.7.0` |
 
 ### Known deviations (still relevant to future work)
 
@@ -85,6 +86,10 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `vi.runAllMicrotasksAsync` replaced with `flushPromises` loop | `web-client/test/whep_client.test.ts` | `vi.runAllMicrotasksAsync` was added in Vitest 2.x; this project uses Vitest 1.6.1; ten sequential `await Promise.resolve()` calls flush all pending microtasks reliably |
 | `monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', ...)` used instead of `importlib.reload` | `video-bridge/test_video_bridge.py` | `importlib.reload` rewrites the module dict in-place and is not restored after the test; `monkeypatch.setattr` patches and restores the module-level constant cleanly |
 | `video-bridge-test` compose service runs `python3 -m pytest` (not `pytest`) | `docker-compose.yml`, `video-bridge/Dockerfile.video_bridge` | `pip3 install pytest` puts the binary in a non-`$PATH` location in the ROS Humble base image; `python3 -m pytest` always works because it invokes the installed module directly |
+| `/mediamtx-api` prefix strips to `/v3` at proxy layer | `auth-server/src/app.ts` | Avoids exposing a raw `/v3` path on the public-facing auth-server; clean separation between `/video` (WHEP media) and `/mediamtx-api` (config API) |
+| `source: redirect` to non-existent path used to disable stream | `web-client/src/video_source.ts` | MediaMTX has no explicit "disabled" state; redirect to a void path causes WHEP clients to receive 404, which WhepClient already handles by showing the placeholder |
+| Video source state stored in `localStorage` and re-applied on load | `web-client/src/video_source.ts` | MediaMTX runtime config is volatile (lost on restart); re-applying on page load reconciles drift without adding a server-side persistence layer |
+| `VideoSourcePicker` takes `fetchFn` as constructor option | `web-client/src/video_source.ts` | Enables pure vitest testing without `vi.stubGlobal` side effects; same dependency-injection pattern as `WhepClient` callbacks |
 
 ---
 
