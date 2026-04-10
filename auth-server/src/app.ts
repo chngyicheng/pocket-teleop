@@ -18,6 +18,7 @@ export interface AppOptions {
   sessionSecret: string;
   webClientUrl?: string;
   mediaMtxUrl?: string;
+  mediaMtxApiUrl?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -31,6 +32,10 @@ export function createApp(options: AppOptions): express.Application {
   const mediaMtxUrl = options.mediaMtxUrl
     ?? process.env['MEDIAMTX_URL']
     ?? 'http://localhost:8889';
+
+  const mediaMtxApiUrl = options.mediaMtxApiUrl
+    ?? process.env['MEDIAMTX_API_URL']
+    ?? 'http://localhost:9997';
 
   fs.mkdirSync(options.sessionsPath, { recursive: true });
 
@@ -81,9 +86,10 @@ export function createApp(options: AppOptions): express.Application {
   // Video stream proxy (WHEP media)
   app.use('/video', makeHttpProxy(mediaMtxUrl));
 
-  // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxUrl/v3/*
+  // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxApiUrl/v3/*
   // Express strips '/mediamtx-api' from req.url; the proxy target includes '/v3'.
-  app.use('/mediamtx-api', makeHttpProxy(`${mediaMtxUrl}/v3`));
+  // mediaMtxApiUrl is port 9997 (config API), distinct from mediaMtxUrl port 8889 (WHEP).
+  app.use('/mediamtx-api', makeHttpProxy(`${mediaMtxApiUrl}/v3`));
 
   // Proxy authenticated requests to nginx (catch-all — must be last)
   app.use(makeHttpProxy(webClientUrl));
