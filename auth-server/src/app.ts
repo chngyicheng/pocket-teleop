@@ -87,9 +87,10 @@ export function createApp(options: AppOptions): express.Application {
   app.use('/video', makeHttpProxy(mediaMtxUrl));
 
   // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxApiUrl/v3/*
-  // Express strips '/mediamtx-api' from req.url; the proxy target includes '/v3'.
+  // Express strips '/mediamtx-api' from req.url; pathRewrite prepends /v3.
+  // http-proxy-middleware ignores path components in target, so pathRewrite is required.
   // mediaMtxApiUrl is port 9997 (config API), distinct from mediaMtxUrl port 8889 (WHEP).
-  app.use('/mediamtx-api', makeHttpProxy(`${mediaMtxApiUrl}/v3`));
+  app.use('/mediamtx-api', makeHttpProxy(mediaMtxApiUrl, { '^/': '/v3/' }));
 
   // Proxy authenticated requests to nginx (catch-all — must be last)
   app.use(makeHttpProxy(webClientUrl));
