@@ -7,8 +7,8 @@
 {"type":"ping"}
 ```
 
-- Values clamped to `[-1.0, 1.0]` inclusive — out-of-range returns `ParseError`, not clamp.
-- `linear_y` always present in twist messages even for differential drive (client sends `0.0`).
+- Values clamped to `[-1.0, 1.0]` inclusive — out-of-range returns a `ParseError`, not a clamp.
+- `linear_y` is always present in twist messages even for differential drive (client sends `0.0`).
 
 ## Message protocol — server → client
 
@@ -18,7 +18,7 @@
 {"type":"error","message":"<reason>"}
 ```
 
-- `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
+- `robot_name` and `robot_namespace` are always present in status messages (empty string `""` when not configured).
 - Client treats missing fields as `""` for backwards compatibility.
 
 ## C++ result types (CommandHandler)
@@ -31,7 +31,7 @@ struct ParseError   { std::string message; };
 using ParseResult = std::variant<TwistCommand, PingCommand, ParseError>;
 ```
 
-Callers use `std::holds_alternative<>` to dispatch on variant.
+Callers use `std::holds_alternative<>` to dispatch on the variant.
 
 ## ROS2 parameters (TeleopNode)
 
@@ -50,15 +50,15 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 
 | Variable | Required | Description |
 |---|---|---|
-| `TELEOP_ADMIN_USER` | Yes | Initial admin username — first run only, seeds credentials |
-| `TELEOP_ADMIN_PASSWORD` | Yes | Initial admin password — first run only; forced change on first login |
+| `TELEOP_ADMIN_USER` | Yes | Initial admin username — used only on first run to seed credentials |
+| `TELEOP_ADMIN_PASSWORD` | Yes | Initial admin password — used only on first run; user is forced to change it on first login |
 | `SESSION_SECRET` | Yes | Signs session cookies; generate with `openssl rand -hex 32` |
-| `TELEOP_SERVER_URL` | No (default: `http://teleop-server:9091`) | Teleop WebSocket server URL for proxying |
-| `WEBCLIENT_URL` | No (default: `http://webclient:80`) | nginx webclient URL for HTTP proxying |
+| `TELEOP_SERVER_URL` | No (default: `http://teleop-server:9091`) | URL of the teleop WebSocket server for proxying |
+| `WEBCLIENT_URL` | No (default: `http://webclient:80`) | URL of the nginx webclient for HTTP proxying |
 
-**Credential persistence:** Stored in `auth-data` Docker volume at `/data/credentials.json`. Survive reboots and `docker compose up --build`. Only `docker compose down -v` deletes volume and resets to `.env` defaults.
+**Credential persistence:** Credentials are stored in the `auth-data` Docker volume at `/data/credentials.json`. They survive reboots and `docker compose up --build`. Only `docker compose down -v` deletes the volume and resets to the `.env` defaults.
 
-**Single-operator model:** One credential set per robot instance. Multi-user not implemented.
+**Single-operator model:** One credential set per robot instance. Multi-user support is not implemented.
 
 ### teleop-server
 
@@ -72,12 +72,12 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 
 | Variable | Required | Description |
 |---|---|---|
-| `MEDIAMTX_URL` | No (default: `http://localhost:8889`) | MediaMTX HTTP API + WHEP endpoint URL; proxied at `/video` |
+| `MEDIAMTX_URL` | No (default: `http://localhost:8889`) | URL of MediaMTX HTTP API + WHEP endpoint; proxied at `/video` |
 
 ### video-bridge
 
 | Variable | Required | Description |
 |---|---|---|
-| `VIDEO_TOPIC` | No (empty = disabled) | Full ROS2 topic path, e.g. `/camera/image_raw/compressed`; empty = node sleeps |
+| `VIDEO_TOPIC` | No (empty = disabled) | Full ROS2 topic path, e.g. `/camera/image_raw/compressed`; if empty the node sleeps |
 | `VIDEO_TOPIC_TYPE` | No (default: `compressed`) | `compressed` for `sensor_msgs/CompressedImage`; `raw` for `sensor_msgs/Image` |
 | `MEDIAMTX_RTSP` | No (default: `rtsp://localhost:8554/teleop`) | RTSP push URL inside MediaMTX |

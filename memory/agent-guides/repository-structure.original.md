@@ -68,7 +68,7 @@ docker run --rm \
     colcon test-result --verbose"
 ```
 
-Volume-mounting `server/` picks up host edits without image rebuild.
+Volume-mounting `server/` means host edits are picked up without rebuilding the image.
 
 ## Test port assignments (server)
 
@@ -117,7 +117,7 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 | `web-client/src/teleop_client.ts` | Orchestrates all modules; reconnection loop; public API |
 | `web-client/test/gamepad_profiles.test.ts` | Unit tests for `matchProfile` and `loadCustomProfiles` (6 tests) |
 | `web-client/test/integration.test.ts` | Integration tests against real server; no mocks (11 tests) |
-| `web-client/src/settings.ts` | `SettingsRouter`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and localStorage persistence; `loadVideoUrl`/`saveVideoUrl`/`clearVideoUrl` remain but no longer imported by `index.html` |
+| `web-client/src/settings.ts` | `SettingsRouter`, `loadRobotNamespace`, `saveRobotNamespace`, `clearRobotNamespace` — settings routing and localStorage persistence; `loadVideoUrl`/`saveVideoUrl`/`clearVideoUrl` remain but are no longer imported by `index.html` |
 | `web-client/src/touch_joystick.ts` | `TouchJoystick` class — floating touch joystick, normalised -1..1 output, jsdom-testable |
 | `web-client/test/settings.test.ts` | Unit tests for `settings.ts` (8 tests; `vi.stubGlobal` for localStorage) |
 | `web-client/test/touch_joystick.test.ts` | 14 unit tests using jsdom PointerEvent simulation |
@@ -145,7 +145,7 @@ docker compose --profile test run --rm auth-server-test
 |---|---|
 | 8080 | auth-server (host-mapped; proxies nginx and WebSocket) |
 
-> Note: once auth-server implemented, nginx (port 80) and teleop-server (port 9091) become internal-only — not host-exposed.
+> Note: once auth-server is implemented, nginx (port 80) and teleop-server (port 9091) become internal-only — not exposed to the host.
 
 ---
 
@@ -176,7 +176,7 @@ WhepClient: RTCPeerConnection + POST /video/teleop/whep → <video> element
 
 | File | What it does |
 |---|---|
-| `video-bridge/video_bridge.py` | Python rclpy node — subscribes ROS2 image topic, feeds GStreamer pipeline, pushes RTSP to MediaMTX; sleeps if `VIDEO_TOPIC` unset |
+| `video-bridge/video_bridge.py` | Python rclpy node — subscribes to ROS2 image topic, feeds GStreamer pipeline, pushes RTSP to MediaMTX; sleeps if `VIDEO_TOPIC` unset |
 | `video-bridge/Dockerfile.video_bridge` | ROS2 Humble + GStreamer + python3-gst-1.0; multi-stage: `base`, `runtime`, `test` |
 | `video-bridge/test_video_bridge.py` | 19 pytest tests for pipeline-string functions and format map |
 | `mediamtx.yml` | MediaMTX config — RTSP at 8554, WHEP at 8889, UDP ICE at 8891, path `teleop` |

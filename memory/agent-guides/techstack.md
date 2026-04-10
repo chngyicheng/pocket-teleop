@@ -2,8 +2,8 @@
 
 ## Language and standard
 
-- **C++17** — mandatory. No C++20 features. `ros:humble` ships GCC 11; C++20 features silently break the build.
-- `CMAKE_CXX_STANDARD_REQUIRED ON` and `CMAKE_CXX_EXTENSIONS OFF` must be set in every `CMakeLists.txt`.
+- **C++17** — mandatory. No C++20. `ros:humble` ships GCC 11; C++20 silently breaks build.
+- `CMAKE_CXX_STANDARD_REQUIRED ON` and `CMAKE_CXX_EXTENSIONS OFF` — set in every `CMakeLists.txt`.
 
 ## Runtime environment
 
@@ -18,20 +18,20 @@
 
 | Library | Purpose | How found in CMake |
 |---|---|---|
-| `websocketpp` | WebSocket server | `find_path(WEBSOCKETPP_INCLUDE_DIR websocketpp/server.hpp REQUIRED)` — no cmake config on Debian |
-| `nlohmann-json` | JSON parse/serialise | `nlohmann_json::nlohmann_json` target |
-| `Boost.System` | Required by websocketpp | `find_package(Boost REQUIRED COMPONENTS system)` |
-| `GTest` | Unit and integration tests | `ament_add_gtest` |
+| `websocketpp` | WebSocket server | `find_path(WEBSOCKETPP_INCLUDE_DIR websocketpp/server.hpp REQUIRED)` — no cmake config Debian |
+| `nlohmann-json` | JSON parse/serial | `nlohmann_json::nlohmann_json` target |
+| `Boost.System` | websocketpp dep | `find_package(Boost REQUIRED COMPONENTS system)` |
+| `GTest` | unit/integration tests | `ament_add_gtest` |
 
 ## ROS2 packages used
 
-- `rclcpp` — node, parameters, publisher (TeleopNode only)
+- `rclcpp` — node, params, publisher (TeleopNode only)
 - `geometry_msgs` — `geometry_msgs/msg/Twist` published to `/cmd_vel`
-- `ament_lint_auto` — declared but not wired (linting not a stated requirement)
+- `ament_lint_auto` — declared, not wired (linting not required)
 
 ## Key architectural constraint (server)
 
-`CommandHandler` and `TeleopServer` must compile and link **without** `rclcpp`. They are pure C++ layers. Only `TeleopNode` may depend on ROS2.
+`CommandHandler` and `TeleopServer` compile/link **without** `rclcpp`. Pure C++ layers. Only `TeleopNode` depends on ROS2.
 
 ---
 
@@ -47,8 +47,8 @@
 | Transport | Browser WebSocket API |
 | Node runtime | Node 22 (node:22-slim) — required for native `globalThis.WebSocket` |
 
-No frontend framework. No runtime dependencies. Dev dependencies only: `typescript`, `vitest`.
+No framework. No runtime deps. Dev only: `typescript`, `vitest`.
 
 ## Key architectural constraint (client)
 
-`Protocol` must have no I/O or side effects — pure TypeScript types and serializers. `Connection` must have no knowledge of message format or gamepad. Only `TeleopClient` wires all modules together. On-screen UI (future) calls `TeleopClient.sendTwist()` directly and never touches lower layers.
+`Protocol` — no I/O/side effects, pure TS types/serializers. `Connection` — no message format or gamepad knowledge. Only `TeleopClient` wires modules. UI (future) calls `TeleopClient.sendTwist()` directly, never touches lower layers.

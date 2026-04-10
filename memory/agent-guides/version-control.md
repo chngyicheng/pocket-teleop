@@ -12,10 +12,10 @@ Before every commit, in this order:
 
 1. `docker build --target builder --network=host` — build must succeed
 2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
-3. **Doc freshness check** — read the "Keeping docs current" table below and update every entry that applies to this change. Also verify:
-   - `AGENTS.md` handoff table matches actual task state and is written for a new agent (see "Writing the handoff state for a new agent" below)
-   - Head SHA in `AGENTS.md` matches the commit just made
-   - **Do not edit `CLAUDE.md` directly** — it is a symlink to `AGENTS.md`; editing `AGENTS.md` is sufficient
+3. **Doc freshness check** — read "Keeping docs current" table below, update every applicable entry. Also verify:
+   - `AGENTS.md` handoff table matches actual task state, written for new agent (see "Writing the handoff state for a new agent" below)
+   - Head SHA in `AGENTS.md` matches commit just made
+   - **Do not edit `CLAUDE.md` directly** — symlink to `AGENTS.md`; edit `AGENTS.md` only
 
 All three steps must complete before `git commit`.
 
@@ -24,7 +24,7 @@ All three steps must complete before `git commit`.
 - **One commit per completed task**
 - Prefix: `feat:` / `fix:` / `docs:`
 - Imperative mood: "add X", "fix Y", not "added X" or "fixing Y"
-- One logical change per commit — do not bundle unrelated changes
+- One logical change per commit — no bundling unrelated changes
 
 ```bash
 git commit -m "feat: add Docker scaffolding for ROS2 server"
@@ -32,21 +32,21 @@ git commit -m "feat: add Docker scaffolding for ROS2 server"
 
 ## Push workflow
 
-After committing, ask the user to review the commit before pushing. Do not push automatically.
+After committing, ask user to review before pushing. No auto-push.
 
 ```
 "Committed as <hash>. Ready to push — shall I?"
 ```
 
-Only push after explicit confirmation.
+Push only after explicit confirmation.
 
-After pushing, ask for confirmation before moving to the next task.
+After pushing, ask confirmation before next task.
 
 ```
 "Pushed. Ready to move on to Task N — shall I?"
 ```
 
-Do not start the next task until the user confirms.
+No next task until user confirms.
 
 ## Merge and tag
 
@@ -59,7 +59,7 @@ git tag v0.1.0-server
 
 ## Keeping docs current
 
-**Update docs in the same commit as the code change they document.** Before committing, check:
+**Update docs in same commit as code change they document.** Before committing, check:
 
 | Change | What to update |
 |---|---|
@@ -72,26 +72,26 @@ git tag v0.1.0-server
 | New guardrail identified | `project-skills.md` guardrails table |
 | New document created | `AGENTS.md` document map |
 
-Do not append changelogs at the bottom of files. Edit the relevant section in place.
+No changelog appends. Edit relevant section in place.
 
 ### Writing the handoff state for a new agent
 
-The Handoff State in `CLAUDE.md` is the first thing the next agent reads. It must be self-contained — assume the reader has no knowledge of this conversation.
+Handoff State in `CLAUDE.md` is first thing next agent reads. Must be self-contained — assume reader has zero context from this conversation.
 
-**Head SHA:** After staging all files but before running `git commit`, run `git rev-parse --short HEAD` to get the current HEAD. The commit you are about to create will extend this — use `--short HEAD` *after* committing and update the SHA field accordingly (or use `$(git rev-parse --short HEAD)` in a post-commit edit).
+**Head SHA:** After staging all files but before `git commit`, run `git rev-parse --short HEAD` to get current HEAD. Commit about to be created extends this — use `--short HEAD` *after* committing and update SHA field (or use `$(git rev-parse --short HEAD)` in post-commit edit).
 
 **Task table rows:**
-- Completed task → `✅ Done` with a Notes entry naming what was created or the key test names that now pass
+- Completed task → `✅ Done` with Notes naming what was created or key test names now passing
 - Next task → `⬜ Next` (exactly one row)
 - All others → `⬜ Pending`
 
-**Known deviations:** Add a row for any deviation from the plan. The "Why accepted" column must be concrete enough that a new agent reading it cold would not second-guess or revert the decision.
+**Known deviations:** Add row for any plan deviation. "Why accepted" column must be concrete enough that new agent reading cold would not second-guess or revert.
 
-**Voice:** Write in third person ("the token guard fails loud" not "we added this so it fails loud"). No pronouns that assume shared context.
+**Voice:** Third person ("the token guard fails loud" not "we added this so it fails loud"). No pronouns assuming shared context.
 
 ## Worktrees
 
-Implementation work runs in a git worktree under `.worktrees/`. Do not recreate a worktree if it already exists. Run `git worktree list` to check.
+Implementation runs in git worktree under `.worktrees/`. No recreating existing worktrees. Run `git worktree list` to check.
 
 - `.worktrees/feat-server` — used for server implementation (complete)
 - `.worktrees/feat-client` — used for web client implementation (complete)
