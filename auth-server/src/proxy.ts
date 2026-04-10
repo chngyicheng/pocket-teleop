@@ -3,8 +3,8 @@ import type { RequestHandler } from 'express';
 import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 
-export function makeHttpProxy(target: string, pathRewrite?: Record<string, string>): RequestHandler {
-  return createProxyMiddleware({ target, changeOrigin: true, pathRewrite }) as unknown as RequestHandler;
+export function makeHttpProxy(target: string): RequestHandler {
+  return createProxyMiddleware({ target, changeOrigin: true }) as unknown as RequestHandler;
 }
 
 export function makeWsUpgradeHandler(target: string) {
