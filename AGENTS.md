@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Video source picker complete (33 auth-server / 99 webclient / 19 video-bridge tests). Branch: `video-source-picker` (pending merge to `main`). Settings drawer → Video page now has a runtime source picker: ROS2 topic, RTSP URL, or disabled — PATCH to MediaMTX config API via auth-server proxy. No outstanding tasks.
+> **For the next agent:** Video source picker UI is wired and all tests pass (33 auth-server / 99 webclient / 19 video-bridge), but the **"Apply" button on the Video settings page returns HTTP 404 at runtime** — the PATCH to `/mediamtx-api/config/paths/patch/teleop` never reaches MediaMTX successfully. Three fix attempts have been committed (see Known deviations below and commits `9104493`, `916490d`, `01373bc`) but none resolved the runtime 404. The next agent must investigate the live request path (auth-server → MediaMTX port 9997) before writing any more code. Tests do not cover the runtime path (they only assert the response is not a 302 redirect), so a passing test suite does not confirm the fix works.
 
-**Head SHA:** `ab57dd8` (as of 2026-04-09)
+**Head SHA:** `fac5803` (as of 2026-04-11)
 
 ### Completed milestones
 
@@ -87,6 +87,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for the full ta
 | `monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', ...)` used instead of `importlib.reload` | `video-bridge/test_video_bridge.py` | `importlib.reload` rewrites the module dict in-place and is not restored after the test; `monkeypatch.setattr` patches and restores the module-level constant cleanly |
 | `video-bridge-test` compose service runs `python3 -m pytest` (not `pytest`) | `docker-compose.yml`, `video-bridge/Dockerfile.video_bridge` | `pip3 install pytest` puts the binary in a non-`$PATH` location in the ROS Humble base image; `python3 -m pytest` always works because it invokes the installed module directly |
 | `/mediamtx-api` prefix strips to `/v3` at proxy layer | `auth-server/src/app.ts` | Avoids exposing a raw `/v3` path on the public-facing auth-server; clean separation between `/video` (WHEP media) and `/mediamtx-api` (config API) |
+| **OPEN BUG: `/mediamtx-api` PATCH returns 404 at runtime** | `auth-server/src/app.ts`, `web-client/src/video_source.ts` | Three fixes attempted (`9104493` wrong port, `916490d` pathRewrite, `01373bc` manual req.url mutation) — all pass tests but none resolve the runtime 404. Tests only check the response is not a 302; they do not verify the request actually reaches MediaMTX. Next step: add docker logs / curl tracing to confirm whether the request reaches port 9997 and what MediaMTX returns. |
 | `source: redirect` to non-existent path used to disable stream | `web-client/src/video_source.ts` | MediaMTX has no explicit "disabled" state; redirect to a void path causes WHEP clients to receive 404, which WhepClient already handles by showing the placeholder |
 | Video source state stored in `localStorage` and re-applied on load | `web-client/src/video_source.ts` | MediaMTX runtime config is volatile (lost on restart); re-applying on page load reconciles drift without adding a server-side persistence layer |
 | `VideoSourcePicker` takes `fetchFn` as constructor option | `web-client/src/video_source.ts` | Enables pure vitest testing without `vi.stubGlobal` side effects; same dependency-injection pattern as `WhepClient` callbacks |
