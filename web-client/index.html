@@ -403,12 +403,28 @@
     <!-- Video page -->
     <div id="page-video" class="drawer-page" hidden>
       <div class="field-group">
-        <span class="field-label">Video stream</span>
-        <span id="video-status" class="field-value">Connecting…</span>
+        <span class="field-label">Video source</span>
+        <select id="video-source-select" class="field-value" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:13px">
+          <option value="ros2">ROS2 topic</option>
+          <option value="rtsp">RTSP URL</option>
+          <option value="disabled">Disabled</option>
+        </select>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:4px">
-        Set <code>VIDEO_TOPIC</code> in <code>.env</code> to enable the robot camera.
-        Run <code>ros2 topic list | grep image</code> on the robot to find the topic name.
+      <div id="video-rtsp-field" class="field-group" style="display:none">
+        <span class="field-label">RTSP URL</span>
+        <div class="field-row">
+          <input id="video-rtsp-input" type="text"
+                 placeholder="rtsp://192.168.1.200:554/stream" />
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="video-source-apply" class="btn-primary">Apply</button>
+      </div>
+      <div id="video-source-status" style="font-size:12px;color:var(--text-muted);margin-top:6px"></div>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
+        <strong>ROS2 topic</strong> — uses <code>video-bridge</code> (set <code>VIDEO_TOPIC</code> in <code>.env</code>).<br>
+        <strong>RTSP URL</strong> — MediaMTX pulls directly from an IP camera.<br>
+        Changes take effect immediately; no restart needed.
       </p>
     </div>
 
@@ -527,6 +543,7 @@
     import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
     import { SettingsRouter } from '/dist/settings.js';
     import { WhepClient } from '/dist/whep_client.js';
+    import { VideoSourcePicker } from '/dist/video_source.js';
     import { TouchJoystick } from '/dist/touch_joystick.js';
     import { KeyboardHandler } from '/dist/keyboard_handler.js';
 
@@ -898,6 +915,45 @@
     });
 
     whepClient.start();
+
+    // ── Video source picker ───────────────────────────────────────────────────────
+
+    const videoSourceSelect = document.getElementById('video-source-select');
+    const videoRtspField    = document.getElementById('video-rtsp-field');
+    const videoRtspInput    = document.getElementById('video-rtsp-input');
+    const videoSourceApply  = document.getElementById('video-source-apply');
+    const videoSourceStatus = document.getElementById('video-source-status');
+
+    const picker = new VideoSourcePicker();
+
+    // Show/hide RTSP URL field
+    videoSourceSelect.addEventListener('change', () => {
+      videoRtspField.style.display = videoSourceSelect.value === 'rtsp' ? '' : 'none';
+    });
+
+    videoSourceApply.addEventListener('click', async () => {
+      const mode    = videoSourceSelect.value;
+      const rtspUrl = videoRtspInput.value.trim();
+      if (mode === 'rtsp' && !rtspUrl) {
+        videoSourceStatus.textContent = 'Enter an RTSP URL first.';
+        return;
+      }
+      videoSourceStatus.textContent = 'Applying…';
+      const result = await picker.apply(mode, rtspUrl);
+      videoSourceStatus.textContent = result === 'ok' ? 'Applied.' : result.replace(':', ': ');
+    });
+
+    // Restore saved source and re-apply on every load
+    // (MediaMTX runtime config is volatile — lost on container restart).
+    (async function () {
+      const { mode, rtspUrl } = picker.loadSaved();
+      videoSourceSelect.value = mode;
+      if (mode === 'rtsp') {
+        videoRtspField.style.display = '';
+        videoRtspInput.value = rtspUrl;
+      }
+      await picker.apply(mode, rtspUrl);
+    })();
 
     // ── Gamepad calibration UI ────────────────────────────────────────────────
 
