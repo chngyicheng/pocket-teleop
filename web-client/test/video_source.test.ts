@@ -112,6 +112,9 @@ describe('VideoSourcePicker.apply', () => {
     const result = await picker.apply('disabled');
     expect(result).toBe('ok');
     expect(localStorage.getItem('video-source')).toBe('disabled');
+    expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
+      body: JSON.stringify({ source: 'redirect', sourceRedirect: 'mediamtx-void' }),
+    }));
   });
 
   it('returns "http-error:<status>" without persisting on HTTP error', async () => {
