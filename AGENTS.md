@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 > **For the next agent:** v0.7.0 tagged. All tests pass (34 auth-server / 99 webclient / 19 video-bridge). Next work: implement v0.8.0 (control reliability), v0.9.0 (feedback & polish), v0.10.0 (robot telemetry) — plans in `docs/superpowers/plans/`. Start with v0.8.0. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `32bd7ab` (as of 2026-04-11)
+**Head SHA:** `37032e8` (as of 2026-04-11)
 
 ### Completed milestones
 
@@ -36,7 +36,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | Practical gaps (gamepad profiles, reconnection, calibration UI) | 43 | `v0.2.0` |
 | Frontend UI (settings.ts, onTwist, responsive index.html rewrite) | 43 | `v0.3.0` |
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
-| v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
+| v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | `v0.5.0` |
 | Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
 | Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) + 404 fix | 34 auth / 99 webclient / 19 video-bridge | `v0.7.0` |
 
