@@ -60,12 +60,13 @@ export function createApp(options: AppOptions): express.Application {
     rolling: true,
   }));
 
-  app.use(express.urlencoded({ extended: false }));
-  app.use(express.json());
-
   app.get('/health', (_req, res) => res.sendStatus(200));
 
-  app.use('/auth', authRouter(options.credPath));
+  // Body parsers scoped to /auth only — proxy routes must receive raw streams.
+  // Global body parsers consume the request stream before the proxy can pipe it,
+  // causing the proxy request to hang (http-proxy pipes the drained stream, which
+  // never ends, so the connection stalls).
+  app.use('/auth', express.urlencoded({ extended: false }), express.json(), authRouter(options.credPath));
 
   // Unauthenticated: redirect to login
   app.use((req, res, next) => {
@@ -87,15 +88,11 @@ export function createApp(options: AppOptions): express.Application {
   app.use('/video', makeHttpProxy(mediaMtxUrl));
 
   // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxApiUrl/v3/*
-  // Express creates separate router layers for each handler in app.use(path, fn1, fn2)
-  // and restores req.url between them — so the /v3 prepend must happen inside a single
-  // layer that calls the proxy directly rather than via next().
+  // http-proxy-middleware resets req.url = req.originalUrl in prepareProxyRequest, so
+  // manual req.url mutation before calling the proxy is always overwritten.
+  // pathRewrite runs after the reset, operating on req.originalUrl — use it instead.
   // mediaMtxApiUrl is port 9997 (config API), distinct from mediaMtxUrl port 8889 (WHEP).
-  const mtxApiProxy = makeHttpProxy(mediaMtxApiUrl);
-  app.use('/mediamtx-api', (req, res, next) => {
-    req.url = '/v3' + req.url;
-    mtxApiProxy(req, res, next);
-  });
+  app.use('/mediamtx-api', makeHttpProxy(mediaMtxApiUrl, { '^/mediamtx-api': '/v3' }));
 
   // Proxy authenticated requests to nginx (catch-all — must be last)
   app.use(makeHttpProxy(webClientUrl));

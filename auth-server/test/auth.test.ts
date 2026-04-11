@@ -15,6 +15,9 @@ let mockServer: http.Server;
 let mockPort: number;
 let correctHash: string;
 
+// Captures last request received by the mock server for diagnostic assertions.
+let lastMockRequest: { method: string; url: string; body: string } | null = null;
+
 beforeAll(async () => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'auth-route-test-'));
   credPath = path.join(tmpDir, 'credentials.json');
@@ -23,7 +26,15 @@ beforeAll(async () => {
 
   correctHash = await bcrypt.hash('correctpass', 10);
 
-  mockServer = http.createServer((_req, res) => { res.writeHead(200); res.end('ok'); });
+  mockServer = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      lastMockRequest = { method: req.method ?? '', url: req.url ?? '', body };
+      res.writeHead(200);
+      res.end('ok');
+    });
+  });
   await new Promise<void>((r) => mockServer.listen(0, r));
   mockPort = (mockServer.address() as net.AddressInfo).port;
 });
@@ -340,8 +351,9 @@ function getAppWithVideo() {
     credPath,
     sessionsPath,
     sessionSecret: 'test-secret',
-    webClientUrl: `http://localhost:${mockPort}`,
-    mediaMtxUrl:  `http://localhost:${mockPort}`,
+    webClientUrl:    `http://localhost:${mockPort}`,
+    mediaMtxUrl:     `http://localhost:${mockPort}`,
+    mediaMtxApiUrl:  `http://localhost:${mockPort}`,
   });
 }
 
@@ -381,5 +393,31 @@ describe('GET /mediamtx-api proxy', () => {
     const res = await agent.get('/mediamtx-api/config/paths/list');
     expect(res.status).not.toBe(302);
     expect(res.headers['location']).not.toBe('/auth/login');
+  });
+});
+
+describe('PATCH /mediamtx-api proxy — diagnostic', () => {
+  it('forwards PATCH to mock at /v3 path with correct body', async () => {
+    lastMockRequest = null;
+    const agent = supertest.agent(getAppWithVideo());
+    await agent
+      .post('/auth/login')
+      .send('username=admin&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const res = await agent
+      .patch('/mediamtx-api/config/paths/patch/teleop')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ source: 'publisher' }));
+
+    // Not redirected to login
+    expect(res.status).not.toBe(302);
+    // Mock received the request
+    expect(lastMockRequest).not.toBeNull();
+    // Method preserved
+    expect(lastMockRequest!.method).toBe('PATCH');
+    // /v3 prefix prepended correctly
+    expect(lastMockRequest!.url).toBe('/v3/config/paths/patch/teleop');
+    // Body forwarded (this will fail if express.json() consumes the stream)
+    expect(lastMockRequest!.body).toBe(JSON.stringify({ source: 'publisher' }));
   });
 });
