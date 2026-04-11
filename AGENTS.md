@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** Video source picker UI wired and runtime 404 bug fixed. All tests pass (34 auth-server / 99 webclient / 19 video-bridge). Two root causes found and fixed: (1) `express.json()` was registered globally and consumed the request body stream before the proxy could pipe it — proxy request hung indefinitely; fixed by scoping body parsers to `/auth` only. (2) `http-proxy-middleware` v2 resets `req.url = req.originalUrl` at the start of `prepareProxyRequest`, silently discarding all manual `req.url` mutations done before calling the proxy — fixed by using `pathRewrite: { '^/mediamtx-api': '/v3' }` which runs after the reset. The "Apply" button should now correctly PATCH MediaMTX at `localhost:9997`. Runtime verification (clicking Apply in the UI) is the remaining confirmation step.
+> **For the next agent:** v0.7.0 tagged. All tests pass (34 auth-server / 99 webclient / 19 video-bridge). Next work: implement v0.8.0 (control reliability), v0.9.0 (feedback & polish), v0.10.0 (robot telemetry) — plans in `docs/superpowers/plans/`. Start with v0.8.0. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `17c54ee` (as of 2026-04-11)
+**Head SHA:** `32bd7ab` (as of 2026-04-11)
 
 ### Completed milestones
 
@@ -38,7 +38,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | Touch joystick + UI polish (TouchJoystick module, namespace settings, gamepad switching, dual-touch fix, UI refinements) | 60 | `v0.4.0` |
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | pending `v0.5.0` |
 | Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
-| Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) | 33 auth / 99 webclient / 19 video-bridge | pending `v0.7.0` |
+| Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) + 404 fix | 34 auth / 99 webclient / 19 video-bridge | `v0.7.0` |
 
 ### Known deviations (still relevant to future work)
 
