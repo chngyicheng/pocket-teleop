@@ -122,6 +122,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | Auth server design spec | `docs/superpowers/specs/2026-04-03-auth-server-design.md` |
 | **Video streaming implementation plan** | `docs/superpowers/plans/2026-04-09-video-streaming-implementation.md` |
 | **Video source picker implementation plan** | `docs/superpowers/plans/2026-04-09-video-source-picker-implementation.md` |
+| **v0.8.0 control reliability plan** | `docs/superpowers/plans/2026-04-11-v0.8.0-control-reliability.md` |
+| **v0.9.0 feedback & polish plan** | `docs/superpowers/plans/2026-04-11-v0.9.0-feedback-polish.md` |
+| **v0.10.0 robot telemetry plan** | `docs/superpowers/plans/2026-04-11-v0.10.0-robot-telemetry.md` |
 
 **When to go deeper:** Guide file doesn't answer → read relevant spec. Spec doesn't answer → read plan. Don't read all three upfront.
 
