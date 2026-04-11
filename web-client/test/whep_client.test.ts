@@ -299,6 +299,34 @@ describe('WhepClient', () => {
       expect(states).toContain('retrying');
       client.stop();
     });
+
+    it('fires error then retrying when fetch throws (network error)', async () => {
+      const states: WhepState[] = [];
+      mockFetch.mockRejectedValue(new Error('Failed to fetch'));
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      await flushPromises();
+      expect(states).toContain('error');
+      expect(states).toContain('retrying');
+      client.stop();
+    });
+
+    it('fires retrying when connection state becomes closed', async () => {
+      const states: WhepState[] = [];
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      await flushPromises();
+      latestPc()._fireConnectionStateChange('closed');
+      expect(states).toContain('retrying');
+      client.stop();
+    });
   });
 
   describe('exponential back-off', () => {
