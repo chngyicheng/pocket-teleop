@@ -11,10 +11,13 @@
  * Auto-retries with exponential back-off if the stream is unavailable or
  * the connection drops (e.g. video-bridge restarting).
  */
+export type WhepState = 'connecting' | 'live' | 'retrying' | 'error';
+
 export interface WhepCallbacks {
   onStream: (stream: MediaStream) => void;
   onError:  (msg: string) => void;
   onClose:  () => void;
+  onStateChange?: (state: WhepState) => void;
 }
 
 const BASE_RETRY_MS  = 3_000;
@@ -52,6 +55,8 @@ export class WhepClient {
     this._closePc();
     if (this.stopped) return;
 
+    this.callbacks.onStateChange?.('connecting');
+
     const pc = new RTCPeerConnection({ iceServers: [] });
     this.pc   = pc;
 
@@ -61,6 +66,7 @@ export class WhepClient {
     pc.ontrack = (e) => {
       if (e.streams[0]) {
         this.retryDelay = BASE_RETRY_MS; // reset back-off on success
+        this.callbacks.onStateChange?.('live');
         this.callbacks.onStream(e.streams[0]);
       }
     };
@@ -92,6 +98,7 @@ export class WhepClient {
         this.callbacks.onError(
           res.status === 404 ? 'stream not available' : `WHEP ${res.status}`
         );
+        this.callbacks.onStateChange?.('error');
         this._scheduleRetry();
         return;
       }
@@ -102,6 +109,7 @@ export class WhepClient {
 
     } catch (e) {
       this.callbacks.onError((e as Error).message ?? 'connection error');
+      this.callbacks.onStateChange?.('error');
       this._scheduleRetry();
     }
   }
@@ -123,6 +131,7 @@ export class WhepClient {
 
   private _scheduleRetry(): void {
     if (this.stopped) return;
+    this.callbacks.onStateChange?.('retrying');
     this._clearRetry();
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;

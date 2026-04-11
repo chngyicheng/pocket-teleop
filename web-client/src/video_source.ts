@@ -46,6 +46,18 @@ export class VideoSourcePicker {
     return { mode, rtspUrl };
   }
 
+  /**
+   * Validate mode + rtspUrl before applying.
+   * Returns null if valid, or a human-readable error string.
+   */
+  validate(mode: VideoSourceMode, rtspUrl: string): string | null {
+    if (mode === 'rtsp') {
+      if (!rtspUrl.trim()) return 'RTSP URL is required.';
+      if (!rtspUrl.trim().startsWith('rtsp://')) return 'RTSP URL must start with rtsp://';
+    }
+    return null;
+  }
+
   /** Persist source to localStorage. */
   save(mode: VideoSourceMode, rtspUrl: string): void {
     localStorage.setItem(SOURCE_KEY, mode);
@@ -58,6 +70,8 @@ export class VideoSourcePicker {
    * Resolves with 'ok' | 'http-error:<status>' | 'network-error:<message>'.
    */
   async apply(mode: VideoSourceMode, rtspUrl = ''): Promise<string> {
+    const err = this.validate(mode, rtspUrl);
+    if (err) return `validation-error:${err}`;
     const body = buildMtxSource(mode, rtspUrl);
     try {
       const res = await this.fetchFn(this.apiUrl, {

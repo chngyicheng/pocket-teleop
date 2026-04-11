@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.8.0 complete. All tests pass (34 auth-server / 102 webclient / 19 video-bridge). Next work: implement v0.9.0 (feedback & polish), v0.10.0 (robot telemetry) — plans in `docs/superpowers/plans/`. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
+> **For the next agent:** v0.9.0 complete. All tests pass (34 auth-server / 115 webclient / 19 video-bridge). Next work: implement v0.10.0 (robot telemetry) — plan in `docs/superpowers/plans/`. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `847d080` (as of 2026-04-11)
+**Head SHA:** `cfc8c07` (as of 2026-04-11)
 
 ### Completed milestones
 
@@ -39,7 +39,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | v0.5.0 (KeyboardHandler, TeleopClient fixed retry + onPong, TouchJoystick hint, axis remap, input-mode bar, last-seen pill) | 63 | `v0.5.0` |
 | Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
 | Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) + 404 fix | 34 auth / 99 webclient / 19 video-bridge | `v0.7.0` |
-| v0.8.0 control reliability (keyboard key-up fires immediately, e-stop button + spacebar, calibration Ready phase) | 34 auth / 102 webclient / 19 video-bridge | — |
+| v0.8.0 control reliability (keyboard key-up fires immediately, e-stop button + spacebar, calibration Ready phase) | 34 auth / 103 webclient / 19 video-bridge | — |
+| v0.9.0 feedback & polish (RTSP URL validation, WhepClient stream health badge, TeleopClient latency display) | 34 auth / 115 webclient / 19 video-bridge | — |
 
 ### Known deviations (still relevant to future work)
 
@@ -97,6 +98,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | `boundKeyUp` fires twist immediately (not poll-driven) | `web-client/src/keyboard_handler.ts` | Poll interval (200ms) creates a coasting window; key-up handler re-computes and fires the updated twist atomically without duplicating the poll logic |
 | Spacebar e-stop skips when `activeElement` is input/textarea/select | `web-client/index.html` | Spacebar is a valid character in text fields; checking tag prevents accidental stops while typing RTSP URLs or profile names |
 | Gamepad calibration splits into prompt + sample phases | `web-client/index.html` | Original single-phase sampling started immediately after instruction display; user had no time to position the stick before samples were collected |
+| `validate()` lives on `VideoSourcePicker`, not `buildMtxSource` | `web-client/src/video_source.ts` | `buildMtxSource` is a pure data function; validation is a policy concern that belongs on the stateful class |
+| Latency updates only during idle (no active driving) | `web-client/src/teleop_client.ts` | Keepalive ping fires only when no twist sent in 200ms; during active driving, continuous twists suppress pings; this is the correct trade-off — latency during idle is more useful than during driving |
+| `WhepState` `'error'` is distinct from `'retrying'` | `web-client/src/whep_client.ts` | `onError` fires for transient stream errors (e.g. source not available) that trigger retry; true error state reserved for fetch/network failures that are not retried |
 
 ---
 

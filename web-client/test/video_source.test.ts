@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildMtxSource, VideoSourcePicker } from '../src/video_source.js';
+import { buildMtxSource, VideoSourcePicker, type VideoSourceMode } from '../src/video_source.js';
 
 // ── buildMtxSource ────────────────────────────────────────────────────────────
 
@@ -79,6 +79,50 @@ describe('VideoSourcePicker.save', () => {
     const picker = makePicker(vi.fn());
     picker.save('ros2', '');
     expect(localStorage.getItem('video-rtsp-url')).toBeNull();
+  });
+});
+
+describe('VideoSourcePicker.validate', () => {
+  it('returns null for ros2', () => {
+    expect(new VideoSourcePicker().validate('ros2', '')).toBeNull();
+  });
+
+  it('returns null for disabled', () => {
+    expect(new VideoSourcePicker().validate('disabled', '')).toBeNull();
+  });
+
+  it('returns null for valid rtsp URL', () => {
+    expect(new VideoSourcePicker().validate('rtsp', 'rtsp://192.168.1.1:554/live')).toBeNull();
+  });
+
+  it('returns error for empty rtsp URL', () => {
+    expect(new VideoSourcePicker().validate('rtsp', '')).toBe('RTSP URL is required.');
+  });
+
+  it('returns error for whitespace-only rtsp URL', () => {
+    expect(new VideoSourcePicker().validate('rtsp', '   ')).toBe('RTSP URL is required.');
+  });
+
+  it('returns error for rtsp URL without rtsp:// prefix', () => {
+    expect(new VideoSourcePicker().validate('rtsp', 'http://cam/live')).toBe('RTSP URL must start with rtsp://');
+  });
+});
+
+describe('VideoSourcePicker.apply — validation short-circuit', () => {
+  it('returns validation-error without calling fetch for empty rtsp URL', async () => {
+    const fetchFn = vi.fn();
+    const picker = makePicker(fetchFn as unknown as typeof fetch);
+    const result = await picker.apply('rtsp', '');
+    expect(result).toBe('validation-error:RTSP URL is required.');
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it('returns validation-error without calling fetch for bad rtsp prefix', async () => {
+    const fetchFn = vi.fn();
+    const picker = makePicker(fetchFn as unknown as typeof fetch);
+    const result = await picker.apply('rtsp', 'http://cam/live');
+    expect(result).toMatch(/^validation-error:/);
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 });
 

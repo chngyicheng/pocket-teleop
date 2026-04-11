@@ -541,6 +541,10 @@
   <div id="joystick-left"></div>
   <div id="joystick-right"></div>
   <div id="input-mode-bar">◉ Touch</div>
+  <div id="video-status-bar" style="position:fixed;bottom:calc(var(--input-bar-h,44px) + 4px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;pointer-events:none">
+    <span id="video-health-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);letter-spacing:0.04em">● connecting</span>
+    <span id="latency-display" style="font-size:11px;color:var(--text-muted)"></span>
+  </div>
 
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
@@ -805,6 +809,7 @@
 
     // ── TeleopClient ──────────────────────────────────────────────────────────
 
+    const latencyDisplay = document.getElementById('latency-display');
     let joyLx = 0, joyLy = 0, joyAz = 0;
 
     const client = new TeleopClient({
@@ -816,6 +821,7 @@
         applyRobotIdentity(robotName, robotNamespace);
       },
       onPong: () => { lastReceivedAt = Date.now(); },
+      onLatency: (ms) => { latencyDisplay.textContent = `${ms} ms`; },
       onError: (msg) => {
         setStatus('warn', `Error: ${msg}`);
       },
@@ -932,10 +938,24 @@
 
     const whepUrl = `${window.location.protocol}//${window.location.host}/video/teleop/whep`;
 
+    const videoHealthBadge = document.getElementById('video-health-badge');
+
+    const STATE_LABELS = {
+      connecting: { text: '● connecting', color: 'var(--text-muted)' },
+      live:       { text: '● live',       color: '#27ae60' },
+      retrying:   { text: '↺ retrying',   color: '#e67e22' },
+      error:      { text: '✕ error',      color: '#c0392b' },
+    };
+
     const whepClient = new WhepClient(whepUrl, {
       onStream: (stream) => showVideoStream(stream),
       onError:  (msg)    => hideVideoStream(msg === 'stream not available' ? 'No video stream' : `Video: ${msg}`),
       onClose:  ()       => hideVideoStream('Stream closed'),
+      onStateChange: (state) => {
+        const s = STATE_LABELS[state] ?? STATE_LABELS.connecting;
+        videoHealthBadge.textContent = s.text;
+        videoHealthBadge.style.color = s.color;
+      },
     });
 
     whepClient.start();
@@ -958,13 +978,15 @@
     videoSourceApply.addEventListener('click', async () => {
       const mode    = videoSourceSelect.value;
       const rtspUrl = videoRtspInput.value.trim();
-      if (mode === 'rtsp' && !rtspUrl) {
-        videoSourceStatus.textContent = 'Enter an RTSP URL first.';
-        return;
-      }
       videoSourceStatus.textContent = 'Applying…';
       const result = await picker.apply(mode, rtspUrl);
-      videoSourceStatus.textContent = result === 'ok' ? 'Applied.' : result.replace(':', ': ');
+      if (result === 'ok') {
+        videoSourceStatus.textContent = 'Applied.';
+      } else if (result.startsWith('validation-error:')) {
+        videoSourceStatus.textContent = result.slice('validation-error:'.length);
+      } else {
+        videoSourceStatus.textContent = result.replace(':', ': ');
+      }
     });
 
     // Restore saved source and re-apply on every load

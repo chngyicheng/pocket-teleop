@@ -10,6 +10,7 @@ export interface TeleopClientOptions {
   retryIntervalMs?: number;
   onReconnecting?: (attempt: number) => void;
   onPong?: () => void;
+  onLatency?: (ms: number) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
@@ -22,6 +23,7 @@ export class TeleopClient {
   private keepaliveId: ReturnType<typeof setInterval> | null = null;
   private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastSentAt = 0;
+  private pingSentAt = 0;
   private url = '';
   private intentionalDisconnect = false;
   private retryAttempt = 0;
@@ -111,6 +113,10 @@ export class TeleopClient {
     } else if (msg.type === 'error') {
       this.options.onError?.(msg.message);
     } else if (msg.type === 'pong') {
+      if (this.pingSentAt > 0) {
+        this.options.onLatency?.(Date.now() - this.pingSentAt);
+        this.pingSentAt = 0;
+      }
       this.options.onPong?.();
     }
   }
@@ -132,6 +138,7 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
     this.keepaliveId = setInterval(() => {
       if (Date.now() - this.lastSentAt >= 200) {
+        this.pingSentAt = Date.now();
         this.connection.send(buildPing());
         this.lastSentAt = Date.now();
       }

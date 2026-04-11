@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { WhepClient } from '../src/whep_client.js';
+import { WhepClient, type WhepState } from '../src/whep_client.js';
 
 // Flush all pending Promise microtasks (vi.runAllMicrotasksAsync is Vitest 2.x only).
 async function flushPromises(): Promise<void> {
@@ -242,6 +242,62 @@ describe('WhepClient', () => {
       latestPc()._fireTrack(stream);
 
       expect(onStream).toHaveBeenCalledWith(stream);
+    });
+  });
+
+  describe('onStateChange', () => {
+    it('fires connecting immediately on start()', () => {
+      const states: WhepState[] = [];
+      mockFetch.mockRejectedValue(new Error('fail'));
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      expect(states[0]).toBe('connecting');
+      client.stop();
+    });
+
+    it('fires live when ontrack delivers a stream', async () => {
+      const states: WhepState[] = [];
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      await flushPromises();
+      latestPc()._fireTrack({} as MediaStream);
+      expect(states).toContain('live');
+      client.stop();
+    });
+
+    it('fires retrying when connection drops (failed state)', async () => {
+      const states: WhepState[] = [];
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      await flushPromises();
+      latestPc()._fireConnectionStateChange('failed');
+      expect(states).toContain('retrying');
+      client.stop();
+    });
+
+    it('fires error then retrying on fetch HTTP error', async () => {
+      const states: WhepState[] = [];
+      mockFetch.mockResolvedValue(makeErrorResponse(404));
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+        onStateChange: (s) => states.push(s),
+      });
+      client.start();
+      await flushPromises();
+      expect(states).toContain('error');
+      expect(states).toContain('retrying');
+      client.stop();
     });
   });
 
