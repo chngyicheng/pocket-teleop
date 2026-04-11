@@ -107,6 +107,14 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
   }
 }
 
+void TeleopServer::broadcast(const std::string& message) {
+  std::lock_guard<std::mutex> lock(client_mutex_);
+  if (!has_client_) return;
+  websocketpp::lib::error_code ec;
+  ws_server_.send(active_client_, message, websocketpp::frame::opcode::text, ec);
+  // Ignore ec — if client disconnected, has_client_ will be cleared by on_close.
+}
+
 void TeleopServer::watchdog_loop() {
   while (running_) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));

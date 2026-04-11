@@ -23,9 +23,9 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 ## Handoff State — Resume Here
 
-> **For the next agent:** v0.9.0 complete. All tests pass (34 auth-server / 115 webclient / 19 video-bridge). Next work: implement v0.10.0 (robot telemetry) — plan in `docs/superpowers/plans/`. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
+> **For the next agent:** v0.10.0 complete. All tests pass (34 auth-server / 119 webclient / 19 video-bridge). All planned milestones (v0.8.0–v0.10.0) implemented. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `ec7d661` (as of 2026-04-11)
+**Head SHA:** `8cbe532` (as of 2026-04-11)
 
 ### Completed milestones
 
@@ -40,7 +40,8 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | Video streaming (mediamtx, video-bridge, WhepClient, /video proxy, WebRTC panel) | 85 webclient / 31 auth / 19 video-bridge | `v0.6.0` |
 | Video source picker (auth-server /mediamtx-api proxy, VideoSourcePicker module, settings UI) + 404 fix | 34 auth / 99 webclient / 19 video-bridge | `v0.7.0` |
 | v0.8.0 control reliability (keyboard key-up fires immediately, e-stop button + spacebar, calibration Ready phase) | 34 auth / 103 webclient / 19 video-bridge | — |
-| v0.9.0 feedback & polish (RTSP URL validation, WhepClient stream health badge, TeleopClient latency display) | 34 auth / 115 webclient / 19 video-bridge | — |
+| v0.9.0 feedback & polish (RTSP URL validation, WhepClient stream health badge, TeleopClient latency display) | 34 auth / 117 webclient / 19 video-bridge | — |
+| v0.10.0 robot telemetry (odom subscription, broadcast, protocol odom type, TeleopClient onOdom, UI panel + compass) | 34 auth / 119 webclient / 19 video-bridge | — |
 
 ### Known deviations (still relevant to future work)
 
@@ -101,6 +102,10 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 | `validate()` lives on `VideoSourcePicker`, not `buildMtxSource` | `web-client/src/video_source.ts` | `buildMtxSource` is a pure data function; validation is a policy concern that belongs on the stateful class |
 | Latency updates only during idle (no active driving) | `web-client/src/teleop_client.ts` | Keepalive ping fires only when no twist sent in 200ms; during active driving, continuous twists suppress pings; this is the correct trade-off — latency during idle is more useful than during driving |
 | `WhepState` `'error'` is distinct from `'retrying'` | `web-client/src/whep_client.ts` | `onError` fires for transient stream errors (e.g. source not available) that trigger retry; true error state reserved for fetch/network failures that are not retried |
+| Odom throttled to 10 Hz server-side | `server/src/teleop_node.cpp` | `/odom` often published at 50+ Hz; sending every message over WebSocket would saturate a Raspberry Pi's uplink; 10 Hz is sufficient for display |
+| Heading sent as radians; UI converts to degrees | Protocol, `web-client/index.html` | Radians are the native ROS2 unit; conversion in UI keeps the protocol clean and avoids floating-point precision loss from server-side degree conversion |
+| Odom panel hidden until first message | `web-client/index.html` | Robots that don't publish `/odom` should not show a stale or empty panel; hidden-by-default prevents confusion |
+| `broadcast()` ignores `error_code` from `ws_server_.send` | `server/src/teleop_server.cpp` | Client disconnect sets `has_client_ = false` via `on_close`; silent error on a stale send is harmless and avoids a race condition check |
 
 ---
 

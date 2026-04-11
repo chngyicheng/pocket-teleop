@@ -545,6 +545,14 @@
     <span id="video-health-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);letter-spacing:0.04em">● connecting</span>
     <span id="latency-display" style="font-size:11px;color:var(--text-muted)"></span>
   </div>
+  <div id="odom-panel" hidden style="display:flex;gap:12px;align-items:center;font-size:12px;color:var(--text-muted);padding:4px 0">
+    <span><span style="opacity:0.6">pos </span><span id="odom-xy"></span></span>
+    <span><span style="opacity:0.6">hdg </span><span id="odom-heading"></span></span>
+    <svg id="odom-compass" width="18" height="18" viewBox="-9 -9 18 18">
+      <circle r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
+      <polygon id="odom-needle" points="0,-7 2,3 0,1 -2,3" fill="currentColor" transform="rotate(0)"/>
+    </svg>
+  </div>
 
   <script type="module">
     import { TeleopClient } from '/dist/teleop_client.js';
@@ -810,6 +818,10 @@
     // ── TeleopClient ──────────────────────────────────────────────────────────
 
     const latencyDisplay = document.getElementById('latency-display');
+    const odomPanel   = document.getElementById('odom-panel');
+    const odomXY      = document.getElementById('odom-xy');
+    const odomHeading = document.getElementById('odom-heading');
+    const odomNeedle  = document.getElementById('odom-needle');
     let joyLx = 0, joyLy = 0, joyAz = 0;
 
     const client = new TeleopClient({
@@ -822,6 +834,13 @@
       },
       onPong: () => { lastReceivedAt = Date.now(); },
       onLatency: (ms) => { latencyDisplay.textContent = `${ms} ms`; },
+      onOdom: (x, y, heading) => {
+        odomPanel.hidden = false;
+        odomXY.textContent      = `${x.toFixed(2)}, ${y.toFixed(2)} m`;
+        const deg = Math.round(heading * 180 / Math.PI);
+        odomHeading.textContent = `${deg}°`;
+        odomNeedle.setAttribute('transform', `rotate(${deg})`);
+      },
       onError: (msg) => {
         setStatus('warn', `Error: ${msg}`);
       },

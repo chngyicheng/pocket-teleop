@@ -91,4 +91,15 @@ describe('parseMessage', () => {
     const result = parseMessage(raw);
     expect(result).toEqual({ type: 'unknown', raw });
   });
+
+  it('parses odom message', () => {
+    const msg = JSON.stringify({ type: 'odom', x: 1.5, y: -0.3, heading: 0.785 });
+    expect(parseMessage(msg)).toEqual({ type: 'odom', x: 1.5, y: -0.3, heading: 0.785 });
+  });
+
+  it('ignores odom with missing fields — falls through to unknown', () => {
+    const msg = JSON.stringify({ type: 'odom', x: 1.5 });
+    const result = parseMessage(msg);
+    expect(result.type).not.toBe('odom');
+  });
 });

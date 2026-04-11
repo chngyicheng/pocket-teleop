@@ -11,6 +11,7 @@ export interface TeleopClientOptions {
   onReconnecting?: (attempt: number) => void;
   onPong?: () => void;
   onLatency?: (ms: number) => void;
+  onOdom?: (x: number, y: number, heading: number) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
@@ -118,6 +119,8 @@ export class TeleopClient {
         this.pingSentAt = 0;
       }
       this.options.onPong?.();
+    } else if (msg.type === 'odom') {
+      this.options.onOdom?.(msg.x, msg.y, msg.heading);
     }
   }
 

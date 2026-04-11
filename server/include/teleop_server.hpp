@@ -29,6 +29,9 @@ public:
   void start();  // blocks until stop() is called
   void stop();
 
+  // Send a message to the connected client (no-op if no client).
+  void broadcast(const std::string& message);
+
 private:
   void on_open(ConnectionHdl hdl);
   void on_close(ConnectionHdl hdl);

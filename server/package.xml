@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
 
   <build_depend>libwebsocketpp-dev</build_depend>
   <build_depend>libboost-system-dev</build_depend>

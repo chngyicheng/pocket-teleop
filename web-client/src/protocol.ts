@@ -2,6 +2,7 @@ export type InboundMessage =
   | { type: 'pong' }
   | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string }
   | { type: 'error'; message: string }
+  | { type: 'odom'; x: number; y: number; heading: number }
   | { type: 'unknown'; raw: string };
 
 export function buildTwist(lx: number, ly: number, az: number): string {
@@ -29,6 +30,12 @@ export function parseMessage(raw: string): InboundMessage {
     }
     if (msg['type'] === 'error') {
       return { type: 'error', message: msg['message'] as string };
+    }
+    if (msg['type'] === 'odom' &&
+        typeof msg['x'] === 'number' &&
+        typeof msg['y'] === 'number' &&
+        typeof msg['heading'] === 'number') {
+      return { type: 'odom', x: msg['x'], y: msg['y'], heading: msg['heading'] };
     }
     return { type: 'unknown', raw };
   } catch {

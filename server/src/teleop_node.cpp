@@ -1,4 +1,6 @@
 #include "teleop_node.hpp"
+#include <nlohmann/json.hpp>
+#include <cmath>
 
 TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   : Node("teleop_node", options) {
@@ -31,15 +33,46 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
     robot_namespace,
     [this](double lx, double ly, double az) { publish_twist(lx, ly, az); });
 
+  declare_parameter("odom_topic", std::string("/odom"));
+  const auto odom_topic = get_parameter("odom_topic").as_string();
+
+  odom_sub_ = create_subscription<nav_msgs::msg::Odometry>(
+    odom_topic, 10,
+    [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+      publish_odom(msg);
+    });
+
   server_thread_ = std::thread([this]() { server_->start(); });
 
   RCLCPP_INFO(get_logger(), "Teleop server listening on port %ld", port);
+  RCLCPP_INFO(get_logger(), "Subscribing to odom topic: %s", odom_topic.c_str());
   RCLCPP_INFO(get_logger(), "Publishing to topic: %s", topic.c_str());
 }
 
 TeleopNode::~TeleopNode() {
   server_->stop();
   if (server_thread_.joinable()) server_thread_.join();
+}
+
+void TeleopNode::publish_odom(const nav_msgs::msg::Odometry::SharedPtr& msg) {
+  const auto now = std::chrono::steady_clock::now();
+  if (now - last_odom_sent_ < ODOM_INTERVAL) return;
+  last_odom_sent_ = now;
+
+  const auto& pos = msg->pose.pose.position;
+  const auto& q   = msg->pose.pose.orientation;
+  // Quaternion → yaw (rotation around Z axis)
+  const double yaw = std::atan2(
+    2.0 * (q.w * q.z + q.x * q.y),
+    1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+
+  nlohmann::json odom = {
+    {"type",    "odom"},
+    {"x",       pos.x},
+    {"y",       pos.y},
+    {"heading", yaw},
+  };
+  server_->broadcast(odom.dump());
 }
 
 void TeleopNode::publish_twist(double lx, double ly, double az) {
