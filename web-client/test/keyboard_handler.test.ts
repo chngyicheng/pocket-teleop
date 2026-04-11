@@ -105,11 +105,12 @@ describe('KeyboardHandler', () => {
   });
 
   it('fires zero twist immediately on last key-up (no poll wait)', () => {
+    // vi.useFakeTimers() is active — no timer advance means no poll fires.
+    // Any twist here comes exclusively from the key-up handler, not the poll.
     const twists: [number, number, number][] = [];
     const kh = new KeyboardHandler({ onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
     kh.start();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
-    twists.length = 0; // clear poll-driven entries
     document.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
     expect(twists).toHaveLength(1);
     expect(twists[0]).toEqual([0, 0, 0]);
@@ -127,6 +128,19 @@ describe('KeyboardHandler', () => {
     // w released, d still held: lx=0, az=-1
     expect(twists).toHaveLength(1);
     expect(twists[0]).toEqual([0, 0, -1]);
+    kh.stop();
+  });
+
+  it('fires updated twist on key-up mid-combo (ly axis: ArrowRight+w, release ArrowRight)', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ velocity: 1, onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight' }));
+    // ArrowRight released, w still held: lx=1, ly=0, az=0
+    expect(twists).toHaveLength(1);
+    expect(twists[0]).toEqual([1, 0, 0]);
     kh.stop();
   });
 
