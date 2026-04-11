@@ -103,4 +103,42 @@ describe('KeyboardHandler', () => {
     expect(twistCalls).toHaveLength(0);
     expect(activityCount).toBe(0);
   });
+
+  it('fires zero twist immediately on last key-up (no poll wait)', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+    twists.length = 0; // clear poll-driven entries
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+    expect(twists).toHaveLength(1);
+    expect(twists[0]).toEqual([0, 0, 0]);
+    kh.stop();
+  });
+
+  it('fires updated twist on key-up mid-combo (e.g. w+d, release w)', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ velocity: 1, onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd' }));
+    twists.length = 0;
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+    // w released, d still held: lx=0, az=-1
+    expect(twists).toHaveLength(1);
+    expect(twists[0]).toEqual([0, 0, -1]);
+    kh.stop();
+  });
+
+  it('does not fire on key-up when disabled', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    kh.setEnabled(false);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+    twists.length = 0;
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+    expect(twists).toHaveLength(0);
+    kh.stop();
+  });
 });

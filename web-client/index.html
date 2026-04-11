@@ -501,6 +501,10 @@
   <header id="app-header">
     <button id="menu-btn" aria-label="Open settings">☰</button>
     <span id="app-title">pocket-teleop</span>
+    <button id="estop-btn" title="Emergency stop (Spacebar)"
+      style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.05em">
+      &#9632; STOP
+    </button>
     <button id="status-pill" class="pill" style="margin-left:auto" disabled>Connecting…</button>
   </header>
 
@@ -844,6 +848,26 @@
 
     client.connect(buildWsUrl());
 
+    // ── E-stop ────────────────────────────────────────────────────────────────────
+    const estopBtn = document.getElementById('estop-btn');
+
+    function triggerEstop() {
+      client.sendTwist(0, 0, 0);
+      estopBtn.style.outline = '3px solid #fff';
+      setTimeout(() => { estopBtn.style.outline = ''; }, 300);
+    }
+
+    estopBtn.addEventListener('click', triggerEstop);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== ' ') return;
+      // Skip when typing in an input field
+      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      e.preventDefault();
+      triggerEstop();
+    });
+
     setInterval(() => {
       if (statusPill.classList.contains('pill-danger')) {
         const secsAgo = Math.floor((Date.now() - lastReceivedAt) / 1000);
@@ -1021,18 +1045,33 @@
     calStartBtn.addEventListener('click', () => { calStepIndex = 0; startCalStep(); });
 
     function startCalStep() {
-      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction;
+      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction + '<br><small style="color:var(--text-muted)">Hold the stick in position, then click Ready.</small>';
       calStartBtn.style.display = 'none';
-      calNextBtn.style.display  = 'none';
+      calNextBtn.style.display  = 'inline';
+      calNextBtn.textContent    = 'Ready — holding stick';
       calSkipBtn.style.display  = 'inline';
+      calSamples = [];
+      // Sampling begins only when user clicks Ready (see calNextBtn handler below).
+    }
+
+    function beginSampling() {
+      calNextBtn.style.display = 'none';
+      calSkipBtn.style.display = 'inline';
+      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction + '<br><small style="color:var(--text-muted)">Sampling… keep holding.</small>';
       calSamples = [];
       calSampleInterval = setInterval(() => {
         const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
         if (!gp) return;
         calSamples.push([...gp.axes]);
-        if (calSamples.length >= 5) { clearInterval(calSampleInterval); calSampleInterval = null; commitCalStep(); }
+        if (calSamples.length >= 5) {
+          clearInterval(calSampleInterval);
+          calSampleInterval = null;
+          commitCalStep();
+        }
       }, 200);
     }
+
+    calNextBtn.addEventListener('click', beginSampling);
 
     function commitCalStep() {
       const axisCount = calSamples[0].length;

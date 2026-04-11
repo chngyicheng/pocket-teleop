@@ -29,6 +29,15 @@ export class KeyboardHandler {
     };
     this.boundKeyUp = (e: KeyboardEvent) => {
       this.keysDown.delete(e.key);
+      // Fire immediately — don't wait for next poll interval.
+      // Ensures zero velocity is published the moment the last key is released.
+      if (this.enabled) {
+        const v  = this.velocity;
+        const lx = this.keysDown.has('w') ? v : this.keysDown.has('s') ? -v : 0;
+        const az = this.keysDown.has('a') ? v : this.keysDown.has('d') ? -v : 0;
+        const ly = this.keysDown.has('ArrowRight') ? v : this.keysDown.has('ArrowLeft') ? -v : 0;
+        this.onTwistCb(lx, ly, az);
+      }
     };
   }
 
