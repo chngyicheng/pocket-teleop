@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 > **For the next agent:** Video source picker UI wired and runtime 404 bug fixed. All tests pass (34 auth-server / 99 webclient / 19 video-bridge). Two root causes found and fixed: (1) `express.json()` was registered globally and consumed the request body stream before the proxy could pipe it — proxy request hung indefinitely; fixed by scoping body parsers to `/auth` only. (2) `http-proxy-middleware` v2 resets `req.url = req.originalUrl` at the start of `prepareProxyRequest`, silently discarding all manual `req.url` mutations done before calling the proxy — fixed by using `pathRewrite: { '^/mediamtx-api': '/v3' }` which runs after the reset. The "Apply" button should now correctly PATCH MediaMTX at `localhost:9997`. Runtime verification (clicking Apply in the UI) is the remaining confirmation step.
 
-**Head SHA:** `(to be updated after commit)` (as of 2026-04-11)
+**Head SHA:** `17c54ee` (as of 2026-04-11)
 
 ### Completed milestones
 
