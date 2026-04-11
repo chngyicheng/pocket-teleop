@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 > **For the next agent:** v0.10.0 complete. All tests pass (34 auth-server / 119 webclient / 19 video-bridge). All planned milestones (v0.8.0–v0.10.0) implemented. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `8cbe532` (as of 2026-04-11)
+**Head SHA:** `e98a167` (as of 2026-04-11)
 
 ### Completed milestones
 
