@@ -25,7 +25,7 @@ See [version-control.md](memory/agent-guides/version-control.md) for full table 
 
 > **For the next agent:** v0.8.0 complete. All tests pass (34 auth-server / 102 webclient / 19 video-bridge). Next work: implement v0.9.0 (feedback & polish), v0.10.0 (robot telemetry) — plans in `docs/superpowers/plans/`. Runtime verification of the "Apply" button (clicking it in the live UI against a running MediaMTX) is still outstanding.
 
-**Head SHA:** `f2020d8` (as of 2026-04-11)
+**Head SHA:** `847d080` (as of 2026-04-11)
 
 ### Completed milestones
 
