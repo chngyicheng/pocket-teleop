@@ -23,9 +23,12 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** v0.10.0 竣。測試全通（34 auth-server / 119 webclient / 19 video-bridge）。v0.8.0–v0.10.0 諸計劃里程均已實現。「Apply」按鈕在實況 MediaMTX 下之運行時驗證尚未完成。
+> **致下一代理：** v0.10.0 竣，所有已規劃里程完成。測試全通（34 auth-server / 119 webclient / 19 video-bridge）。現有兩份待實現計劃，按優先級：
+>
+> 1. **Apply 按鈕端到端驗證**（`docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md`）— 加真實 MediaMTX 容器至 docker-compose integration profile；寫集成測試驗證 PATCH 往返；3 任務。從任務一開始。
+> 2. **視頻輸入源擴展**（`docs/superpowers/plans/2026-04-17-video-input-sources.md`）— 在 VideoSourcePicker 增加 UDP、SRT、MJPEG 直連三種源類型；4 任務。Apply 按鈕驗證完成後再做此項。
 
-**Head SHA：** `dbfbdab`（截至 2026-04-17）
+**Head SHA：** `16728a4`（截至 2026-04-17）
 
 ### 已竣里程
 
