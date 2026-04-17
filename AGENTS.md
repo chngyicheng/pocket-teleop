@@ -27,7 +27,7 @@
 >
 > 1. **視頻輸入源擴展**（`docs/superpowers/plans/2026-04-17-video-input-sources.md`）— 在 VideoSourcePicker 增加 UDP、SRT、MJPEG 直連三種源類型；4 任務。從任務一開始。
 
-**Head SHA：** `35cccea`（截至 2026-04-17）
+**Head SHA：** `d4799fa`（截至 2026-04-17）
 
 ### 已竣里程
 
