@@ -23,12 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** v0.10.0 竣，所有已規劃里程完成。測試全通（34 auth-server / 119 webclient / 19 video-bridge）。現有兩份待實現計劃，按優先級：
+> **致下一代理：** Apply 按鈕端到端驗證竣。integration profile 新增真實 MediaMTX 容器及 3 集成測試，PATCH 往返鏈路已驗證。現有一份待實現計劃：
 >
-> 1. **Apply 按鈕端到端驗證**（`docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md`）— 加真實 MediaMTX 容器至 docker-compose integration profile；寫集成測試驗證 PATCH 往返；3 任務。從任務一開始。
-> 2. **視頻輸入源擴展**（`docs/superpowers/plans/2026-04-17-video-input-sources.md`）— 在 VideoSourcePicker 增加 UDP、SRT、MJPEG 直連三種源類型；4 任務。Apply 按鈕驗證完成後再做此項。
+> 1. **視頻輸入源擴展**（`docs/superpowers/plans/2026-04-17-video-input-sources.md`）— 在 VideoSourcePicker 增加 UDP、SRT、MJPEG 直連三種源類型；4 任務。從任務一開始。
 
-**Head SHA：** `16728a4`（截至 2026-04-17）
+**Head SHA：** `35cccea`（截至 2026-04-17）
 
 ### 已竣里程
 
@@ -45,6 +44,7 @@
 | v0.8.0 控制可靠性（鍵盤 key-up 即時觸發、e-stop 按鈕 + 空格、calibration Ready 階段） | 34 auth / 103 webclient / 19 video-bridge | `v0.8.0` |
 | v0.9.0 反饋與磨光（RTSP URL 驗證、WhepClient 串流健康徽章、TeleopClient 延遲顯示） | 34 auth / 117 webclient / 19 video-bridge | `v0.9.0` |
 | v0.10.0 機器人遙測（odom 訂閱、廣播、protocol odom 類型、TeleopClient onOdom、UI 面板 + 羅盤） | 34 auth / 119 webclient / 19 video-bridge | `v0.10.0` |
+| Apply 按鈕端到端驗證（integration profile：mediamtx-test 容器、mediamtx-test-config.yml、3 集成測試） | 3 integration | — |
 
 ### 已知偏差（後續工作仍相關）
 

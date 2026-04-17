@@ -115,5 +115,29 @@ services:
       network: host
     command: ["/bin/bash", "-c", ". /opt/ros/humble/setup.sh && python3 -m pytest /test_video_bridge.py -v"]
 
+  # integration profile: real MediaMTX instance for Apply-button e2e tests.
+  # mediamtx image is scratch-based (no shell tools), so health is polled by the
+  # test's beforeAll rather than a Docker HEALTHCHECK.
+  mediamtx-test:
+    profiles: ["integration"]
+    image: bluenviron/mediamtx:latest
+    network_mode: "host"
+    volumes:
+      - ./mediamtx-test-config.yml:/mediamtx.yml:ro
+
+  mediamtx-integration-test:
+    profiles: ["integration"]
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile.auth
+      target: base
+      network: host
+    network_mode: "host"
+    environment:
+      - MEDIAMTX_API_URL=http://localhost:9997
+    depends_on:
+      - mediamtx-test
+    command: ["npx", "vitest", "run", "test/mediamtx_integration.test.ts"]
+
 volumes:
   auth-data:
