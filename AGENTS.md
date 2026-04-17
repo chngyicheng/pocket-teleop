@@ -25,7 +25,7 @@
 
 > **致下一代理：** v0.10.0 竣。測試全通（34 auth-server / 119 webclient / 19 video-bridge）。v0.8.0–v0.10.0 諸計劃里程均已實現。「Apply」按鈕在實況 MediaMTX 下之運行時驗證尚未完成。
 
-**Head SHA：** `3f7387c`（截至 2026-04-17）
+**Head SHA：** `dbfbdab`（截至 2026-04-17）
 
 ### 已竣里程
 
@@ -61,7 +61,7 @@
 | `PointerEvent` 在測試中 shimmed；復用 jsdom shim 模式 | `web-client/test/touch_joystick.test.ts` | jsdom 24 不暴露 `PointerEvent` 全局構造函數；shim 鏡像早前 `Touch` shim |
 | `style.display = ''` 不能顯示帶 CSS `display:none` 之元素 | `web-client/index.html` applyNamespace | 設內聯 display 為 '' 移除內聯覆蓋，CSS display:none 勝出；用 'block' 顯式顯示 |
 | `Dockerfile` CMD 用 `${VAR:+-p name:=val}` 處理可選機器人參數 | `Dockerfile` CMD | ROS2 拒絕 `-p robot_name:=`（空值）；未加引號的含空格值引致詞分割；修復：`${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"}`——未設時跳過，設置時加引號；計劃僅更新 `teleop.launch.py` — Dockerfile 為計劃遺漏之獨立調用路徑 |
-| `navigator.maxTouchPoints` 在 Brave 中返回 0（指紋保護） | `web-client/src/touch_joystick.ts` | Brave 無論設備均將 `maxTouchPoints` 置零；改用 `matchMedia('(pointer: coarse)')` 不被 Brave 抑制。Brave on Android 仍不顯示操縱桿提示——根因未知，待查。 |
+| `navigator.maxTouchPoints` 在 Brave 中返回 0（指紋保護） | `web-client/src/touch_joystick.ts` | Brave 無論設備均將 `maxTouchPoints` 置零；改用 `matchMedia('(pointer: coarse)')` 不被 Brave 抑制。Brave Android 已確認正常顯示提示。 |
 | `vitest.config.ts` 加入顯式 `include: ['test/**/*.test.ts']` | `auth-server/vitest.config.ts` | Vitest 默認 glob 未發現 `test/` 子目錄中的測試；顯式配置無副作用 |
 | `(FileStoreCreator as any)(session)` 強制轉型 | `auth-server/src/app.ts` | session-file-store 類型定義將導出聲明為類而非工廠；`as any` 強制轉型為社區公認做法 |
 | `store.reapAsync` 調用在 `createApp` 中省略 | `auth-server/src/app.ts` | `reapAsync` 為可選維護；定期清理仍通過 `reapInterval: 3600` 運行；省略無正確性影響 |
@@ -138,6 +138,8 @@
 | **v0.8.0 控制可靠性計劃** | `docs/superpowers/plans/2026-04-11-v0.8.0-control-reliability.md` |
 | **v0.9.0 反饋與磨光計劃** | `docs/superpowers/plans/2026-04-11-v0.9.0-feedback-polish.md` |
 | **v0.10.0 機器人遙測計劃** | `docs/superpowers/plans/2026-04-11-v0.10.0-robot-telemetry.md` |
+| **Apply 按鈕端到端驗證計劃** | `docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md` |
+| **視頻輸入源擴展計劃** | `docs/superpowers/plans/2026-04-17-video-input-sources.md` |
 
 **何時更深：** 指南文件不能解答 → 讀相關規格。規格不能解答 → 讀計劃。勿預先讀取三者。
 
