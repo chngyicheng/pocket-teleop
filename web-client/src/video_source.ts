@@ -82,7 +82,8 @@ export class VideoSourcePicker {
   /** Persist source to localStorage. */
   save(mode: VideoSourceMode, url: string): void {
     localStorage.setItem(SOURCE_KEY, mode);
-    if (mode === 'rtsp')  localStorage.setItem(RTSP_URL_KEY, url);
+    if (mode === 'rtsp' || mode === 'udp' || mode === 'srt')
+                          localStorage.setItem(RTSP_URL_KEY, url);
     else                  localStorage.removeItem(RTSP_URL_KEY);
     if (mode === 'mjpeg') localStorage.setItem(MJPEG_URL_KEY, url);
     else                  localStorage.removeItem(MJPEG_URL_KEY);
