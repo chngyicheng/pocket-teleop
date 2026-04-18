@@ -39,7 +39,7 @@
 | `auth-server/src/index.ts` 的 `PORT` 環境變量和 `detectGateway()` 移除 | `auth-server/src/index.ts` | `PORT` 為 host 網絡部署在端口 8080 上而添加；`detectGateway()` 為 UFW 阻止 bridge→host 流量的變通方案，一旦使用 host 網絡則無需 |
 | `WhepClient` 通過 mocked `RTCPeerConnection` shim 測試 | `web-client/test/whep_client.test.ts` | jsdom 24 無 `RTCPeerConnection`；shim 在測試文件中定義（與 `Touch` 和 `PointerEvent` shim 同模式）；13 個測試覆蓋 connect、retry、stop、back-off、onStream、onClose |
 | `video-bridge` 通過 pytest 在純 pipeline 函數上測試 | `video-bridge/test_video_bridge.py` | 無硬件無法測試 GStreamer 管道；pipeline 字符串構建函數（`_compressed_pipeline`、`_raw_pipeline`、`_FORMAT_MAP`）為純函數，19 個 pytest 測試完整覆蓋 |
-| `<img id="video-img">` 移除無替換 | `web-client/index.html` | 手動 MJPEG URL 輸入無用戶（流 URL 從不在會話間持久化）；WebRTC/WHEP 取代之；MJPEG URL 支持可在實現 RTSP/UDP 輸入源時重加 |
+| `<img id="video-img">` 移除後以 `<img id="mjpeg-img">` 替換 | `web-client/index.html` | v0.11.0 重加 MJPEG 直連支持；新元素默認隱藏，由 `onMjpegUrl` 回調切換顯示 |
 | `loadVideoUrl` / `saveVideoUrl` / `clearVideoUrl` 從 settings.ts 導入中移除 | `web-client/index.html` | MJPEG 路徑移除後不再需要；`settings.ts` 函數仍在源中供將來使用 |
 | `vi.runAllMicrotasksAsync` 替換為 `flushPromises` 循環 | `web-client/test/whep_client.test.ts` | `vi.runAllMicrotasksAsync` 在 Vitest 2.x 加入；本項目用 Vitest 1.6.1；十個連續 `await Promise.resolve()` 調用可靠地刷新所有待處理微任務 |
 | `monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', ...)` 替代 `importlib.reload` | `video-bridge/test_video_bridge.py` | `importlib.reload` 就地重寫模塊字典，測試後不恢復；`monkeypatch.setattr` 干淨地修補和恢復模塊級常量 |
