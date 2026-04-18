@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { buildMtxSource, VideoSourcePicker, type VideoSourceMode } from '../src/video_source.js';
+import { buildMtxSource, VideoSourcePicker, type VideoSourceMode, type VideoSourceType } from '../src/video_source.js';
 
 // ── buildMtxSource ────────────────────────────────────────────────────────────
 
@@ -24,6 +24,14 @@ describe('buildMtxSource', () => {
 
   it('rtsp with empty URL → source is empty string (caller must validate)', () => {
     expect(buildMtxSource('rtsp', '')).toEqual({ source: '' });
+  });
+
+  it('udp → source is the UDP URL', () => {
+    expect(buildMtxSource('udp', 'udp://192.168.1.10:1234')).toEqual({ source: 'udp://192.168.1.10:1234' });
+  });
+
+  it('srt → source is the SRT URL', () => {
+    expect(buildMtxSource('srt', 'srt://192.168.1.10:8890')).toEqual({ source: 'srt://192.168.1.10:8890' });
   });
 });
 
@@ -50,14 +58,21 @@ beforeEach(() => {
 describe('VideoSourcePicker.loadSaved', () => {
   it('defaults to ros2 when nothing stored', () => {
     const picker = makePicker(vi.fn());
-    expect(picker.loadSaved()).toEqual({ mode: 'ros2', rtspUrl: '' });
+    expect(picker.loadSaved()).toEqual({ mode: 'ros2', rtspUrl: '', mjpegUrl: '' });
   });
 
   it('returns stored mode and rtsp URL', () => {
     localStorage.setItem('video-source', 'rtsp');
     localStorage.setItem('video-rtsp-url', 'rtsp://cam:554/live');
     const picker = makePicker(vi.fn());
-    expect(picker.loadSaved()).toEqual({ mode: 'rtsp', rtspUrl: 'rtsp://cam:554/live' });
+    expect(picker.loadSaved()).toEqual({ mode: 'rtsp', rtspUrl: 'rtsp://cam:554/live', mjpegUrl: '' });
+  });
+
+  it('returns stored mjpeg URL', () => {
+    localStorage.setItem('video-source', 'mjpeg');
+    localStorage.setItem('video-mjpeg-url', 'http://cam/feed');
+    const picker = makePicker(vi.fn());
+    expect(picker.loadSaved()).toEqual({ mode: 'mjpeg', rtspUrl: '', mjpegUrl: 'http://cam/feed' });
   });
 });
 
@@ -105,6 +120,46 @@ describe('VideoSourcePicker.validate', () => {
 
   it('returns error for rtsp URL without rtsp:// prefix', () => {
     expect(new VideoSourcePicker().validate('rtsp', 'http://cam/live')).toBe('RTSP URL must start with rtsp://');
+  });
+
+  it('returns null for valid udp URL', () => {
+    expect(new VideoSourcePicker().validate('udp', 'udp://192.168.1.10:1234')).toBeNull();
+  });
+
+  it('returns error for empty udp URL', () => {
+    expect(new VideoSourcePicker().validate('udp', '')).toMatch(/required/i);
+  });
+
+  it('returns error for udp URL with wrong scheme', () => {
+    expect(new VideoSourcePicker().validate('udp', 'rtsp://cam')).toMatch(/udp:\/\//);
+  });
+
+  it('returns null for valid srt URL', () => {
+    expect(new VideoSourcePicker().validate('srt', 'srt://192.168.1.10:8890')).toBeNull();
+  });
+
+  it('returns error for empty srt URL', () => {
+    expect(new VideoSourcePicker().validate('srt', '')).toMatch(/required/i);
+  });
+
+  it('returns error for srt URL with wrong scheme', () => {
+    expect(new VideoSourcePicker().validate('srt', 'http://cam')).toMatch(/srt:\/\//);
+  });
+
+  it('returns null for valid mjpeg http URL', () => {
+    expect(new VideoSourcePicker().validate('mjpeg', 'http://cam/feed')).toBeNull();
+  });
+
+  it('returns null for valid mjpeg https URL', () => {
+    expect(new VideoSourcePicker().validate('mjpeg', 'https://cam/feed')).toBeNull();
+  });
+
+  it('returns error for empty mjpeg URL', () => {
+    expect(new VideoSourcePicker().validate('mjpeg', '')).toMatch(/required/i);
+  });
+
+  it('returns error for mjpeg URL with wrong scheme', () => {
+    expect(new VideoSourcePicker().validate('mjpeg', 'rtsp://cam')).toMatch(/https?:\/\//);
   });
 });
 
@@ -177,5 +232,42 @@ describe('VideoSourcePicker.apply', () => {
     const result = await picker.apply('ros2');
     expect(result).toBe('network-error:Failed to fetch');
     expect(localStorage.getItem('video-source')).toBeNull();
+  });
+});
+
+// ── MJPEG apply ───────────────────────────────────────────────────────────────
+
+describe('VideoSourcePicker.apply — mjpeg', () => {
+  it('does not call fetch; calls onMjpegUrl with the URL', async () => {
+    const fetchFn = vi.fn();
+    const onMjpegUrl = vi.fn();
+    const picker = new VideoSourcePicker({ apiUrl: TEST_API, fetchFn: fetchFn as unknown as typeof fetch, onMjpegUrl });
+    const result = await picker.apply('mjpeg', 'http://cam/feed');
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(onMjpegUrl).toHaveBeenCalledWith('http://cam/feed');
+    expect(result).toBe('ok');
+  });
+
+  it('persists mjpeg URL to localStorage on success', async () => {
+    const picker = new VideoSourcePicker({ apiUrl: TEST_API, fetchFn: vi.fn() as unknown as typeof fetch, onMjpegUrl: vi.fn() });
+    await picker.apply('mjpeg', 'http://cam/feed');
+    expect(localStorage.getItem('video-mjpeg-url')).toBe('http://cam/feed');
+    expect(localStorage.getItem('video-source')).toBe('mjpeg');
+  });
+
+  it('returns validation-error and does not call onMjpegUrl for invalid URL', async () => {
+    const onMjpegUrl = vi.fn();
+    const picker = new VideoSourcePicker({ apiUrl: TEST_API, fetchFn: vi.fn() as unknown as typeof fetch, onMjpegUrl });
+    const result = await picker.apply('mjpeg', 'rtsp://bad');
+    expect(result).toMatch(/^validation-error:/);
+    expect(onMjpegUrl).not.toHaveBeenCalled();
+  });
+
+  it('calls onMjpegUrl(null) when switching away from mjpeg to another mode', async () => {
+    const onMjpegUrl = vi.fn();
+    const fetchFn = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>().mockResolvedValue(okResponse());
+    const picker = new VideoSourcePicker({ apiUrl: TEST_API, fetchFn, onMjpegUrl });
+    await picker.apply('ros2');
+    expect(onMjpegUrl).toHaveBeenCalledWith(null);
   });
 });
