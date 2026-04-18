@@ -994,7 +994,6 @@
     const videoUrlInput     = document.getElementById('video-url-input');
     const videoSourceApply  = document.getElementById('video-source-apply');
     const videoSourceStatus = document.getElementById('video-source-status');
-    const videoEl           = document.getElementById('video-el');
     const mjpegImg          = document.getElementById('mjpeg-img');
 
     const URL_PLACEHOLDERS = {
@@ -1012,9 +1011,11 @@
         mjpegImg.src = url;
         mjpegImg.style.display = '';
         videoEl.style.display = 'none';
+        videoPlaceholderBox.style.display = 'none';
       } else {
         mjpegImg.src = '';
         mjpegImg.style.display = 'none';
+        hideVideoStream('No video stream');
       }
     }
 
@@ -1034,7 +1035,6 @@
 
     videoSourceSelect.addEventListener('change', () => {
       updateUrlField();
-      localStorage.setItem('video-source-type-ui', videoSourceSelect.value);
     });
 
     videoSourceApply.addEventListener('click', async () => {

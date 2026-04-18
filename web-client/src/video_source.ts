@@ -58,21 +58,21 @@ export class VideoSourcePicker {
    * Returns null if valid, or a human-readable error string.
    */
   validate(mode: VideoSourceMode, url: string): string | null {
+    const t = url.trim();
     if (mode === 'rtsp') {
-      if (!url.trim()) return 'RTSP URL is required.';
-      if (!url.trim().startsWith('rtsp://')) return 'RTSP URL must start with rtsp://';
+      if (!t) return 'RTSP URL is required.';
+      if (!t.startsWith('rtsp://')) return 'RTSP URL must start with rtsp://';
     }
     if (mode === 'udp') {
-      if (!url.trim()) return 'UDP URL is required.';
-      if (!url.trim().startsWith('udp://')) return 'UDP URL must start with udp://';
+      if (!t) return 'UDP URL is required.';
+      if (!t.startsWith('udp://')) return 'UDP URL must start with udp://';
     }
     if (mode === 'srt') {
-      if (!url.trim()) return 'SRT URL is required.';
-      if (!url.trim().startsWith('srt://')) return 'SRT URL must start with srt://';
+      if (!t) return 'SRT URL is required.';
+      if (!t.startsWith('srt://')) return 'SRT URL must start with srt://';
     }
     if (mode === 'mjpeg') {
-      if (!url.trim()) return 'MJPEG URL is required.';
-      const t = url.trim();
+      if (!t) return 'MJPEG URL is required.';
       if (!t.startsWith('http://') && !t.startsWith('https://'))
         return 'MJPEG URL must start with http:// or https://';
     }
