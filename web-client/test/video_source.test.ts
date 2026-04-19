@@ -9,11 +9,8 @@ describe('buildMtxSource', () => {
     expect(buildMtxSource('ros2')).toEqual({ source: 'publisher' });
   });
 
-  it('disabled → redirect to void path', () => {
-    expect(buildMtxSource('disabled')).toEqual({
-      source: 'redirect',
-      sourceRedirect: 'mediamtx-void',
-    });
+  it('disabled → publisher (stops any active pull; mediamtx-void redirect rejected by API)', () => {
+    expect(buildMtxSource('disabled')).toEqual({ source: 'publisher' });
   });
 
   it('rtsp → source is the RTSP URL', () => {
@@ -283,7 +280,7 @@ describe('VideoSourcePicker.apply', () => {
     expect(result).toBe('ok');
     expect(localStorage.getItem('video-source')).toBe('disabled');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'redirect', sourceRedirect: 'mediamtx-void' }),
+      body: JSON.stringify({ source: 'publisher' }),
     }));
   });
 

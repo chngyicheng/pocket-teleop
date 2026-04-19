@@ -9,14 +9,12 @@ export type VideoSourceMode = 'ros2' | 'rtsp' | 'udp' | 'srt' | 'mjpeg' | 'disab
 
 export interface MtxSourceBody {
   source: string;
-  sourceRedirect?: string;
 }
 
 /** Maps a mode + optional URL to the MediaMTX path config PATCH body. */
 export function buildMtxSource(mode: VideoSourceMode, url = ''): MtxSourceBody {
   if (mode === 'rtsp' || mode === 'udp' || mode === 'srt') return { source: url };
-  if (mode === 'disabled') return { source: 'redirect', sourceRedirect: 'mediamtx-void' };
-  /* ros2 — mjpeg never reaches here; apply() returns early for mjpeg */
+  /* ros2 | disabled | mjpeg-never-reaches-here — publisher stops any active pull */
                            return { source: 'publisher' };
 }
 
