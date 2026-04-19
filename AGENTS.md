@@ -23,9 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** v0.11.0 視頻輸入源擴展竣。VideoSourcePicker 新增 UDP、SRT、MJPEG 三種源類型；UI 加入源類型選擇器及 MJPEG `<img>` 直連顯示；149 webclient 測試通過；UDP/SRT URL 持久化 bug 已修。現無待實現計劃，可開始下一功能。
+> **致下一代理：** v0.11.0 視頻輸入源擴展竣。VideoSourcePicker 新增 UDP、SRT、MJPEG 三種源類型；UI 加入源類型選擇器及 MJPEG `<img>` 直連顯示；149 webclient 測試通過；UDP/SRT URL 持久化 bug 已修。
+>
+> **下一任務：v0.11.0 代碼審查**（`docs/superpowers/plans/2026-04-19-v0.11.0-code-review.md`）— 純審查，不改代碼；將發現寫入 `docs/superpowers/plans/2026-04-19-v0.11.0-code-review-findings.md`，再請用戶決定是否修復。
 
-**Head SHA：** `cf1ac1a`（截至 2026-04-19）
+**Head SHA：** `8a2f2b1`（截至 2026-04-19）
 
 ### 已竣里程
 
