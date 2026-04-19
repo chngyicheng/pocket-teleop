@@ -129,15 +129,27 @@ TeleopClient       ← public API; keepalive + exponential-backoff reconnect
 
 ```bash
 # Full stack — requires .env with TELEOP_ADMIN_USER, TELEOP_ADMIN_PASSWORD, SESSION_SECRET
-# (until auth-server is implemented, use TELEOP_TOKEN=mysecrettoken instead)
 docker compose up --build
 
-# Web-client unit + integration tests (connects directly to teleop-server, bypasses auth)
-docker compose --profile test run --rm webclient-test
+# Web-client tests — IMPORTANT: requires port 18080 to be free.
+# If main stack is running (pocket-teleop-webclient-1 on 18080), stop it first:
+#   docker compose down
+# Then from the project root (or worktree):
+docker compose --env-file /home/chngyicheng/pocket-teleop/.env --profile test run --rm webclient-test
+
+# Web-client UNIT tests only (no port needed, works while main stack is running):
+docker run --rm \
+  -v $(pwd)/web-client:/app \
+  -w /app \
+  node:22-alpine \
+  sh -c "npm install --silent 2>/dev/null && npm test"
+# Note: integration.test.ts will fail (no server) but unit tests pass.
 
 # Auth-server tests (self-contained, no other services needed)
-docker compose --profile test run --rm auth-server-test
+docker compose --env-file /home/chngyicheng/pocket-teleop/.env --profile test run --rm auth-server-test
 ```
+
+**Worktree note:** `.env` is not copied into worktrees. Always pass `--env-file /home/chngyicheng/pocket-teleop/.env` explicitly when running compose from a worktree.
 
 ## Port assignments (client)
 
