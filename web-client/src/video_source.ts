@@ -5,7 +5,6 @@
  * VideoSourcePicker — stateful class; persists to localStorage, applies to API.
  */
 
-export type VideoSourceType = 'rtsp' | 'udp' | 'srt' | 'mjpeg';
 export type VideoSourceMode = 'ros2' | 'rtsp' | 'udp' | 'srt' | 'mjpeg' | 'disabled';
 
 export interface MtxSourceBody {
@@ -17,7 +16,8 @@ export interface MtxSourceBody {
 export function buildMtxSource(mode: VideoSourceMode, url = ''): MtxSourceBody {
   if (mode === 'rtsp' || mode === 'udp' || mode === 'srt') return { source: url };
   if (mode === 'disabled') return { source: 'redirect', sourceRedirect: 'mediamtx-void' };
-  /* ros2 */               return { source: 'publisher' };
+  /* ros2 — mjpeg never reaches here; apply() returns early for mjpeg */
+                           return { source: 'publisher' };
 }
 
 const SOURCE_KEY    = 'video-source';
@@ -46,11 +46,11 @@ export class VideoSourcePicker {
   }
 
   /** Load the saved source from localStorage (defaults to 'ros2'). */
-  loadSaved(): { mode: VideoSourceMode; rtspUrl: string; mjpegUrl: string } {
-    const mode     = (localStorage.getItem(SOURCE_KEY) ?? 'ros2') as VideoSourceMode;
-    const rtspUrl  = localStorage.getItem(RTSP_URL_KEY)  ?? '';
-    const mjpegUrl = localStorage.getItem(MJPEG_URL_KEY) ?? '';
-    return { mode, rtspUrl, mjpegUrl };
+  loadSaved(): { mode: VideoSourceMode; streamUrl: string; mjpegUrl: string } {
+    const mode      = (localStorage.getItem(SOURCE_KEY) ?? 'ros2') as VideoSourceMode;
+    const streamUrl = localStorage.getItem(RTSP_URL_KEY)  ?? '';
+    const mjpegUrl  = localStorage.getItem(MJPEG_URL_KEY) ?? '';
+    return { mode, streamUrl, mjpegUrl };
   }
 
   /**
@@ -95,6 +95,7 @@ export class VideoSourcePicker {
    * Resolves with 'ok' | 'http-error:<status>' | 'network-error:<message>' | 'validation-error:<msg>'.
    */
   async apply(mode: VideoSourceMode, url = ''): Promise<string> {
+    url = url.trim();
     const err = this.validate(mode, url);
     if (err) return `validation-error:${err}`;
 
@@ -104,8 +105,6 @@ export class VideoSourcePicker {
       return 'ok';
     }
 
-    this.onMjpegUrl?.(null);
-
     const body = buildMtxSource(mode, url);
     try {
       const res = await this.fetchFn(this.apiUrl, {
@@ -114,6 +113,7 @@ export class VideoSourcePicker {
         body:    JSON.stringify(body),
       });
       if (res.ok) {
+        this.onMjpegUrl?.(null);
         this.save(mode, url);
         return 'ok';
       }

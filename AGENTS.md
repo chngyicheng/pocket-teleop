@@ -23,11 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** v0.11.0 視頻輸入源擴展竣。VideoSourcePicker 新增 UDP、SRT、MJPEG 三種源類型；UI 加入源類型選擇器及 MJPEG `<img>` 直連顯示；149 webclient 測試通過；UDP/SRT URL 持久化 bug 已修。
+> **致下一代理：** v0.11.0 代碼審查修復竣。修復 5 處邏輯缺陷（apply() url trim、onMjpegUrl 時序、videoStatus 死代碼、showVideoStream 不隱藏 mjpegImg、buildMtxSource 注釋誤導）；補 8 個測試；代碼氣味清理（移除未用 VideoSourceType、rtspUrl → streamUrl、斷言風格統一）。157 webclient 測試通過。
 >
-> **下一任務：v0.11.0 代碼審查**（`docs/superpowers/plans/2026-04-19-v0.11.0-code-review.md`）— 純審查，不改代碼；將發現寫入 `docs/superpowers/plans/2026-04-19-v0.11.0-code-review-findings.md`，再請用戶決定是否修復。
+> **下一任務：** 待用戶指示。
 
-**Head SHA：** `8a2f2b1`（截至 2026-04-19）
+**Head SHA：** `待提交後更新`（截至 2026-04-19）
 
 ### 已竣里程
 
@@ -46,6 +46,7 @@
 | v0.10.0 機器人遙測（odom 訂閱、廣播、protocol odom 類型、TeleopClient onOdom、UI 面板 + 羅盤） | 34 auth / 119 webclient / 19 video-bridge | `v0.10.0` |
 | Apply 按鈕端到端驗證（integration profile：mediamtx-test 容器、mediamtx-test-config.yml、3 集成測試） | 3 integration | — |
 | v0.11.0 視頻輸入源擴展（VideoSourceType、UDP/SRT/MJPEG validate/buildMtxSource/apply、onMjpegUrl 回調、UI 源類型選擇器、MJPEG img 直連） | 34 auth / 149 webclient / 19 video-bridge | — |
+| v0.11.0 代碼審查修復（5 處邏輯缺陷、8 個補測、代碼氣味清理） | 34 auth / 157 webclient / 19 video-bridge | — |
 
 ### 已知偏差（後續工作仍相關）
 
