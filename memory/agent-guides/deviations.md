@@ -48,7 +48,7 @@
 | Body parsers 僅作用於 `/auth`（非全局） | `auth-server/src/app.ts` | 全局 `express.json()` 在代理管道之前消耗請求流；代理請求無限期掛起（永不結束）；限定於 `/auth` 使流對代理路由保持完整 |
 | `pathRewrite: { '^/mediamtx-api': '/v3' }` 替代手動 `req.url` 變更 | `auth-server/src/app.ts`、`auth-server/src/proxy.ts` | http-proxy-middleware v2 在 `prepareProxyRequest` 中重置 `req.url = req.originalUrl`，丟棄任何先前變更；`pathRewrite` 在重置後運行，因此正確生效 |
 | 診斷 PATCH 測試加入 auth-server 測試套件 | `auth-server/test/auth.test.ts` | 現有 `/mediamtx-api` 測試僅查「非 302」且未向 mock 傳遞 `mediaMtxApiUrl`——未能驗證任何事；新測試確認 PATCH 方法、`/v3` 路徑和 body 均正確到達 mock |
-| `source: redirect` 至不存在路徑用于禁用流 | `web-client/src/video_source.ts` | MediaMTX 無顯式「禁用」狀態；重定向至虛空路徑使 WHEP 客戶端收到 404，WhepClient 處理此情況並顯示佔位符 |
+| `disabled` 模式發送 `{ source: 'publisher' }` 至 MediaMTX | `web-client/src/video_source.ts` | MediaMTX PATCH API 拒絕 `sourceRedirect` 字段（返回 400）；`publisher` 為有效值，停止任何主動拉流；video-bridge 未推流時 WhepClient 收到 404 並顯示佔位符 |
 | 視頻源狀態存於 `localStorage` 並在加載時重新應用 | `web-client/src/video_source.ts` | MediaMTX 運行時配置易失（重啟即丟）；頁面加載時重新應用可修正漂移，無需添加服務端持久化層 |
 | `VideoSourcePicker` 以 `fetchFn` 為構造器選項 | `web-client/src/video_source.ts` | 無需 `vi.stubGlobal` 副作用即可進行純 vitest 測試；與 `WhepClient` 回調相同的依賴注入模式 |
 | `boundKeyUp` 即時觸發 twist（非輪詢驅動） | `web-client/src/keyboard_handler.ts` | 輪詢間隔（200ms）產生滑行窗口；key-up 處理器原子地重新計算並觸發更新後的 twist，無需複製輪詢邏輯 |
@@ -61,3 +61,4 @@
 | 航向以弧度發送；UI 轉換為度 | Protocol、`web-client/index.html` | 弧度為原生 ROS2 單位；UI 中轉換保持協議整潔，避免服務端度轉換的浮點精度損失 |
 | Odom 面板在收到首條消息前隱藏 | `web-client/index.html` | 不發布 `/odom` 的機器人不應顯示陳舊或空白面板；默認隱藏防止混淆 |
 | `broadcast()` 忽略 `ws_server_.send` 的 `error_code` | `server/src/teleop_server.cpp` | 客戶端斷開通過 `on_close` 將 `has_client_` 置 false；對陳舊 send 的靜默錯誤無害，避免競態條件檢查 |
+| `showVideoStream()` 隱藏 `mjpegImg` 無單元測試 | `web-client/index.html` | 邏輯在 `<script type="module">` 內聯，vitest 無法導入；需 Playwright 等 e2e 工具方可覆蓋；用戶決策：人工測試（切換 MJPEG 源後等 WhepClient 重連確認無雙流疊加）|
