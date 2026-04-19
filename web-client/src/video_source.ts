@@ -9,13 +9,19 @@ export type VideoSourceMode = 'ros2' | 'rtsp' | 'udp' | 'srt' | 'mjpeg' | 'disab
 
 export interface MtxSourceBody {
   source: string;
+  sourceRedirect: string;
 }
 
-/** Maps a mode + optional URL to the MediaMTX path config PATCH body. */
+/**
+ * Maps a mode + optional URL to the MediaMTX path config PATCH body.
+ * Always includes sourceRedirect to clear any stale value — MediaMTX PATCH
+ * merges with existing runtime config, so a prior 'redirect' mode would
+ * leave sourceRedirect set and cause 400 on subsequent non-redirect PATCHes.
+ */
 export function buildMtxSource(mode: VideoSourceMode, url = ''): MtxSourceBody {
-  if (mode === 'rtsp' || mode === 'udp' || mode === 'srt') return { source: url };
+  if (mode === 'rtsp' || mode === 'udp' || mode === 'srt') return { source: url, sourceRedirect: '' };
   /* ros2 | disabled | mjpeg-never-reaches-here — publisher stops any active pull */
-                           return { source: 'publisher' };
+                           return { source: 'publisher', sourceRedirect: '' };
 }
 
 const SOURCE_KEY    = 'video-source';

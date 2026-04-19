@@ -5,30 +5,31 @@ import { buildMtxSource, VideoSourcePicker, type VideoSourceMode } from '../src/
 // ── buildMtxSource ────────────────────────────────────────────────────────────
 
 describe('buildMtxSource', () => {
-  it('ros2 → publisher', () => {
-    expect(buildMtxSource('ros2')).toEqual({ source: 'publisher' });
+  it('ros2 → publisher with empty sourceRedirect', () => {
+    expect(buildMtxSource('ros2')).toEqual({ source: 'publisher', sourceRedirect: '' });
   });
 
-  it('disabled → publisher (stops any active pull; mediamtx-void redirect rejected by API)', () => {
-    expect(buildMtxSource('disabled')).toEqual({ source: 'publisher' });
+  it('disabled → publisher with empty sourceRedirect (clears stale redirect from prior PATCH)', () => {
+    expect(buildMtxSource('disabled')).toEqual({ source: 'publisher', sourceRedirect: '' });
   });
 
-  it('rtsp → source is the RTSP URL', () => {
+  it('rtsp → source is the RTSP URL with empty sourceRedirect', () => {
     expect(buildMtxSource('rtsp', 'rtsp://192.168.1.200:554/stream')).toEqual({
       source: 'rtsp://192.168.1.200:554/stream',
+      sourceRedirect: '',
     });
   });
 
   it('rtsp with empty URL → source is empty string (caller must validate)', () => {
-    expect(buildMtxSource('rtsp', '')).toEqual({ source: '' });
+    expect(buildMtxSource('rtsp', '')).toEqual({ source: '', sourceRedirect: '' });
   });
 
-  it('udp → source is the UDP URL', () => {
-    expect(buildMtxSource('udp', 'udp://192.168.1.10:1234')).toEqual({ source: 'udp://192.168.1.10:1234' });
+  it('udp → source is the UDP URL with empty sourceRedirect', () => {
+    expect(buildMtxSource('udp', 'udp://192.168.1.10:1234')).toEqual({ source: 'udp://192.168.1.10:1234', sourceRedirect: '' });
   });
 
-  it('srt → source is the SRT URL', () => {
-    expect(buildMtxSource('srt', 'srt://192.168.1.10:8890')).toEqual({ source: 'srt://192.168.1.10:8890' });
+  it('srt → source is the SRT URL with empty sourceRedirect', () => {
+    expect(buildMtxSource('srt', 'srt://192.168.1.10:8890')).toEqual({ source: 'srt://192.168.1.10:8890', sourceRedirect: '' });
   });
 });
 
@@ -244,7 +245,7 @@ describe('VideoSourcePicker.apply — url trimming', () => {
     const picker = makePicker(fetchFn);
     await picker.apply('rtsp', '  rtsp://cam:554/live  ');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'rtsp://cam:554/live' }),
+      body: JSON.stringify({ source: 'rtsp://cam:554/live', sourceRedirect: '' }),
     }));
   });
 });
@@ -258,7 +259,7 @@ describe('VideoSourcePicker.apply', () => {
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source: 'publisher' }),
+      body: JSON.stringify({ source: 'publisher', sourceRedirect: '' }),
     }));
   });
 
@@ -268,7 +269,7 @@ describe('VideoSourcePicker.apply', () => {
     const picker = makePicker(fetchFn);
     await picker.apply('rtsp', 'rtsp://cam:554/live');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'rtsp://cam:554/live' }),
+      body: JSON.stringify({ source: 'rtsp://cam:554/live', sourceRedirect: '' }),
     }));
   });
 
@@ -280,7 +281,7 @@ describe('VideoSourcePicker.apply', () => {
     expect(result).toBe('ok');
     expect(localStorage.getItem('video-source')).toBe('disabled');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'publisher' }),
+      body: JSON.stringify({ source: 'publisher', sourceRedirect: '' }),
     }));
   });
 
@@ -308,7 +309,7 @@ describe('VideoSourcePicker.apply', () => {
     const picker = makePicker(fetchFn);
     await picker.apply('udp', 'udp://192.168.1.10:1234');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'udp://192.168.1.10:1234' }),
+      body: JSON.stringify({ source: 'udp://192.168.1.10:1234', sourceRedirect: '' }),
     }));
   });
 
@@ -318,7 +319,7 @@ describe('VideoSourcePicker.apply', () => {
     const picker = makePicker(fetchFn);
     await picker.apply('srt', 'srt://192.168.1.10:8890');
     expect(fetchFn).toHaveBeenCalledWith(TEST_API, expect.objectContaining({
-      body: JSON.stringify({ source: 'srt://192.168.1.10:8890' }),
+      body: JSON.stringify({ source: 'srt://192.168.1.10:8890', sourceRedirect: '' }),
     }));
   });
 
