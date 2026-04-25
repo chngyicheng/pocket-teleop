@@ -23,11 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** v0.11.0 代碼審查修復竣。修復 5 處邏輯缺陷（apply() url trim、onMjpegUrl 時序、videoStatus 死代碼、showVideoStream 不隱藏 mjpegImg、buildMtxSource 注釋誤導）；補 8 個測試；代碼氣味清理（移除未用 VideoSourceType、rtspUrl → streamUrl、斷言風格統一）。157 webclient 測試通過。
+> **致下一代理：** Auth bugfixes 竣。賬戶頁表單錯誤內聯顯示（不再導航至純文本頁）。登出後回退按鈕通過 visibilitychange + pageshow 檢查重定向至登錄頁。Docker 健康檢查修復（auth-server 用 node，teleop-server 用 bash TCP）。34 auth / 157 webclient 測試通過。
 >
 > **下一任務：** 待用戶指示。
 
-**Head SHA：** `3484dc2`（截至 2026-04-19）
+**Head SHA：** `1d3cd01`（截至 2026-04-25）
 
 ### 已竣里程
 
@@ -47,6 +47,7 @@
 | Apply 按鈕端到端驗證（integration profile：mediamtx-test 容器、mediamtx-test-config.yml、3 集成測試） | 3 integration | — |
 | v0.11.0 視頻輸入源擴展（VideoSourceType、UDP/SRT/MJPEG validate/buildMtxSource/apply、onMjpegUrl 回調、UI 源類型選擇器、MJPEG img 直連） | 34 auth / 149 webclient / 19 video-bridge | — |
 | v0.11.0 代碼審查修復（5 處邏輯缺陷、8 個補測、代碼氣味清理） | 34 auth / 157 webclient / 19 video-bridge | — |
+| Auth bugfixes（賬戶頁表單 fetch 內聯錯誤、visibilitychange 登出保護、Docker 健康檢查修復） | 34 auth / 157 webclient / 19 video-bridge | — |
 
 ### 已知偏差（後續工作仍相關）
 
@@ -86,6 +87,7 @@
 | **v0.10.0 機器人遙測計劃** | `docs/superpowers/plans/2026-04-11-v0.10.0-robot-telemetry.md` |
 | **Apply 按鈕端到端驗證計劃** | `docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md` |
 | **視頻輸入源擴展計劃** | `docs/superpowers/plans/2026-04-17-video-input-sources.md` |
+| **Auth bugfixes 實現計劃** | `docs/superpowers/plans/2026-04-08-auth-bugfixes.md` |
 
 **何時更深：** 指南文件不能解答 → 讀相關規格。規格不能解答 → 讀計劃。勿預先讀取三者。
 
