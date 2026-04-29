@@ -648,7 +648,7 @@
           body: new URLSearchParams(new FormData(form)),
         });
         if (res.ok) {
-          window.location.href = '/auth/login';
+          window.location.replace('/auth/login');
         } else {
           errEl.textContent = await res.text();
           errEl.hidden = false;
@@ -685,7 +685,7 @@
           errEl.textContent = 'Wrong current password.';
           errEl.hidden = false;
         } else {
-          window.location.href = '/auth/login';
+          window.location.replace('/auth/login');
         }
       } catch (_) {
         errEl.textContent = 'Network error. Please try again.';

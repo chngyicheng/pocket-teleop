@@ -123,6 +123,18 @@ Common topics:
 
 In the browser: Settings → Video → select **RTSP URL**, enter the camera's RTSP address, and click Apply. MediaMTX pulls the stream directly — `video-bridge` is bypassed.
 
+### Source: UDP or SRT stream
+
+In the browser: Settings → Video → select **UDP stream** or **SRT stream**, enter the stream URL, and click Apply. MediaMTX pulls the stream directly.
+
+Example URLs:
+- UDP: `udp://192.168.1.200:1234`
+- SRT: `srt://192.168.1.200:8890`
+
+### Source: MJPEG camera
+
+In the browser: Settings → Video → select **MJPEG URL**, enter the camera's HTTP MJPEG stream URL, and click Apply. The browser connects directly to the camera — no MediaMTX involved.
+
 ### Disabling video
 
 Settings → Video → select **Disabled** and click Apply. The placeholder is shown in the browser; no stream is consumed.
@@ -131,19 +143,11 @@ Settings → Video → select **Disabled** and click Apply. The placeholder is s
 
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
 
-The auth-server proxies WebSocket connections to the teleop-server. At startup it auto-detects the Docker bridge gateway from `/proc/net/route` and uses that as the target host, so no manual configuration is needed on most machines.
-
-If the auto-detection is wrong, override it in `.env`:
+The auth-server runs in host network mode and connects to the teleop-server at `localhost:9091` by default. If the teleop-server is reachable at a different address (e.g. running outside Docker on a different machine), override it in `.env`:
 
 ```bash
-# .env — set to the host machine's LAN IP
+# .env — set to the teleop-server's address
 TELEOP_SERVER_URL=http://192.168.1.50:9091
-```
-
-To see which URL auth-server resolved at startup, check the logs:
-
-```bash
-docker compose logs auth-server | grep 'Proxy created'
 ```
 
 ### Inspecting ROS2 topics from another machine (multicast broken)
@@ -166,10 +170,10 @@ This profile (`server/fastrtps_profiles_observer.xml`) disables multicast and se
 All suites run entirely inside Docker — no local Node.js or Python installation needed.
 
 ```bash
-# Web-client unit + integration tests (85 tests)
+# Web-client unit + integration tests (157 tests)
 docker compose --profile test run --rm webclient-test
 
-# Auth-server tests (31 tests)
+# Auth-server tests (34 tests)
 docker compose --profile test run --rm auth-server-test
 
 # video-bridge Python tests (19 tests)

@@ -71,6 +71,7 @@ git tag v0.1.0-server
 | New task added | `project-skills.md` task guides + `AGENTS.md` handoff table |
 | New guardrail identified | `project-skills.md` guardrails table |
 | New document created | `AGENTS.md` document map |
+| User-visible feature added, changed, or removed | `README.md` — update relevant section in place |
 
 No changelog appends. Edit relevant section in place.
 
