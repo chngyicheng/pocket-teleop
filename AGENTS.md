@@ -23,11 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** location.replace 修復及 README 更新竣。change-username 和 change-password 表單成功後改用 window.location.replace() 替代 href= 賦值，防止用戶回退至已登出的認證頁面。README 修正測試計數（webclient 85→157、auth 31→34）、移除過時的 detectGateway 故障排除說明、補充 UDP/SRT/MJPEG 視頻源文檔。version-control.md 新增 README.md 更新規則。157 webclient 測試通過。
+> **致下一代理：** 三事竣。一、新增 `start.sh` 啟動腳本（封裝 `docker compose up --build`，附 `.env` 存在檢查）。二、修 `web-client/index.html` 第 948 行 `mjpegImgElEl` → `mjpegImgEl` 筆誤，致視頻源類型為 Disabled 時 Connect 觸發 `mjpegImgEl is not defined` 錯誤。三、修 `web-client/vitest.config.ts` 加 `fileParallelism: false`，因並行文件 worker 致 CPU 競爭，延遲 WebSocket close 事件投遞，觸發 integration.test.ts 之 idle-watchdog 測試 1500ms / 5000ms 守時失敗。157 webclient / 34 auth / 19 video-bridge 測試皆通。
 >
 > **下一任務：** 待用戶指示。
 
-**Head SHA：** `cb0c131`（截至 2026-04-29）
+**Head SHA：** `<TBD>`（截至 2026-05-06）
 
 ### 已竣里程
 
@@ -49,6 +49,7 @@
 | v0.11.0 代碼審查修復（5 處邏輯缺陷、8 個補測、代碼氣味清理） | 34 auth / 157 webclient / 19 video-bridge | — |
 | Auth bugfixes（賬戶頁表單 fetch 內聯錯誤、visibilitychange 登出保護、Docker 健康檢查修復） | 34 auth / 157 webclient / 19 video-bridge | — |
 | location.replace 修復及 README 更新（表單成功重定向防回退、測試計數、故障排除更新、UDP/SRT/MJPEG 文檔） | 34 auth / 157 webclient / 19 video-bridge | — |
+| start.sh 啟動腳本 + mjpegImgEl 筆誤修復 + vitest 文件序列化（解 idle-watchdog 集成測試計時失敗） | 34 auth / 157 webclient / 19 video-bridge | — |
 
 ### 已知偏差（後續工作仍相關）
 
