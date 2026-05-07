@@ -90,6 +90,34 @@
 | **Apply 按鈕端到端驗證計劃** | `docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md` |
 | **視頻輸入源擴展計劃** | `docs/superpowers/plans/2026-04-17-video-input-sources.md` |
 | **Auth bugfixes 實現計劃** | `docs/superpowers/plans/2026-04-08-auth-bugfixes.md` |
+| **功能待辦池（2026-05-06 起）** | 見下「功能計劃池」 |
+
+### 功能計劃池（待用戶選定優先級實施）
+
+**安全與控制**
+- HTTPS/TLS：`docs/superpowers/plans/2026-05-06-https-tls-implementation.md`
+- 登錄速率限制：`docs/superpowers/plans/2026-05-06-login-rate-limit-implementation.md`
+- 會話閒置超時：`docs/superpowers/plans/2026-05-06-session-timeout-implementation.md`
+- 速度上限滑桿：`docs/superpowers/plans/2026-05-06-speed-limit-slider-implementation.md`
+- 地理圍欄：`docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+- 斷線後行為：`docs/superpowers/plans/2026-05-06-disconnect-behavior-implementation.md`
+
+**觀察**
+- 地圖視圖：`docs/superpowers/plans/2026-05-06-map-view-implementation.md`
+- 多攝像頭：`docs/superpowers/plans/2026-05-06-multi-camera-implementation.md`
+- 延遲歷史圖：`docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
+- 電池遙測：`docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
+- 診斷面板：`docs/superpowers/plans/2026-05-06-diagnostics-panel-implementation.md`
+- 網絡質量：`docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
+
+**操作**
+- 會話錄制：`docs/superpowers/plans/2026-05-06-session-recording-implementation.md`
+- 多觀察者：`docs/superpowers/plans/2026-05-06-multi-observer-implementation.md`
+- 雙向音頻：`docs/superpowers/plans/2026-05-06-audio-bidirectional-implementation.md`
+- PTZ 雲台控制：`docs/superpowers/plans/2026-05-06-ptz-control-implementation.md`
+- 輔助輸出：`docs/superpowers/plans/2026-05-06-aux-outputs-implementation.md`
+- 預設動作宏：`docs/superpowers/plans/2026-05-06-action-macros-implementation.md`
+- OTA 更新：`docs/superpowers/plans/2026-05-06-ota-updates-implementation.md`
 
 **何時更深：** 指南文件不能解答 → 讀相關規格。規格不能解答 → 讀計劃。勿預先讀取三者。
 
