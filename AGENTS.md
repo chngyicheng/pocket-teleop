@@ -23,11 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** 全倉代碼審查竣，三十條 findings 由六 Haiku 斥候並修：①前端 critical 筆誤（`index.html:951-952` `mjpegImgElEl` 餘殘，showVideoStream 拋 ReferenceError）已盡修；②teleop-server 9091 改綁 `127.0.0.1`（`teleop_server.cpp:39-40`，用 boost::asio endpoint），mediamtx config API 9997 與 RTSP 8554 亦同綁 loopback——三 LAN 鑒權繞行入口悉閉；③`command_handler.cpp` 加 `std::isfinite` 守、`test_command_handler.cpp` 自零字節補至 28 測（NaN/Inf 二測賴 JSON 規範外字面，已鬆化為惟驗 ParseError）；④TeleopClient `scheduleRetry` 改為指數退避（5/10/20/30s 封頂）；⑤TeleopNode namespace 邏輯改尊 `cmd_vel_topic` 參數（base=`/foo` ns=`bar` → `/bar/foo`）；⑥video_bridge.py 加 threading.Lock 護 pipeline mutation、destroy_node 釋 retry_timer；⑦auth-server cookie 加 `secure: NODE_ENV==='production'`、http-proxy timeout 10s、login 用 DUMMY_HASH 等時、credentials.json 改 tmp+rename 原子寫。亦補 WHEP double-start 守、ICE timer 釋、calibration interval 守、gamepad detect interval 終止、MJPEG localStorage 啟動驗證、keyboard DRY + 對稱、protocol connected 字段 boolean 守、settings localStorage try/catch、broadcast 錯記 stderr、watchdog→on_open 競窗減。詳見 [`docs/2026-05-27-codebase-review.md`](docs/2026-05-27-codebase-review.md)（評閱）與 [`docs/superpowers/plans/2026-05-27-codebase-review-fixes.md`](docs/superpowers/plans/2026-05-27-codebase-review-fixes.md)（計劃）。**未涉:** finding #9 登錄速率限（待 `2026-05-06-login-rate-limit-implementation.md`）、#18 CSRF（待 HTTPS 役）。**架構師後事:** `NODE_ENV=production` 未注入 docker-compose——HTTPS 役時並注。**測:** 157 webclient / 34 auth / 19 video-bridge / 40 C++（28 cmd_handler + 10 server + 2 node）皆通。
+> **致下一代理：** Mission Control UI 整合役竣（branch `feat/mission-ui`，worktree `.worktrees/feat-mission-ui`）。計劃 `docs/superpowers/plans/2026-05-28-mission-ui-integration.md` 之三 Haiku 並行 + 一 Haiku 集成模式畢。Wave 1 並派三 Haiku 各於 disjoint 文件域：①`mission_hud.ts`（`mountVelBars`、`mountMiniMap`、`mountCompass`、`mountReadout` 四 mount 函數，各返 `{update, destroy}` 句柄）；②`mission_joystick.ts`（`MissionJoystick` 類，支 classic/edge/zone 三變體 + `xy/x/y` 軸鎖，math 自 `design_handoff_pocket_teleop/shared.jsx` 1:1 移）；③`mission_header.ts`（`MissionHeader` 類，漢堡+標題+robot pill+連線芯片+E-STOP 鈕）。Wave 2 單 Haiku 寫 `mission_app.ts` 集成殼（繫 TeleopClient/WhepClient callbacks 至組件，DRIVE/STRAFE joystick onMove 映射 `lx=-y, az=-x, ly=x`，disconnect 時 joystick 輸出阻、E-STOP 與 Space 鍵雙觸 zero-twist，視頻 dim class 於 reconnect/disconnect）+ `mission_app.test.ts` crown jewel 集成測（13 測，jsdom + FakeTeleopClient/FakeWhepClient 注入）+ `index.html` 全重寫（dark Mission Control palette、grid layout、media query 切手機橫/豎/平板、E-STOP z-index 10 永居最上）。控制器修：mission_hud.test.ts 缺 afterEach 導入；mission_joystick.test.ts 需 PointerEvent polyfill；mission_app.test.ts Space 測去 `done()`；mission_app destroy 加 `destroyed` flag 冪等（afterEach 二度呼 destroy 致 NotFoundError 解）。**Trophy TDD：** 24 輕單元（HUD 10 + Joystick 8 + Header 6）+ 13 重集成（mission_app）。**測:** 190/191 webclient（1 pre-existing whep_client ICE-timer flake 於 d5fb6cd 主同失，環境計時敏感）/ 34 auth / 19 video-bridge / 40 C++ 皆通。**未涉:** 設計 README 提之 LIGHTS toggles、REC 指示、calibration UI 後續計劃；E-STOP 於 disconnect 時不送 twist（依賴 server-side watchdog；設計亦允）；舊 `touch_joystick.ts` 並存未除。
 >
-> **下一任務：** 待用戶指示。或：(a) 推此 commit；(b) 啟登錄速率限役；(c) HTTPS 役（合 CSRF 與 NODE_ENV）。
+> **下一任務：** 待用戶指示。或：(a) 推 `feat/mission-ui` 並 merge 入 main；(b) 修 pre-existing whep_client flake；(c) 啟登錄速率限役；(d) HTTPS 役。
 
-**Head SHA：** `d5fb6cd`（截至 2026-05-28）
+**Head SHA：** `a7eb6d7`（截至 2026-05-28，branch `feat/mission-ui`）
 
 ### 已竣里程
 
@@ -51,6 +51,7 @@
 | location.replace 修復及 README 更新（表單成功重定向防回退、測試計數、故障排除更新、UDP/SRT/MJPEG 文檔） | 34 auth / 157 webclient / 19 video-bridge | — |
 | start.sh 啟動腳本 + mjpegImgEl 筆誤修復 + vitest 文件序列化（解 idle-watchdog 集成測試計時失敗） | 34 auth / 157 webclient / 19 video-bridge | — |
 | 全倉代碼審查並修（六 Haiku 斥候並修 30 findings：mjpegImgEl 餘殘、9091/9997/8554 LAN 曝閉、isfinite 守、test_command_handler 補 28 測、TeleopClient 指數退避、namespace 邏輯正、video_bridge Lock、auth 等時+原子寫+secure cookie+proxy timeout 等） | 34 auth / 157 webclient / 19 video-bridge / 40 C++ | — |
+| Mission Control UI 整合（worktree + 三 Haiku 並 + 一 Haiku 集成 + 控制器測修：`mission_hud.ts`、`mission_joystick.ts`、`mission_header.ts`、`mission_app.ts`、`index.html` 全重寫；trophy TDD：24 輕單元 + 13 重集成；E-STOP z-index 10 永居最上、Space 鍵聯動） | 34 auth / 191 webclient (1 pre-existing flake) / 19 video-bridge / 40 C++ | `feat/mission-ui` |
 
 ### 已知偏差（後續工作仍相關）
 
@@ -93,6 +94,7 @@
 | **Auth bugfixes 實現計劃** | `docs/superpowers/plans/2026-04-08-auth-bugfixes.md` |
 | **代碼審查評閱（2026-05-27）** | `docs/2026-05-27-codebase-review.md` |
 | **代碼審查修補計劃（2026-05-27）** | `docs/superpowers/plans/2026-05-27-codebase-review-fixes.md` |
+| **Mission Control UI 整合計劃（2026-05-28）** | `docs/superpowers/plans/2026-05-28-mission-ui-integration.md` |
 | **功能待辦池（2026-05-06 起）** | 見下「功能計劃池」 |
 
 ### 功能計劃池（待用戶選定優先級實施）
