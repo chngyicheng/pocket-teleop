@@ -2,1279 +2,516 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>pocket-teleop</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #ffffff;
-      --surface: #f5f5f5;
-      --border: #e0e0e0;
-      --text: #111111;
-      --text-muted: #666666;
-      --accent: #0070f3;
-      --warn: #f59e0b;
+      --bg: #0c0e12;
+      --surface: #14171e;
+      --surface2: #1a1e26;
+      --border: #2a2f3a;
+      --text: #e6e9ef;
+      --muted: #8a92a3;
+      --accent: #f0a92a;
+      --accent2: #4ec9d6;
       --danger: #ef4444;
-      --header-h: 48px;
-      font-family: system-ui, -apple-system, sans-serif;
-      color: var(--text);
+      --ok: #22c55e;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
       background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      overflow: hidden;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #111111;
-        --surface: #1e1e1e;
-        --border: #333333;
-        --text: #f0f0f0;
-        --text-muted: #999999;
-      }
+    /* Mission app layout */
+    .mission-app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
-    html, body { height: 100%; }
-    body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-
-    /* ── Header ─────────────────────────────────── */
-    #app-header {
-      flex: 0 0 var(--header-h);
+    /* Header */
+    .mission-header-host {
+      flex: 0 0 auto;
       display: flex;
       align-items: center;
-      padding: 0 12px;
+      padding: 0 10px;
       gap: 8px;
+      background: var(--surface);
       border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      z-index: 40;
     }
-    #menu-btn {
+
+    .mission-phone-landscape .mission-header-host {
+      height: 36px;
+    }
+
+    .mission-phone-portrait .mission-header-host {
+      height: 36px;
+    }
+
+    .mission-tablet .mission-header-host {
+      height: 52px;
+      padding: 0 16px;
+      gap: 12px;
+    }
+
+    .mh-menu {
       background: none;
       border: none;
       cursor: pointer;
-      font-size: 20px;
-      color: var(--text);
+      font-size: 16px;
+      color: var(--muted);
       padding: 6px 8px;
-      border-radius: 6px;
-      line-height: 1;
-    }
-    #menu-btn:hover { background: var(--surface); }
-    #app-title {
-      font-family: 'Press Start 2P', 'Courier New', monospace;
-      font-size: 10px;
-      color: var(--text);
-      letter-spacing: 0.03em;
-      flex: 1;
-    }
-
-    /* ── Status pill ────────────────────────────── */
-    .pill {
-      font-size: 12px;
-      font-weight: 500;
-      padding: 4px 10px;
-      border-radius: 99px;
-      border: 1px solid currentColor;
-      background: transparent;
-      white-space: nowrap;
-      color: var(--text-muted);
-      cursor: default;
-    }
-    .pill:disabled { cursor: default; opacity: 1; }
-    .pill-connected { color: #16a34a; }
-    .pill-warn      { color: var(--warn); }
-    .pill-danger    { color: var(--danger); cursor: pointer; }
-
-    /* ── Robot name strip ───────────────────────── */
-    #robot-name-strip {
       flex: 0 0 auto;
-      padding: 6px 16px;
-      font-family: 'Orbitron', 'Courier New', monospace;
-      font-weight: 500;
-      font-size: 11px;
-      text-align: center;
-      letter-spacing: 0.08em;
+    }
+
+    .mh-title {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .mh-robot {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      font-weight: 600;
       color: var(--accent);
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
+      margin-left: 6px;
+    }
+
+    .mh-chip {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      flex: 0 0 auto;
+      padding: 3px 7px;
+      border-radius: 2px;
+      border: 1px solid;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .mh-chip.live {
+      color: var(--ok);
+      border-color: var(--ok);
+      opacity: 0.55;
+    }
+
+    .mh-chip.reconnecting {
+      color: var(--accent);
+      border-color: var(--accent);
+      opacity: 0.55;
+    }
+
+    .mh-chip.disconnected {
+      color: var(--danger);
+      border-color: var(--danger);
+      opacity: 0.55;
+    }
+
+    .mh-estop {
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      flex: 0 0 auto;
+      white-space: nowrap;
+      z-index: 10;
+    }
+
+    .mission-phone-landscape .mh-estop,
+    .mission-phone-portrait .mh-estop {
+      padding: 4px 8px;
+    }
+
+    .mission-tablet .mh-estop {
+      padding: 6px 12px;
+    }
+
+    .mh-estop:hover {
+      opacity: 0.9;
+    }
+
+    /* Main viewport */
+    .mission-main {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .mission-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: black;
+      transition: opacity 0.2s;
+    }
+
+    .mission-video.dim {
+      opacity: 0.4;
+    }
+
+    /* Overlay containers */
+    .mission-velbars-overlay {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 2;
+    }
+
+    .mission-phone-landscape .mission-velbars-overlay {
+      width: 200px;
+    }
+
+    .mission-tablet .mission-velbars-overlay {
       display: none;
     }
 
-    /* ── Video panel ────────────────────────────── */
-    #video-panel {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      background: var(--surface);
-      position: relative;
-    }
-    #video-placeholder-box {
-      aspect-ratio: 4 / 3;
-      max-width: 100%;
-      max-height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #video-placeholder { color: var(--text-muted); font-size: 14px; text-align: center; padding: 16px; }
-
-    /* ── Velocity overlay ───────────────────────── */
-    #vel-overlay {
+    .mission-telemetry-overlay {
       position: absolute;
-      top: 0; left: 0; right: 0;
-      background: rgba(0, 0, 0, 0.35);
-      padding: 8px 16px;
+      top: 8px;
+      right: 8px;
       display: flex;
       flex-direction: column;
       gap: 4px;
-      z-index: 5;
-      pointer-events: none;
+      z-index: 2;
     }
-    .vel-row { display: flex; align-items: center; gap: 8px; }
-    .vel-label { font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.7); width: 16px; text-align: right; font-family: monospace; }
-    .vel-track {
-      position: relative;
-      flex: 1;
-      height: 6px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 3px;
-    }
-    .vel-fill {
+
+    .mission-minimap-overlay {
       position: absolute;
-      top: 0;
-      height: 100%;
-      background: rgba(255,255,255,0.8);
-      border-radius: 3px;
-      left: 50%;
-      width: 0;
-    }
-    .vel-value { font-size: 11px; font-family: monospace; color: rgba(255,255,255,0.7); width: 44px; text-align: right; }
-
-    /* ── Backdrop ───────────────────────────────── */
-    #backdrop {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.4);
-      z-index: 20;
-    }
-    #backdrop.visible { display: block; }
-
-    /* ── Settings drawer ────────────────────────── */
-    #drawer {
-      position: fixed;
-      top: 0; left: 0;
-      height: 100%;
-      width: 320px;
-      background: var(--bg);
-      border-right: 1px solid var(--border);
-      z-index: 30;
-      transform: translateX(-100%);
-      transition: transform 250ms ease;
+      bottom: 8px;
+      right: 8px;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;
+      gap: 6px;
+      z-index: 2;
     }
-    #drawer.open { transform: translateX(0); }
-    @media (max-width: 400px) { #drawer { width: 90vw; } }
 
-    #drawer-header { padding: 16px; font-weight: 600; font-size: 15px; border-bottom: 1px solid var(--border); }
-
-    #drawer-nav { list-style: none; border-bottom: 1px solid var(--border); }
-    .nav-item {
-      padding: 12px 16px;
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--text-muted);
-      border-left: 3px solid transparent;
-    }
-    .nav-item:hover { background: var(--surface); }
-    .nav-item.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
-
-    .drawer-page { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
-    .drawer-page[hidden] { display: none; }
-
-    .drawer-page h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-    .drawer-page label { font-size: 14px; }
-    .drawer-page select,
-    .drawer-page input[type="text"] {
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--text);
-      font-size: 14px;
-      font-family: inherit;
-    }
-    .drawer-page button {
-      padding: 7px 14px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--text);
-      font-size: 13px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .drawer-page button:hover { background: var(--border); }
-    .drawer-page button:disabled { opacity: 0.5; cursor: default; }
-    .drawer-page ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-    .drawer-page li { font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-
-    .field-group { display: flex; flex-direction: column; gap: 6px; }
-    .field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
-    .field-row { display: flex; gap: 8px; }
-    .field-row input { flex: 1; }
-    .field-value { font-size: 14px; color: var(--text); }
-    .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-    .btn-primary:hover { opacity: 0.9; background: var(--accent); }
-
-    /* ── Joystick zones ─────────────────────────── */
-    #joystick-left, #joystick-right {
-      position: fixed;
-      bottom: 0;
-      width: 45vw;
-      height: 45vh;
-      z-index: 15;
-      touch-action: none;
-    }
-    #joystick-left  { left: 0; }
-    #joystick-right { right: 0; }
-
-    /* ── Input mode bar ─────────────────────────── */
-    #input-mode-bar {
-      position: fixed;
-      bottom: 16px;
+    .mission-mode-chip {
+      position: absolute;
+      bottom: 8px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(4px);
-      padding: 6px 16px;
-      border-radius: 20px;
-      font-size: 11px;
-      color: rgba(255,255,255,0.85);
-      white-space: nowrap;
-      z-index: 18;
-      pointer-events: none;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text);
+      background: rgba(8,10,14,0.7);
+      padding: 4px 10px;
+      border-radius: 2px;
+      border: 1px solid var(--border);
+      z-index: 2;
     }
 
-    /* ── Joystick elements (rendered by TouchJoystick) ── */
-    .joystick-base {
+    .mission-reticle {
       position: absolute;
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.12);
-      border: 2px solid rgba(255,255,255,0.4);
+      left: 50%;
+      top: 50%;
       transform: translate(-50%, -50%);
+      width: 16px;
+      height: 16px;
       pointer-events: none;
+      z-index: 1;
     }
-    .joystick-knob {
+
+    .mission-reticle::before,
+    .mission-reticle::after {
+      content: '';
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.55);
-      transform: translate(-50%, -50%);
+      background: var(--accent);
+      opacity: 0.4;
     }
-    /* ── Joystick hint (touch devices only) ── */
-    .joystick-hint {
-      position: absolute;
-      top: 50%;
+
+    .mission-reticle::before {
       left: 50%;
-      transform: translate(-50%, -50%);
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.25);
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      transform: translateX(-50%);
+    }
+
+    .mission-reticle::after {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      transform: translateY(-50%);
+    }
+
+    /* Joystick zones */
+    .mission-joystick {
+      position: absolute;
+      bottom: 0;
+      z-index: 5;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .mission-phone-landscape .mission-joystick,
+    .mission-phone-portrait .mission-joystick {
+      width: 230px;
+      height: 230px;
+    }
+
+    .mission-tablet .mission-joystick {
+      width: 280px;
+      height: 280px;
+    }
+
+    .mission-joystick-drive {
+      left: 0;
+    }
+
+    .mission-joystick-strafe {
+      right: 0;
+    }
+
+    /* HUD Components */
+    .vel-bar-row {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 4px;
+      margin-bottom: 2px;
+    }
+
+    .vel-bar-label {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      color: var(--muted);
+      font-weight: 500;
+      min-width: 20px;
+    }
+
+    .vel-bar-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      position: relative;
+      border-radius: 2px;
+    }
+
+    .vel-bar-fill {
+      position: absolute;
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .vel-bar-value {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 9px;
+      color: var(--accent);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      min-width: 30px;
+      text-align: right;
+    }
+
+    .readout {
+      background: rgba(8,10,14,0.55);
+      backdrop-filter: blur(6px);
+      padding: 3px 8px;
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.05);
+      white-space: nowrap;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+    }
+
+    .readout-label {
+      opacity: 0.5;
+      letter-spacing: 0.1em;
+    }
+
+    .readout-value {
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Mini-map */
+    .mini-map {
+      width: 110px;
+      height: 110px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mission-tablet .mini-map {
+      width: 200px;
+      height: 200px;
+    }
+
+    .mini-map-svg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+    }
+
+    .mini-map-grid {
+      stroke: var(--border);
+      stroke-width: 0.5;
+      opacity: 0.3;
+    }
+
+    .mini-map-polyline {
+      stroke: var(--accent);
+      stroke-width: 1.5;
+      fill: none;
+      opacity: 0.7;
+    }
+
+    .mini-map-arrow {
+      fill: var(--accent);
+    }
+
+    /* Compass */
+    .compass {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .compass-svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .mission-tablet .compass-svg {
+      width: 44px;
+      height: 44px;
+    }
+
+    .compass-circle {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 1;
+    }
+
+    .compass-needle {
+      fill: var(--accent);
+    }
+
+    .compass-label {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      min-width: 32px;
+    }
+
+    /* Joystick primitives */
+    .mj-base {
+      border: 2px solid;
+      opacity: 0.7;
       pointer-events: none;
     }
-    .joystick-hint-dot {
-      width: 14px;
-      height: 14px;
+
+    .mj-knob {
       border-radius: 50%;
-      background: rgba(255,255,255,0.3);
+      box-shadow: 0 0 8px currentColor;
+      pointer-events: none;
     }
-    /* ── Account page ────────────────────────── */
-    .account-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding-bottom: 12px; border-bottom: 1px solid var(--border);
-    }
-    .account-username { font-size: 15px; font-weight: 600; }
-    .btn-logout {
-      padding: 6px 12px; background: #ef4444; color: #fff;
-      border: none; border-radius: 6px; font-size: 13px; cursor: pointer;
-    }
-    .btn-logout:active { opacity: 0.85; }
 
-    .accordion { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .accordion + .accordion { margin-top: 8px; }
-    .accordion-header {
-      width: 100%; display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 14px; background: none; border: none; font-size: 14px;
-      font-weight: 500; color: var(--text); cursor: pointer; text-align: left;
+    .mj-hint {
+      border-radius: 50%;
+      opacity: 0.4;
+      pointer-events: none;
     }
-    .accordion-header:hover { background: var(--border); }
-    .accordion-chevron { transition: transform 0.2s; }
-    .accordion-header[aria-expanded="true"] .accordion-chevron { transform: rotate(180deg); }
-    .accordion-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); }
-    .accordion-body[hidden] { display: none; }
 
-    .pw-wrap { display: flex; align-items: center; gap: 8px; }
-    .pw-wrap input { flex: 1; }
-    .eyeball {
-      flex-shrink: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-      background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0; line-height: 0;
+    .mj-label {
+      position: absolute;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 8px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      pointer-events: none;
     }
-    .eyeball:hover { color: var(--text); }
-    .form-error { font-size: 12px; color: #ef4444; margin: 0; }
-    #form-change-username,
-    #form-change-password { display: flex; flex-direction: column; gap: 10px; }
-    #page-account input {
-      width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
-      font-size: 14px; background: var(--surface); color: var(--text);
+
+    /* Phone vs tablet layouts */
+    @media (min-width: 900px) {
+      .mission-app {
+        grid-template-columns: 220px 1fr 240px;
+        grid-template-rows: 52px 1fr;
+      }
     }
-    #page-account input:focus { outline: none; border-color: var(--accent); }
-    #page-account button[type="submit"] {
-      width: 100%; padding: 10px; background: var(--accent); color: #fff;
-      border: none; border-radius: 6px; font-size: 14px; cursor: pointer;
+
+    @media (orientation: portrait) {
+      .mission-phone-portrait .mission-joystick {
+        width: 190px;
+        height: 190px;
+      }
     }
-    #page-account button[type="submit"]:active { opacity: 0.85; }
+
+    #app {
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
-  <div id="backdrop"></div>
-
-  <nav id="drawer" aria-label="Settings">
-    <div id="drawer-header">Settings</div>
-    <ul id="drawer-nav">
-      <li class="nav-item active" data-page="gamepad">Gamepad</li>
-      <li class="nav-item" data-page="video">Video</li>
-      <li class="nav-item" data-page="connection">Connection</li>
-      <li class="nav-item" data-page="account">Account</li>
-    </ul>
-
-    <!-- Gamepad page -->
-    <div id="page-gamepad" class="drawer-page">
-      <div>
-        <label for="profile-select">Profile</label><br>
-        <div style="display:flex;gap:8px;margin-top:6px;align-items:center">
-          <select id="profile-select"></select>
-          <button id="profile-delete" style="display:none">Delete</button>
-        </div>
-      </div>
-
-      <div id="axis-calibration">
-        <h3>Axis calibration</h3>
-        <p id="cal-instruction" style="font-size:13px;margin-top:6px">Press <strong>Start</strong> to calibrate axes from scratch, or skip to use the selected profile as-is.</p>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-          <button id="cal-start">Start calibration</button>
-          <button id="cal-next" style="display:none">Next</button>
-          <button id="cal-skip" style="display:none">Skip step</button>
-        </div>
-      </div>
-
-      <div id="button-assignments">
-        <h3>Button assignments</h3>
-        <ul id="button-list"></ul>
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
-          <input id="button-action-input" type="text" placeholder="action name (e.g. emergency_stop)" style="width:200px" />
-          <button id="button-add-start">Add</button>
-          <span id="button-waiting" style="display:none;font-size:13px;color:var(--text-muted)">press a button on the gamepad…</span>
-        </div>
-      </div>
-
-      <div>
-        <h3>Save profile</h3>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <input id="save-name-input" type="text" placeholder="Profile name…" style="flex:1" />
-          <button id="save-btn" class="btn-primary">Save</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Video page -->
-    <div id="page-video" class="drawer-page" hidden>
-      <div class="field-group">
-        <span class="field-label">Source type</span>
-        <select id="video-source-select" class="field-value" style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 8px;color:var(--text);font-size:13px">
-          <option value="ros2">ROS2 topic</option>
-          <option value="rtsp">RTSP URL</option>
-          <option value="udp">UDP stream</option>
-          <option value="srt">SRT stream</option>
-          <option value="mjpeg">MJPEG direct</option>
-          <option value="disabled">Disabled</option>
-        </select>
-      </div>
-      <div id="video-url-field" class="field-group" style="display:none">
-        <span class="field-label" id="video-url-label">URL</span>
-        <div class="field-row">
-          <input id="video-url-input" type="text" placeholder="" />
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <button id="video-source-apply" class="btn-primary">Apply</button>
-      </div>
-      <div id="video-source-status" style="font-size:12px;color:var(--text-muted);margin-top:6px"></div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
-        <strong>ROS2 topic</strong> — uses <code>video-bridge</code> (set <code>VIDEO_TOPIC</code> in <code>.env</code>).<br>
-        <strong>RTSP / UDP / SRT</strong> — MediaMTX pulls the stream; displayed via WebRTC.<br>
-        <strong>MJPEG direct</strong> — browser fetches <code>http://</code> URL directly.<br>
-        Changes take effect immediately; no restart needed.
-      </p>
-    </div>
-
-    <!-- Connection page -->
-    <div id="page-connection" class="drawer-page" hidden>
-      <div class="field-group">
-        <span class="field-label">Robot name</span>
-        <span id="robot-name-display" class="field-value">—</span>
-      </div>
-      <div class="field-group">
-        <span class="field-label">ROS namespace</span>
-        <span id="robot-ns-display" class="field-value">—</span>
-      </div>
-    </div>
-
-    <!-- Account page -->
-    <div id="page-account" class="drawer-page" hidden>
-
-      <!-- Header: username + logout -->
-      <div class="account-header">
-        <span class="account-username" id="account-username">—</span>
-        <form method="POST" action="/auth/logout" style="margin:0">
-          <button type="submit" class="btn-logout">Log out</button>
-        </form>
-      </div>
-
-      <!-- Change Username accordion -->
-      <div class="accordion">
-        <button type="button" class="accordion-header" id="acc-username-btn" aria-expanded="false">
-          Change username <span class="accordion-chevron">▾</span>
-        </button>
-        <div class="accordion-body" id="acc-username-body" hidden>
-          <form id="form-change-username" method="POST" action="/auth/change-username">
-            <div class="pw-wrap">
-              <input type="password" name="currentPassword" placeholder="Current password" autocomplete="current-password" required>
-              <button type="button" class="eyeball" aria-label="Show password"></button>
-            </div>
-            <input type="text" name="newUsername" placeholder="New username" autocomplete="username" required>
-            <button type="submit">Save</button>
-            <p class="form-error" hidden></p>
-          </form>
-        </div>
-      </div>
-
-      <!-- Change Password accordion -->
-      <div class="accordion">
-        <button type="button" class="accordion-header" id="acc-password-btn" aria-expanded="false">
-          Change password <span class="accordion-chevron">▾</span>
-        </button>
-        <div class="accordion-body" id="acc-password-body" hidden>
-          <form id="form-change-password" method="POST" action="/auth/change-password">
-            <input type="hidden" name="newUsername" id="cp-hidden-username">
-            <div class="pw-wrap">
-              <input type="password" name="currentPassword" placeholder="Current password" autocomplete="current-password" required>
-              <button type="button" class="eyeball" aria-label="Show password"></button>
-            </div>
-            <div class="pw-wrap">
-              <input type="password" name="newPassword" id="cp-new-password" placeholder="New password (min 6 chars)" autocomplete="new-password" minlength="6" required>
-              <button type="button" class="eyeball" aria-label="Show password"></button>
-            </div>
-            <div class="pw-wrap">
-              <input type="password" id="cp-confirm-password" placeholder="Confirm new password" autocomplete="new-password" required><!-- no name: client-side validation only, not submitted -->
-              <button type="button" class="eyeball" aria-label="Show password"></button>
-            </div>
-            <button type="submit">Save</button>
-            <p class="form-error" hidden></p>
-          </form>
-        </div>
-      </div>
-
-    </div>
-  </nav>
-
-  <header id="app-header">
-    <button id="menu-btn" aria-label="Open settings">☰</button>
-    <span id="app-title">pocket-teleop</span>
-    <button id="estop-btn" title="Emergency stop (Spacebar)"
-      style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.05em">
-      &#9632; STOP
-    </button>
-    <button id="status-pill" class="pill" style="margin-left:auto" disabled>Connecting…</button>
-  </header>
-
-  <div id="robot-name-strip"></div>
-
-  <main id="video-panel">
-    <div id="vel-overlay">
-      <div class="vel-row">
-        <span class="vel-label">lx</span>
-        <div class="vel-track"><div class="vel-fill" id="vel-fill-lx"></div></div>
-        <span class="vel-value" id="vel-val-lx">—</span>
-      </div>
-      <div class="vel-row">
-        <span class="vel-label">ly</span>
-        <div class="vel-track"><div class="vel-fill" id="vel-fill-ly"></div></div>
-        <span class="vel-value" id="vel-val-ly">—</span>
-      </div>
-      <div class="vel-row">
-        <span class="vel-label">az</span>
-        <div class="vel-track"><div class="vel-fill" id="vel-fill-az"></div></div>
-        <span class="vel-value" id="vel-val-az">—</span>
-      </div>
-    </div>
-    <div id="video-placeholder-box">
-      <p id="video-placeholder">No video stream</p>
-    </div>
-    <!-- WebRTC stream (primary, auto-connects when mediamtx is up) -->
-    <video id="video-el"
-           autoplay muted playsinline
-           style="max-width:100%;max-height:100%;object-fit:contain;display:none">
-    </video>
-    <!-- MJPEG direct stream (shown when source type is mjpeg) -->
-    <img id="mjpeg-img"
-         style="max-width:100%;max-height:100%;object-fit:contain;display:none"
-         alt="">
-  </main>
-
-  <div id="joystick-left"></div>
-  <div id="joystick-right"></div>
-  <div id="input-mode-bar">◉ Touch</div>
-  <div id="video-status-bar" style="position:fixed;bottom:calc(var(--input-bar-h,44px) + 4px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;pointer-events:none">
-    <span id="video-health-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--surface);color:var(--text-muted);border:1px solid var(--border);letter-spacing:0.04em">● connecting</span>
-    <span id="latency-display" style="font-size:11px;color:var(--text-muted)"></span>
-  </div>
-  <div id="odom-panel" hidden style="display:flex;gap:12px;align-items:center;font-size:12px;color:var(--text-muted);padding:4px 0">
-    <span><span style="opacity:0.6">pos </span><span id="odom-xy"></span></span>
-    <span><span style="opacity:0.6">hdg </span><span id="odom-heading"></span></span>
-    <svg id="odom-compass" width="18" height="18" viewBox="-9 -9 18 18">
-      <circle r="8" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3"/>
-      <polygon id="odom-needle" points="0,-7 2,3 0,1 -2,3" fill="currentColor" transform="rotate(0)"/>
-    </svg>
-  </div>
-
+  <div id="app"></div>
   <script type="module">
-    import { TeleopClient } from '/dist/teleop_client.js';
-    import { getAllProfiles, saveProfile, deleteProfile } from '/dist/gamepad_profiles.js';
-    import { SettingsRouter } from '/dist/settings.js';
-    import { WhepClient } from '/dist/whep_client.js';
-    import { VideoSourcePicker } from '/dist/video_source.js';
-    import { TouchJoystick } from '/dist/touch_joystick.js';
-    import { KeyboardHandler } from '/dist/keyboard_handler.js';
+    import { startMissionApp } from './src/mission_app.js';
 
-    // ── Settings drawer ───────────────────────────────────────────────────────
+    const root = document.getElementById('app');
 
-    const drawer   = document.getElementById('drawer');
-    const backdrop = document.getElementById('backdrop');
-    const menuBtn  = document.getElementById('menu-btn');
-
-    function openDrawer()  { drawer.classList.add('open');    backdrop.classList.add('visible'); }
-    function closeDrawer() { drawer.classList.remove('open'); backdrop.classList.remove('visible'); }
-
-    menuBtn.addEventListener('click', () =>
-      drawer.classList.contains('open') ? closeDrawer() : openDrawer()
-    );
-    backdrop.addEventListener('click', closeDrawer);
-
-    // ── Settings router ───────────────────────────────────────────────────────
-
-    const router = new SettingsRouter();
-    router.onNavigate = (page) => {
-      document.querySelectorAll('.drawer-page').forEach((el) => { el.hidden = true; });
-      document.getElementById(`page-${page}`).hidden = false;
-      document.querySelectorAll('.nav-item').forEach((el) => el.classList.remove('active'));
-      document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
-      if (page === 'account') loadAccountPage();
-    };
-    document.querySelectorAll('.nav-item').forEach((item) => {
-      item.addEventListener('click', () => router.navigate(item.dataset.page));
-    });
-    router.navigate('gamepad'); // initialise: ensures only gamepad page is visible
-
-    // ── Account page ─────────────────────────────────────────────────────────
-
-    const EYE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-    const EYE_SLASH_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
-
-    // Initialise eyeball icons and toggles
-    document.querySelectorAll('.eyeball').forEach((btn) => {
-      btn.innerHTML = EYE_SVG;
-      btn.addEventListener('click', () => {
-        const input = btn.previousElementSibling;
-        const show = input.type === 'password';
-        input.type = show ? 'text' : 'password';
-        btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-        btn.innerHTML = show ? EYE_SLASH_SVG : EYE_SVG;
-      });
-    });
-
-    // Accordion (only one open at a time)
-    const accPanels = [
-      { btn: document.getElementById('acc-username-btn'), body: document.getElementById('acc-username-body') },
-      { btn: document.getElementById('acc-password-btn'), body: document.getElementById('acc-password-body') },
-    ];
-    accPanels.forEach(({ btn, body }) => {
-      btn.addEventListener('click', () => {
-        const opening = body.hidden;
-        accPanels.forEach(({ btn: b, body: bo }) => {
-          bo.hidden = true;
-          b.setAttribute('aria-expanded', 'false');
-        });
-        if (opening) {
-          body.hidden = false;
-          btn.setAttribute('aria-expanded', 'true');
-        }
-      });
-    });
-
-    // Change-username: fetch-based submission to show errors inline
-    document.getElementById('form-change-username').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form  = e.currentTarget;
-      const errEl = form.querySelector('.form-error');
-      errEl.hidden = true;
-      try {
-        const res = await fetch('/auth/change-username', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(new FormData(form)),
-        });
-        if (res.ok) {
-          window.location.replace('/auth/login');
-        } else {
-          errEl.textContent = await res.text();
-          errEl.hidden = false;
-        }
-      } catch (_) {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.hidden = false;
-      }
-    });
-
-    // Change-password: validate then fetch; show errors inline
-    document.getElementById('form-change-password').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form     = e.currentTarget;
-      const newPw    = document.getElementById('cp-new-password').value;
-      const confirmPw = document.getElementById('cp-confirm-password').value;
-      const errEl    = form.querySelector('.form-error');
-      if (newPw !== confirmPw) {
-        errEl.textContent = 'Passwords do not match.';
-        errEl.hidden = false;
-        return;
-      }
-      errEl.hidden = true;
-      try {
-        const res = await fetch('/auth/change-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams(new FormData(form)),
-        });
-        if (!res.ok) {
-          errEl.textContent = await res.text();
-          errEl.hidden = false;
-        } else if (res.redirected && new URL(res.url).searchParams.has('error')) {
-          errEl.textContent = 'Wrong current password.';
-          errEl.hidden = false;
-        } else {
-          window.location.replace('/auth/login');
-        }
-      } catch (_) {
-        errEl.textContent = 'Network error. Please try again.';
-        errEl.hidden = false;
-      }
-    });
-
-    // Load current username from server when account page is opened
-    async function loadAccountPage() {
-      try {
-        const res = await fetch('/auth/me');
-        if (!res.ok) return;
-        const { username } = await res.json();
-        document.getElementById('account-username').textContent = username;
-        document.getElementById('cp-hidden-username').value = username;
-      } catch (_) { /* network error — leave placeholder */ }
+    // Determine layout
+    let layout = 'phone-landscape';
+    if (window.matchMedia('(min-width: 900px)').matches) {
+      layout = 'tablet';
+    } else if (window.matchMedia('(orientation: portrait)').matches) {
+      layout = 'phone-portrait';
     }
 
-    // ── Connection URL builder ────────────────────────────────────────────────
-
-    function buildWsUrl() {
-      return `ws://${window.location.hostname}:${window.location.port}/ws`;
-    }
-
-    // ── Status pill ───────────────────────────────────────────────────────────
-
-    const statusPill = document.getElementById('status-pill');
-
-    function setStatus(state, text) {
-      statusPill.textContent = text;
-      statusPill.className = 'pill';
-      statusPill.disabled = state !== 'danger';
-      if (state === 'connected') statusPill.classList.add('pill-connected');
-      else if (state === 'warn')  statusPill.classList.add('pill-warn');
-      else if (state === 'danger') statusPill.classList.add('pill-danger');
-    }
-
-    statusPill.addEventListener('click', () => {
-      if (!statusPill.disabled) {
-        setStatus('default', 'Connecting…');
-        client.connect(buildWsUrl());
-      }
-    });
-
-    // ── Velocity overlay ──────────────────────────────────────────────────────
-
-    function updateVelBar(key, v) {
-      const fill = document.getElementById(`vel-fill-${key}`);
-      const val  = document.getElementById(`vel-val-${key}`);
-      const c = Math.max(-1, Math.min(1, v));
-      if (c >= 0) {
-        fill.style.left  = '50%';
-        fill.style.width = `${c * 50}%`;
-      } else {
-        fill.style.left  = `${(0.5 + c * 0.5) * 100}%`;
-        fill.style.width = `${-c * 50}%`;
-      }
-      val.textContent = v.toFixed(2);
-    }
-
-    function clearVelBars() {
-      ['lx', 'ly', 'az'].forEach((k) => {
-        document.getElementById(`vel-fill-${k}`).style.left  = '50%';
-        document.getElementById(`vel-fill-${k}`).style.width = '0';
-        document.getElementById(`vel-val-${k}`).textContent  = '—';
-      });
-    }
-
-    // ── Robot name strip ──────────────────────────────────────────────────────
-
-    const robotNameStrip = document.getElementById('robot-name-strip');
-
-    function applyRobotIdentity(name, namespace) {
-      robotNameStrip.textContent   = name || '';
-      robotNameStrip.style.display = name ? 'block' : 'none';
-      document.getElementById('robot-name-display').textContent = name      || '—';
-      document.getElementById('robot-ns-display').textContent   = namespace || '—';
-    }
-
-    let lastReceivedAt   = Date.now();
-    let connectedRobotType = '';
-
-
-    // ── Input source switching ────────────────────────────────────────────────
-
-    let inputSource = 'touch';
-    const joystickLeftEl  = document.getElementById('joystick-left');
-    const joystickRightEl = document.getElementById('joystick-right');
-    const inputModeBar    = document.getElementById('input-mode-bar');
-    const INPUT_MODE_TEXT = {
-      touch:    '◉ Touch',
-      gamepad:  '⊞ Gamepad',
-      keyboard: '⌨  W/S fwd · A/D turn · ←/→ strafe',
-    };
-
-    function setInputSource(source) {
-      inputSource = source;
-      inputModeBar.textContent = INPUT_MODE_TEXT[source];
-    }
-
-    function showJoysticks() {
-      joystickLeftEl.style.display  = '';
-      joystickRightEl.style.display = '';
-    }
-    function hideJoysticks() {
-      joystickLeftEl.style.display  = 'none';
-      joystickRightEl.style.display = 'none';
-    }
-
-    setInputSource('touch'); // initialise bar text
-
-    window.addEventListener('gamepadconnected', () => {
-      setInputSource('gamepad');
-      hideJoysticks();
-      client.setGamepadEnabled(true);
-      keyboardHandler.setEnabled(false);
-    });
-
-    window.addEventListener('gamepaddisconnected', () => {
-      setInputSource('touch');
-      showJoysticks();
-      client.setGamepadEnabled(false);
-      keyboardHandler.setEnabled(false);
-    });
-
-    [joystickLeftEl, joystickRightEl].forEach((zone) => {
-      zone.addEventListener('pointerdown', (e) => {
-        if (e.pointerType === 'touch' && inputSource !== 'touch') {
-          setInputSource('touch');
-          showJoysticks();
-          client.setGamepadEnabled(false);
-          keyboardHandler.setEnabled(false);
-        }
-      });
-    });
-
-    // ── TeleopClient ──────────────────────────────────────────────────────────
-
-    const latencyDisplay = document.getElementById('latency-display');
-    const odomPanel   = document.getElementById('odom-panel');
-    const odomXY      = document.getElementById('odom-xy');
-    const odomHeading = document.getElementById('odom-heading');
-    const odomNeedle  = document.getElementById('odom-needle');
-    let joyLx = 0, joyLy = 0, joyAz = 0;
-
-    const client = new TeleopClient({
-      retryIntervalMs: 5000,
-      onStatus: (_connected, robotType, robotName, robotNamespace) => {
-        lastReceivedAt     = Date.now();
-        connectedRobotType = robotType;
-        setStatus('connected', `● Connected — ${robotType}`);
-        applyRobotIdentity(robotName, robotNamespace);
-      },
-      onPong: () => { lastReceivedAt = Date.now(); },
-      onLatency: (ms) => { latencyDisplay.textContent = `${ms} ms`; },
-      onOdom: (x, y, heading) => {
-        odomPanel.hidden = false;
-        odomXY.textContent      = `${x.toFixed(2)}, ${y.toFixed(2)} m`;
-        const deg = Math.round(heading * 180 / Math.PI);
-        odomHeading.textContent = `${deg}°`;
-        odomNeedle.setAttribute('transform', `rotate(${deg})`);
-      },
-      onError: (msg) => {
-        setStatus('warn', `Error: ${msg}`);
-      },
-      onReconnecting: (attempt) => {
-        statusPill.disabled   = true;
-        statusPill.className  = 'pill pill-warn';
-        statusPill.textContent = `⟳ Reconnecting… (attempt ${attempt})`;
-      },
-      onClose: () => {
-        clearVelBars();
-        setStatus('danger', '○ Disconnected');
-      },
-      onTwist: (lx, ly, az) => {
-        updateVelBar('lx', lx);
-        updateVelBar('ly', ly);
-        updateVelBar('az', az);
-      },
-      onButton: (action) => {
-        console.log(`Button action: ${action}`);
-      },
-      onGamepadActivity: () => {
-        if (inputSource !== 'gamepad') {
-          setInputSource('gamepad');
-          hideJoysticks();
-          client.setGamepadEnabled(true);
-          keyboardHandler.setEnabled(false);
-        }
-      },
-    });
-
-    client.connect(buildWsUrl());
-
-    // ── E-stop ────────────────────────────────────────────────────────────────────
-    const estopBtn = document.getElementById('estop-btn');
-
-    function triggerEstop() {
-      client.sendTwist(0, 0, 0);
-      estopBtn.style.outline = '3px solid #fff';
-      setTimeout(() => { estopBtn.style.outline = ''; }, 300);
-    }
-
-    estopBtn.addEventListener('click', triggerEstop);
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key !== ' ') return;
-      // Skip when typing in an input field
-      const tag = (document.activeElement?.tagName ?? '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
-      e.preventDefault();
-      triggerEstop();
-    });
-
-    setInterval(() => {
-      if (statusPill.classList.contains('pill-danger')) {
-        const secsAgo = Math.floor((Date.now() - lastReceivedAt) / 1000);
-        statusPill.textContent = `○ Disconnected · ${secsAgo}s ago`;
-      }
-    }, 1000);
-
-    // ── Touch joysticks ───────────────────────────────────────────────────────
-
-    // Left joystick: lx = forward/back (−y), az = rotate (−x). One-handed driving.
-    // Right joystick: ly = strafe (x). Vertical axis unused.
-    new TouchJoystick(joystickLeftEl, {
-      maxRadius: 60,
-      onMove: (x, y) => { joyLx = -y; joyAz = -x; client.sendTwist(joyLx, joyLy, joyAz); },
-      onEnd:  ()     => { joyLx = 0;  joyAz = 0;  client.sendTwist(0, joyLy, 0); },
-    });
-
-    new TouchJoystick(joystickRightEl, {
-      maxRadius: 60,
-      onMove: (x, _) => { joyLy = x;  client.sendTwist(joyLx, joyLy, joyAz); },
-      onEnd:  ()     => { joyLy = 0;  client.sendTwist(joyLx, 0, joyAz); },
-    });
-
-    // ── Keyboard handler ──────────────────────────────────────────────────────
-
-    const keyboardHandler = new KeyboardHandler({
-      velocity: 0.5,
-      onTwist: (lx, ly, az) => { client.sendTwist(lx, ly, az); },
-      onActivity: () => {
-        if (inputSource !== 'keyboard') {
-          setInputSource('keyboard');
-          hideJoysticks();
-          client.setGamepadEnabled(false);
-          keyboardHandler.setEnabled(true);
-        }
-      },
-    });
-    keyboardHandler.start();
-    keyboardHandler.setEnabled(false); // disabled until first keypress switches source
-
-    // ── Video panel (WebRTC / WHEP) ───────────────────────────────────────────
-
-    const videoEl             = document.getElementById('video-el');
-    const videoPlaceholder    = document.getElementById('video-placeholder');
-    const videoPlaceholderBox = document.getElementById('video-placeholder-box');
-    const mjpegImgEl            = document.getElementById('mjpeg-img');
-
-    function showVideoStream(stream) {
-      mjpegImgEl.src = '';
-      mjpegImgEl.style.display = 'none';
-      videoEl.srcObject = stream;
-      videoEl.style.display = 'block';
-      videoPlaceholderBox.style.display = 'none';
-    }
-
-    function hideVideoStream(reason) {
-      videoEl.style.display = 'none';
-      videoEl.srcObject = null;
-      videoPlaceholderBox.style.display = '';
-      videoPlaceholder.textContent = reason ?? 'No video stream';
-    }
-
-    const whepUrl = `${window.location.protocol}//${window.location.host}/video/teleop/whep`;
-
-    const videoHealthBadge = document.getElementById('video-health-badge');
-
-    const STATE_LABELS = {
-      connecting: { text: '● connecting', color: 'var(--text-muted)' },
-      live:       { text: '● live',       color: '#27ae60' },
-      retrying:   { text: '↺ retrying',   color: '#e67e22' },
-      error:      { text: '✕ error',      color: '#c0392b' },
-    };
-
-    const whepClient = new WhepClient(whepUrl, {
-      onStream: (stream) => showVideoStream(stream),
-      onError:  (msg)    => hideVideoStream(msg === 'stream not available' ? 'No video stream' : `Video: ${msg}`),
-      onClose:  ()       => hideVideoStream('Stream closed'),
-      onStateChange: (state) => {
-        const s = STATE_LABELS[state] ?? STATE_LABELS.connecting;
-        videoHealthBadge.textContent = s.text;
-        videoHealthBadge.style.color = s.color;
-      },
-    });
-
-    whepClient.start();
-
-    // ── Video source picker ───────────────────────────────────────────────────────
-
-    const videoSourceSelect = document.getElementById('video-source-select');
-    const videoUrlField     = document.getElementById('video-url-field');
-    const videoUrlLabel     = document.getElementById('video-url-label');
-    const videoUrlInput     = document.getElementById('video-url-input');
-    const videoSourceApply  = document.getElementById('video-source-apply');
-    const videoSourceStatus = document.getElementById('video-source-status');
-
-    const URL_PLACEHOLDERS = {
-      rtsp:  'rtsp://192.168.1.200:554/stream',
-      udp:   'udp://192.168.1.200:1234',
-      srt:   'srt://192.168.1.200:8890',
-      mjpeg: 'http://192.168.1.200:8080/video',
-    };
-    const URL_LABELS = {
-      rtsp: 'RTSP URL', udp: 'UDP URL', srt: 'SRT URL', mjpeg: 'MJPEG URL',
-    };
-
-    function setMjpegDisplay(url) {
-      if (url) {
-        mjpegImgEl.src = url;
-        mjpegImgEl.style.display = '';
-        videoEl.style.display = 'none';
-        videoPlaceholderBox.style.display = 'none';
-      } else {
-        mjpegImgEl.src = '';
-        mjpegImgEl.style.display = 'none';
-        hideVideoStream('No video stream');
-      }
-    }
-
-    const picker = new VideoSourcePicker({
-      onMjpegUrl: (url) => setMjpegDisplay(url),
-    });
-
-    function updateUrlField() {
-      const mode = videoSourceSelect.value;
-      const needsUrl = ['rtsp', 'udp', 'srt', 'mjpeg'].includes(mode);
-      videoUrlField.style.display = needsUrl ? '' : 'none';
-      if (needsUrl) {
-        videoUrlLabel.textContent = URL_LABELS[mode] ?? 'URL';
-        videoUrlInput.placeholder = URL_PLACEHOLDERS[mode] ?? '';
-      }
-    }
-
-    videoSourceSelect.addEventListener('change', () => {
-      updateUrlField();
-    });
-
-    videoSourceApply.addEventListener('click', async () => {
-      const mode = videoSourceSelect.value;
-      const url  = videoUrlInput.value.trim();
-      videoSourceStatus.textContent = 'Applying…';
-      const result = await picker.apply(mode, url);
-      if (result === 'ok') {
-        videoSourceStatus.textContent = 'Applied.';
-      } else if (result.startsWith('validation-error:')) {
-        videoSourceStatus.textContent = result.slice('validation-error:'.length);
-      } else {
-        videoSourceStatus.textContent = result.replace(':', ': ');
-      }
-    });
-
-    // Restore saved source and re-apply on every load
-    // (MediaMTX runtime config is volatile — lost on container restart).
-    (async function () {
-      const { mode, streamUrl, mjpegUrl } = picker.loadSaved();
-      let effectiveMode = mode;
-      let effectiveUrl = '';
-      if (mode === 'rtsp' || mode === 'udp' || mode === 'srt') {
-        const validationError = picker.validate(mode, streamUrl);
-        if (validationError) {
-          effectiveMode = 'ros2';
-        } else {
-          effectiveUrl = streamUrl;
-        }
-      } else if (mode === 'mjpeg') {
-        const validationError = picker.validate(mode, mjpegUrl);
-        if (validationError) {
-          effectiveMode = 'ros2';
-        } else {
-          effectiveUrl = mjpegUrl;
-        }
-      }
-      videoSourceSelect.value = effectiveMode;
-      updateUrlField();
-      if (effectiveMode === 'rtsp' || effectiveMode === 'udp' || effectiveMode === 'srt') {
-        videoUrlInput.value = effectiveUrl;
-        await picker.apply(effectiveMode, effectiveUrl);
-      } else if (effectiveMode === 'mjpeg') {
-        videoUrlInput.value = effectiveUrl;
-        if (effectiveUrl) setMjpegDisplay(effectiveUrl);
-      } else {
-        await picker.apply(effectiveMode, '');
-      }
-    })();
-
-    // ── Gamepad calibration UI ────────────────────────────────────────────────
-
-    const profileSelect     = document.getElementById('profile-select');
-    const profileDeleteBtn  = document.getElementById('profile-delete');
-    const calInstruction    = document.getElementById('cal-instruction');
-    const calStartBtn       = document.getElementById('cal-start');
-    const calNextBtn        = document.getElementById('cal-next');
-    const calSkipBtn        = document.getElementById('cal-skip');
-    const buttonList        = document.getElementById('button-list');
-    const buttonActionInput = document.getElementById('button-action-input');
-    const buttonAddStart    = document.getElementById('button-add-start');
-    const buttonWaiting     = document.getElementById('button-waiting');
-    const saveNameInput     = document.getElementById('save-name-input');
-    const saveBtn           = document.getElementById('save-btn');
-
-    let workingMapping = { lx: { axis: 1, invert: true }, ly: { axis: 0, invert: true }, az: { axis: 2, invert: true } };
-    let workingButtons = {};
-    let listeningForButton = false;
-
-    let calStepIndex = 0;
-    let calSamples = [];
-    let calSampleInterval = null;
-    const CAL_STEPS = [
-      { key: 'lx', instruction: 'Push the <strong>left stick fully forward</strong> and hold…' },
-      { key: 'ly', instruction: 'Push the <strong>left stick fully right</strong> and hold…' },
-      { key: 'az', instruction: 'Push the <strong>right stick fully right</strong> and hold…' },
-    ];
-
-    function populateProfileDropdown() {
-      const profiles = getAllProfiles();
-      profileSelect.innerHTML = '';
-      for (const p of profiles) {
-        const opt = document.createElement('option');
-        opt.value = p.name;
-        opt.textContent = p.name;
-        profileSelect.appendChild(opt);
-      }
-      updateDeleteButton();
-    }
-
-    function updateDeleteButton() {
-      const builtIns = ['Xbox', 'DualShock / DualSense', 'GameSir G8+', 'Generic'];
-      profileDeleteBtn.style.display = builtIns.includes(profileSelect.value) ? 'none' : 'inline';
-    }
-
-    function applySelectedProfile() {
-      const profiles = getAllProfiles();
-      const selected = profiles.find((p) => p.name === profileSelect.value);
-      if (!selected) return;
-      workingMapping = { lx: { ...selected.mapping.lx }, ly: { ...selected.mapping.ly }, az: { ...selected.mapping.az } };
-      workingButtons = { ...selected.buttons };
-      client.setGamepadProfile(selected);
-      renderButtonList();
-    }
-
-    profileSelect.addEventListener('change', () => { updateDeleteButton(); applySelectedProfile(); });
-
-    profileDeleteBtn.addEventListener('click', () => {
-      deleteProfile(profileSelect.value);
-      populateProfileDropdown();
-      applySelectedProfile();
-    });
-
-    calStartBtn.addEventListener('click', () => { calStepIndex = 0; startCalStep(); });
-
-    function startCalStep() {
-      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction + '<br><small style="color:var(--text-muted)">Hold the stick in position, then click Ready.</small>';
-      calStartBtn.style.display = 'none';
-      calNextBtn.style.display  = 'inline';
-      calNextBtn.textContent    = 'Ready — holding stick';
-      calSkipBtn.style.display  = 'inline';
-      calSamples = [];
-      // Sampling begins only when user clicks Ready (see calNextBtn handler below).
-    }
-
-    function beginSampling() {
-      if (calSampleInterval !== null) return;
-      calNextBtn.style.display = 'none';
-      calSkipBtn.style.display = 'inline';
-      calInstruction.innerHTML = CAL_STEPS[calStepIndex].instruction + '<br><small style="color:var(--text-muted)">Sampling… keep holding.</small>';
-      calSamples = [];
-      calSampleInterval = setInterval(() => {
-        const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
-        if (!gp) return;
-        calSamples.push([...gp.axes]);
-        if (calSamples.length >= 5) {
-          clearInterval(calSampleInterval);
-          calSampleInterval = null;
-          commitCalStep();
-        }
-      }, 200);
-    }
-
-    calNextBtn.addEventListener('click', beginSampling);
-
-    function commitCalStep() {
-      const axisCount = calSamples[0].length;
-      let maxMean = 0, maxAxis = 0;
-      for (let a = 0; a < axisCount; a++) {
-        const mean = calSamples.reduce((s, r) => s + Math.abs(r[a] ?? 0), 0) / calSamples.length;
-        if (mean > maxMean) { maxMean = mean; maxAxis = a; }
-      }
-      const meanVal = calSamples.reduce((s, r) => s + (r[maxAxis] ?? 0), 0) / calSamples.length;
-      workingMapping[CAL_STEPS[calStepIndex].key] = { axis: maxAxis, invert: meanVal < 0 };
-      advanceCalStep();
-    }
-
-    function advanceCalStep() {
-      calStepIndex += 1;
-      if (calStepIndex >= CAL_STEPS.length) {
-        calInstruction.textContent    = 'Axis calibration complete. Save the profile below.';
-        calStartBtn.style.display     = 'inline';
-        calStartBtn.textContent       = 'Recalibrate';
-        calNextBtn.style.display      = 'none';
-        calSkipBtn.style.display      = 'none';
-      } else {
-        startCalStep();
-      }
-    }
-
-    calSkipBtn.addEventListener('click', () => {
-      if (calSampleInterval !== null) { clearInterval(calSampleInterval); calSampleInterval = null; }
-      advanceCalStep();
-    });
-
-    function renderButtonList() {
-      buttonList.innerHTML = '';
-      for (const [action, idx] of Object.entries(workingButtons)) {
-        const li    = document.createElement('li');
-        const label = document.createElement('span');
-        label.textContent = `${action} → button ${idx}`;
-        const rm = document.createElement('button');
-        rm.textContent = 'Remove';
-        rm.addEventListener('click', () => { delete workingButtons[action]; renderButtonList(); });
-        li.appendChild(label);
-        li.appendChild(rm);
-        buttonList.appendChild(li);
-      }
-    }
-
-    buttonAddStart.addEventListener('click', () => {
-      if (!buttonActionInput.value.trim()) return;
-      buttonWaiting.style.display  = 'inline';
-      buttonAddStart.disabled      = true;
-      listeningForButton           = true;
-    });
-
-    setInterval(() => {
-      if (!listeningForButton) return;
-      const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
-      if (!gp) return;
-      for (let i = 0; i < gp.buttons.length; i++) {
-        if (gp.buttons[i]?.pressed) {
-          workingButtons[buttonActionInput.value.trim()] = i;
-          listeningForButton          = false;
-          buttonWaiting.style.display = 'none';
-          buttonAddStart.disabled     = false;
-          buttonActionInput.value     = '';
-          renderButtonList();
-          break;
-        }
-      }
-    }, 100);
-
-    saveBtn.addEventListener('click', () => {
-      const name = saveNameInput.value.trim();
-      if (!name) return;
-      saveProfile(name, workingMapping, workingButtons);
-      populateProfileDropdown();
-      profileSelect.value = name;
-      updateDeleteButton();
-      saveNameInput.value = '';
-    });
-
-    let gamepadDetected = false;
-    const detectId = setInterval(() => {
-      if (gamepadDetected) return;
-      const gp = Array.from(navigator.getGamepads()).find((g) => g !== null) ?? null;
-      if (gp !== null) { gamepadDetected = true; populateProfileDropdown(); applySelectedProfile(); clearInterval(detectId); }
-    }, 500);
-
-    // When the page regains visibility (back-button, tab-switch, phone wake),
-    // verify the session is still valid. Redirect to login if not.
-    function checkAuth() {
-      fetch('/auth/me').then((res) => { if (!res.ok) window.location.replace('/auth/login'); });
-    }
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') checkAuth();
-    });
-    window.addEventListener('pageshow', (event) => {
-      if (event.persisted) checkAuth();
+    // Build URLs
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const teleopUrl = `${proto}//${location.host}/teleop`;
+    const whepUrl = `${location.protocol}//${location.host}/video/teleop/whep`;
+
+    // Start app
+    startMissionApp({
+      root,
+      layout,
+      teleopUrl,
+      whepUrl,
     });
   </script>
 </body>
