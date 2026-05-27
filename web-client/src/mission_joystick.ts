@@ -31,8 +31,18 @@ export class MissionJoystick {
     this.container = container;
     this.opts = { axes: 'xy', ...opts };
 
-    // Set container styles
-    container.style.position = 'relative';
+    // Container must be a positioning context for the absolutely-positioned
+    // base/knob/hint children. Only fall back to relative when the host
+    // hasn't already established a non-static position via CSS — otherwise
+    // we'd clobber `.mission-joystick { position: absolute }`.
+    if (typeof window !== 'undefined' && window.getComputedStyle) {
+      const pos = window.getComputedStyle(container).position;
+      if (pos === 'static' || pos === '') {
+        container.style.position = 'relative';
+      }
+    } else {
+      container.style.position = 'relative';
+    }
     container.style.width = `${opts.size}px`;
     container.style.height = `${opts.size}px`;
     container.style.touchAction = 'none';

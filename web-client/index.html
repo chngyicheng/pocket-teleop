@@ -45,30 +45,24 @@
       flex-direction: column;
     }
 
-    /* Header */
+    /* Header — host is a passthrough wrapper; layout lives on .mission-header itself */
     .mission-header-host {
       flex: 0 0 auto;
+      display: block;
+    }
+
+    .mission-header {
       display: flex;
       align-items: center;
-      padding: 0 10px;
       gap: 8px;
+      padding: 0 10px;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
     }
 
-    .mission-phone-landscape .mission-header-host {
-      height: 36px;
-    }
-
-    .mission-phone-portrait .mission-header-host {
-      height: 36px;
-    }
-
-    .mission-tablet .mission-header-host {
-      height: 52px;
-      padding: 0 16px;
-      gap: 12px;
-    }
+    .mission-phone-landscape .mission-header { height: 36px; }
+    .mission-phone-portrait .mission-header { height: 44px; }
+    .mission-tablet .mission-header { height: 52px; padding: 0 16px; gap: 12px; }
 
     .mh-menu {
       background: none;
@@ -87,7 +81,10 @@
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--muted);
-      flex: 0 0 auto;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
@@ -96,7 +93,7 @@
       font-size: 9px;
       font-weight: 600;
       color: var(--accent);
-      margin-left: 6px;
+      flex: 0 0 auto;
     }
 
     .mh-chip {
@@ -110,23 +107,9 @@
       white-space: nowrap;
     }
 
-    .mh-chip.live {
-      color: var(--ok);
-      border-color: var(--ok);
-      opacity: 0.55;
-    }
-
-    .mh-chip.reconnecting {
-      color: var(--accent);
-      border-color: var(--accent);
-      opacity: 0.55;
-    }
-
-    .mh-chip.disconnected {
-      color: var(--danger);
-      border-color: var(--danger);
-      opacity: 0.55;
-    }
+    .mh-chip-live          { color: var(--ok);     border-color: var(--ok);     }
+    .mh-chip-reconnecting  { color: var(--accent); border-color: var(--accent); }
+    .mh-chip-disconnected  { color: var(--danger); border-color: var(--danger); }
 
     .mh-estop {
       background: var(--danger);
@@ -157,20 +140,22 @@
       opacity: 0.9;
     }
 
-    /* Main viewport */
+    /* Main viewport — block container hosting absolutely-positioned children */
     .mission-main {
       flex: 1;
       position: relative;
       overflow: hidden;
-      display: flex;
     }
 
     .mission-video {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
       background: black;
       transition: opacity 0.2s;
+      z-index: 0;
     }
 
     .mission-video.dim {
@@ -239,6 +224,7 @@
       pointer-events: none;
       z-index: 1;
     }
+    .mission-tablet .mission-reticle { width: 80px; height: 80px; }
 
     .mission-reticle::before,
     .mission-reticle::after {
