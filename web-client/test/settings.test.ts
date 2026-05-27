@@ -31,6 +31,33 @@ describe('video URL persistence', () => {
     clearVideoUrl();
     expect(loadVideoUrl()).toBeNull();
   });
+
+  it('loadVideoUrl returns null and does not throw when localStorage.getItem throws', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => { throw new Error('blocked'); },
+      setItem: () => {},
+      removeItem: () => {},
+    });
+    expect(loadVideoUrl()).toBeNull();
+  });
+
+  it('saveVideoUrl silently ignores localStorage.setItem exceptions', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => { throw new Error('blocked'); },
+      removeItem: () => {},
+    });
+    expect(() => saveVideoUrl('http://example.com')).not.toThrow();
+  });
+
+  it('clearVideoUrl silently ignores localStorage.removeItem exceptions', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => { throw new Error('blocked'); },
+    });
+    expect(() => clearVideoUrl()).not.toThrow();
+  });
 });
 
 describe('SettingsRouter', () => {

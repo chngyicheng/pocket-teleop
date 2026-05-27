@@ -2,11 +2,11 @@ logLevel: warn
 logDestinations: [stdout]
 
 api: yes
-apiAddress: :9997
+apiAddress: 127.0.0.1:9997
 
 # Bind media protocols to non-default ports — only the config API is needed for tests.
 # Distinct ports avoid conflicts if production mediamtx runs simultaneously.
-rtspAddress: :18554
+rtspAddress: 127.0.0.1:18554
 rtmpAddress: :11935
 hlsAddress: :18888
 webrtcAddress: :18889

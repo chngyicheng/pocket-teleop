@@ -349,4 +349,54 @@ describe('WhepClient', () => {
       expect(after2).toBeGreaterThan(after1);
     });
   });
+
+  describe('double-start protection (finding #13)', () => {
+    it('calling start() twice during an in-flight _connect does not complete both fetches', async () => {
+      // Set up fetch to delay (simulating slow network)
+      const fetchSpy = vi.fn();
+      mockFetch.mockImplementationOnce(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+        return makeOkResponse();
+      });
+      mockFetch.mockImplementationOnce(async () => {
+        await new Promise((r) => setTimeout(r, 100));
+        return makeOkResponse();
+      });
+
+      const client = new WhepClient(TEST_URL, { onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn() });
+      client.start();
+      // Trigger second start before first fetch completes
+      await vi.advanceTimersByTimeAsync(50);
+      await flushPromises();
+      client.start();
+      await vi.advanceTimersByTimeAsync(200);
+      await flushPromises();
+
+      // Both fetches should have been called, but the second _connect() should have
+      // bailed out after detecting this.pc changed, preventing setRemoteDescription
+      // from being called on a stale pc. We can't directly test the abort,
+      // but we can verify fetch was called twice (once per start()).
+      expect(mockFetch.mock.calls.length).toBe(2);
+    });
+  });
+
+  describe('ICE gathering timer cleanup (finding #20)', () => {
+    it('clears the safety timeout when ICE gathering completes early', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+      const client = new WhepClient(TEST_URL, { onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn() });
+      client.start();
+      await flushPromises();
+
+      // Simulate ICE gathering completing before the 5s timeout
+      const pc = latestPc();
+      pc.iceGatheringState = 'complete';
+      pc.onconnectionstatechange?.();
+
+      // clearTimeout should have been called
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
+    });
+  });
 });

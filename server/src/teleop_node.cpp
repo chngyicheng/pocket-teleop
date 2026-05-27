@@ -19,9 +19,17 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   const auto robot_name      = get_parameter("robot_name").as_string();
   const auto robot_namespace = get_parameter("robot_namespace").as_string();
 
-  const auto topic = robot_namespace.empty()
-    ? base_topic
-    : "/" + robot_namespace + "/cmd_vel";
+  std::string topic;
+  if (robot_namespace.empty()) {
+    topic = base_topic;
+  } else {
+    // Strip leading "/" from base_topic if present
+    std::string base_without_slash = base_topic;
+    if (!base_without_slash.empty() && base_without_slash[0] == '/') {
+      base_without_slash = base_without_slash.substr(1);
+    }
+    topic = "/" + robot_namespace + "/" + base_without_slash;
+  }
 
   publisher_ = create_publisher<geometry_msgs::msg::Twist>(topic, 10);
 

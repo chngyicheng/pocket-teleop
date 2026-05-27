@@ -90,10 +90,20 @@ describe('KeyboardHandler', () => {
     expect(twistCalls).toHaveLength(0);
   });
 
-  it('setEnabled(false) does not suppress onActivity', () => {
+  it('setEnabled(false) suppresses onActivity', () => {
     handler.setEnabled(false);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
-    expect(activityCount).toBe(1);
+    expect(activityCount).toBe(0);
+  });
+
+  it('when disabled, neither onActivity nor onTwist fires for keydown or keyup', () => {
+    handler.setEnabled(false);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
+    expect(activityCount).toBe(0);
+    expect(twistCalls).toHaveLength(0);
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'w', bubbles: true }));
+    expect(activityCount).toBe(0);
+    expect(twistCalls).toHaveLength(0);
   });
 
   it('stop() detaches listeners — no events fire after stop', () => {

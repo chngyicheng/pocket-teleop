@@ -102,4 +102,18 @@ describe('parseMessage', () => {
     const result = parseMessage(msg);
     expect(result.type).not.toBe('odom');
   });
+
+  it('status message without connected field returns unknown', () => {
+    const result = parseMessage(
+      '{"type":"status","robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns"}'
+    );
+    expect(result.type).toBe('unknown');
+  });
+
+  it('status message with non-boolean connected field returns unknown', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":"yes","robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns"}'
+    );
+    expect(result.type).toBe('unknown');
+  });
 });

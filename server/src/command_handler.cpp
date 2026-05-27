@@ -1,5 +1,6 @@
 #include "command_handler.hpp"
 #include <nlohmann/json.hpp>
+#include <cmath>
 
 ParseResult CommandHandler::parse(const std::string& json_message) {
   try {
@@ -24,6 +25,10 @@ ParseResult CommandHandler::parse(const std::string& json_message) {
       const double lx = j["linear_x"];
       const double ly = j["linear_y"];
       const double az = j["angular_z"];
+
+      if (!std::isfinite(lx) || !std::isfinite(ly) || !std::isfinite(az)) {
+        return ParseError{"non-finite numeric value"};
+      }
 
       for (auto [name, val] : std::initializer_list<std::pair<const char*, double>>{
              {"linear_x", lx}, {"linear_y", ly}, {"angular_z", az}}) {

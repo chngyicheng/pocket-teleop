@@ -23,11 +23,11 @@
 
 ## 交接狀態 — 從此續
 
-> **致下一代理：** 三事竣。一、新增 `start.sh` 啟動腳本（封裝 `docker compose up --build`，附 `.env` 存在檢查）。二、修 `web-client/index.html` 第 948 行 `mjpegImgElEl` → `mjpegImgEl` 筆誤，致視頻源類型為 Disabled 時 Connect 觸發 `mjpegImgEl is not defined` 錯誤。三、修 `web-client/vitest.config.ts` 加 `fileParallelism: false`，因並行文件 worker 致 CPU 競爭，延遲 WebSocket close 事件投遞，觸發 integration.test.ts 之 idle-watchdog 測試 1500ms / 5000ms 守時失敗。157 webclient / 34 auth / 19 video-bridge 測試皆通。
+> **致下一代理：** 全倉代碼審查竣，三十條 findings 由六 Haiku 斥候並修：①前端 critical 筆誤（`index.html:951-952` `mjpegImgElEl` 餘殘，showVideoStream 拋 ReferenceError）已盡修；②teleop-server 9091 改綁 `127.0.0.1`（`teleop_server.cpp:39-40`，用 boost::asio endpoint），mediamtx config API 9997 與 RTSP 8554 亦同綁 loopback——三 LAN 鑒權繞行入口悉閉；③`command_handler.cpp` 加 `std::isfinite` 守、`test_command_handler.cpp` 自零字節補至 28 測（NaN/Inf 二測賴 JSON 規範外字面，已鬆化為惟驗 ParseError）；④TeleopClient `scheduleRetry` 改為指數退避（5/10/20/30s 封頂）；⑤TeleopNode namespace 邏輯改尊 `cmd_vel_topic` 參數（base=`/foo` ns=`bar` → `/bar/foo`）；⑥video_bridge.py 加 threading.Lock 護 pipeline mutation、destroy_node 釋 retry_timer；⑦auth-server cookie 加 `secure: NODE_ENV==='production'`、http-proxy timeout 10s、login 用 DUMMY_HASH 等時、credentials.json 改 tmp+rename 原子寫。亦補 WHEP double-start 守、ICE timer 釋、calibration interval 守、gamepad detect interval 終止、MJPEG localStorage 啟動驗證、keyboard DRY + 對稱、protocol connected 字段 boolean 守、settings localStorage try/catch、broadcast 錯記 stderr、watchdog→on_open 競窗減。詳見 [`docs/2026-05-27-codebase-review.md`](docs/2026-05-27-codebase-review.md)（評閱）與 [`docs/superpowers/plans/2026-05-27-codebase-review-fixes.md`](docs/superpowers/plans/2026-05-27-codebase-review-fixes.md)（計劃）。**未涉:** finding #9 登錄速率限（待 `2026-05-06-login-rate-limit-implementation.md`）、#18 CSRF（待 HTTPS 役）。**架構師後事:** `NODE_ENV=production` 未注入 docker-compose——HTTPS 役時並注。**測:** 157 webclient / 34 auth / 19 video-bridge / 40 C++（28 cmd_handler + 10 server + 2 node）皆通。
 >
-> **下一任務：** 待用戶指示。
+> **下一任務：** 待用戶指示。或：(a) 推此 commit；(b) 啟登錄速率限役；(c) HTTPS 役（合 CSRF 與 NODE_ENV）。
 
-**Head SHA：** `4bff7a8`（截至 2026-05-06）
+**Head SHA：** `55a52b4`（待提交後更為實際 commit SHA；截至 2026-05-28）
 
 ### 已竣里程
 
@@ -50,6 +50,7 @@
 | Auth bugfixes（賬戶頁表單 fetch 內聯錯誤、visibilitychange 登出保護、Docker 健康檢查修復） | 34 auth / 157 webclient / 19 video-bridge | — |
 | location.replace 修復及 README 更新（表單成功重定向防回退、測試計數、故障排除更新、UDP/SRT/MJPEG 文檔） | 34 auth / 157 webclient / 19 video-bridge | — |
 | start.sh 啟動腳本 + mjpegImgEl 筆誤修復 + vitest 文件序列化（解 idle-watchdog 集成測試計時失敗） | 34 auth / 157 webclient / 19 video-bridge | — |
+| 全倉代碼審查並修（六 Haiku 斥候並修 30 findings：mjpegImgEl 餘殘、9091/9997/8554 LAN 曝閉、isfinite 守、test_command_handler 補 28 測、TeleopClient 指數退避、namespace 邏輯正、video_bridge Lock、auth 等時+原子寫+secure cookie+proxy timeout 等） | 34 auth / 157 webclient / 19 video-bridge / 40 C++ | — |
 
 ### 已知偏差（後續工作仍相關）
 
@@ -90,6 +91,8 @@
 | **Apply 按鈕端到端驗證計劃** | `docs/superpowers/plans/2026-04-17-apply-button-e2e-verification.md` |
 | **視頻輸入源擴展計劃** | `docs/superpowers/plans/2026-04-17-video-input-sources.md` |
 | **Auth bugfixes 實現計劃** | `docs/superpowers/plans/2026-04-08-auth-bugfixes.md` |
+| **代碼審查評閱（2026-05-27）** | `docs/2026-05-27-codebase-review.md` |
+| **代碼審查修補計劃（2026-05-27）** | `docs/superpowers/plans/2026-05-27-codebase-review-fixes.md` |
 | **功能待辦池（2026-05-06 起）** | 見下「功能計劃池」 |
 
 ### 功能計劃池（待用戶選定優先級實施）

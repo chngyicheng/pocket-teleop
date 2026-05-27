@@ -6,11 +6,11 @@ logDestinations: [stdout]
 # Enable the config/runtime API on a dedicated port (separate from WHEP port 8889).
 # auth-server proxies /mediamtx-api → localhost:9997/v3.
 api: yes
-apiAddress: :9997
+apiAddress: 127.0.0.1:9997
 
 # Bind addresses — host network, so these are on the host directly.
 # Only RTSP (ingest) and WebRTC HTTP (WHEP) ports are used.
-rtspAddress: :8554
+rtspAddress: 127.0.0.1:8554
 rtmpAddress: :1935     # disabled below
 hlsAddress: :8888      # disabled below
 webrtcAddress: :8889

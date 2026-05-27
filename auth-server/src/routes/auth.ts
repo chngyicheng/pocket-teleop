@@ -6,6 +6,11 @@ import { readCredentials, saveCredentials, verifyPassword, hashPassword } from '
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VIEWS_DIR = path.join(__dirname, '../../views');
 
+// Precomputed bcrypt hash for timing-safe login comparison.
+// This ensures verifyPassword() always runs, preventing username enumeration attacks.
+// The actual string value does not matter; it is used only to consume bcrypt.compare time.
+const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+
 export function authRouter(credPath: string): Router {
   const router = Router();
 
@@ -20,7 +25,11 @@ export function authRouter(credPath: string): Router {
         return res.redirect('/auth/login?error=1');
       }
       const creds = await readCredentials(credPath);
-      const valid = username === creds.username && await verifyPassword(password, creds.passwordHash);
+      // Timing-safe comparison: always run verifyPassword to prevent username enumeration.
+      const usernameMatch = username === creds.username;
+      const hashToCompare = usernameMatch ? creds.passwordHash : DUMMY_HASH;
+      const passwordValid = await verifyPassword(password, hashToCompare);
+      const valid = usernameMatch && passwordValid;
       if (!valid) {
         return res.redirect('/auth/login?error=1');
       }

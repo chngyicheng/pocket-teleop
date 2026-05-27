@@ -11,6 +11,7 @@ MEDIAMTX_RTSP     RTSP push URL (default: rtsp://localhost:8554/teleop).
 """
 import os
 import sys
+import threading
 import time
 
 import gi
@@ -75,6 +76,7 @@ class VideoBridgeNode(Node):
         self._src: Gst.Element | None = None
         self._pipeline_started = False
         self._retry_timer = None
+        self._lock = threading.Lock()
 
         msg_type = CompressedImage if topic_type == 'compressed' else Image
         self.subscription = self.create_subscription(
@@ -91,42 +93,54 @@ class VideoBridgeNode(Node):
 
     def _build_pipeline(self, msg) -> None:
         """Build and start the GStreamer pipeline on first message."""
-        if self._topic_type == 'compressed':
-            pipeline_str = _compressed_pipeline()
-        else:
-            gst_format = _FORMAT_MAP.get(getattr(msg, 'encoding', 'bgr8'), 'BGR')
-            pipeline_str = _raw_pipeline(msg.width, msg.height, gst_format)
+        with self._lock:
+            # Double-checked locking: another thread may have already built the pipeline.
+            if self._pipeline_started:
+                return
 
-        self.get_logger().info(f'Starting GStreamer pipeline: {pipeline_str}')
-        self._pipeline = Gst.parse_launch(pipeline_str)
-        self._src = self._pipeline.get_by_name('src')
+            if self._topic_type == 'compressed':
+                pipeline_str = _compressed_pipeline()
+            else:
+                gst_format = _FORMAT_MAP.get(getattr(msg, 'encoding', 'bgr8'), 'BGR')
+                pipeline_str = _raw_pipeline(msg.width, msg.height, gst_format)
 
-        bus = self._pipeline.get_bus()
-        bus.add_signal_watch()
-        bus.connect('message::error', self._on_bus_error)
+            self.get_logger().info(f'Starting GStreamer pipeline: {pipeline_str}')
+            self._pipeline = Gst.parse_launch(pipeline_str)
+            self._src = self._pipeline.get_by_name('src')
 
-        ret = self._pipeline.set_state(Gst.State.PLAYING)
-        if ret == Gst.StateChangeReturn.FAILURE:
-            self.get_logger().error('GStreamer pipeline failed to start — will retry in 5s')
-            self._schedule_pipeline_restart()
-        else:
-            self._pipeline_started = True
+            bus = self._pipeline.get_bus()
+            bus.add_signal_watch()
+            bus.connect('message::error', self._on_bus_error)
 
-    def _stop_pipeline(self) -> None:
+            ret = self._pipeline.set_state(Gst.State.PLAYING)
+            if ret == Gst.StateChangeReturn.FAILURE:
+                self.get_logger().error('GStreamer pipeline failed to start — will retry in 5s')
+                self._schedule_pipeline_restart()
+            else:
+                self._pipeline_started = True
+
+    def _stop_pipeline_unlocked(self) -> None:
+        """Stop pipeline; assumes lock is already held."""
         if self._pipeline is not None:
             self._pipeline.set_state(Gst.State.NULL)
             self._pipeline = None
             self._src = None
         self._pipeline_started = False
 
+    def _stop_pipeline(self) -> None:
+        with self._lock:
+            self._stop_pipeline_unlocked()
+
     def _schedule_pipeline_restart(self) -> None:
-        self._stop_pipeline()
-        self._retry_timer = self.create_timer(5.0, self._retry_pipeline)
+        with self._lock:
+            self._stop_pipeline_unlocked()
+            self._retry_timer = self.create_timer(5.0, self._retry_pipeline)
 
     def _retry_pipeline(self) -> None:
-        if self._retry_timer:
-            self._retry_timer.cancel()
-            self._retry_timer = None
+        with self._lock:
+            if self._retry_timer:
+                self._retry_timer.cancel()
+                self._retry_timer = None
         self.get_logger().info('Retrying GStreamer pipeline…')
         # Pipeline will be rebuilt on next message
 
@@ -155,6 +169,9 @@ class VideoBridgeNode(Node):
             self._schedule_pipeline_restart()
 
     def destroy_node(self) -> None:
+        if self._retry_timer is not None:
+            self._retry_timer.cancel()
+            self._retry_timer = None
         self._stop_pipeline()
         super().destroy_node()
 
@@ -178,7 +195,6 @@ def main() -> None:
 
     # Run a GLib main loop in a background thread for GStreamer bus watch callbacks.
     loop = GLib.MainLoop()
-    import threading
     glib_thread = threading.Thread(target=loop.run, daemon=True)
     glib_thread.start()
 

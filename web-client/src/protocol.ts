@@ -20,9 +20,12 @@ export function parseMessage(raw: string): InboundMessage {
       return { type: 'pong' };
     }
     if (msg['type'] === 'status') {
+      if (typeof msg['connected'] !== 'boolean') {
+        return { type: 'unknown', raw };
+      }
       return {
         type:            'status',
-        connected:       msg['connected']       as boolean,
+        connected:       msg['connected'],
         robot_type:      msg['robot_type']      as string,
         robot_name:      (msg['robot_name']      as string | undefined) ?? '',
         robot_namespace: (msg['robot_namespace'] as string | undefined) ?? '',

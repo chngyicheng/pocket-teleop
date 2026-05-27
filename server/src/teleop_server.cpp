@@ -1,5 +1,6 @@
 #include "teleop_server.hpp"
 #include <nlohmann/json.hpp>
+#include <iostream>
 
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
@@ -35,7 +36,8 @@ void TeleopServer::start() {
   running_ = true;
   reset_watchdog();
 
-  ws_server_.listen(port_);
+  ws_server_.listen(boost::asio::ip::tcp::endpoint(
+    boost::asio::ip::address::from_string("127.0.0.1"), port_));
   ws_server_.start_accept();
 
   watchdog_thread_ = std::thread(&TeleopServer::watchdog_loop, this);
@@ -112,7 +114,9 @@ void TeleopServer::broadcast(const std::string& message) {
   if (!has_client_) return;
   websocketpp::lib::error_code ec;
   ws_server_.send(active_client_, message, websocketpp::frame::opcode::text, ec);
-  // Ignore ec — if client disconnected, has_client_ will be cleared by on_close.
+  if (ec) {
+    std::cerr << "broadcast error: " << ec.message() << std::endl;
+  }
 }
 
 void TeleopServer::watchdog_loop() {
@@ -132,16 +136,21 @@ void TeleopServer::watchdog_loop() {
 
     if (now_ms - last_message_ms_.load() > timeout_ms_) {
       timed_out_ = true;
-      // Post to io_service so close() runs on the correct thread
-      ws_server_.get_io_service().post([this]() {
-        publish_callback_(0.0, 0.0, 0.0);
+      ConnectionHdl close_target;
+      {
         std::lock_guard<std::mutex> lock(client_mutex_);
-        if (has_client_) {
-          websocketpp::lib::error_code ec;
-          ws_server_.close(active_client_,
-            websocketpp::close::status::normal, "timeout", ec);
-          has_client_ = false;
+        if (!has_client_) {
+          continue;  // already gone
         }
+        close_target = active_client_;
+        has_client_ = false;
+      }
+      // Post to io_service so close() runs on the correct thread
+      ws_server_.get_io_service().post([this, close_target]() {
+        publish_callback_(0.0, 0.0, 0.0);
+        websocketpp::lib::error_code ec;
+        ws_server_.close(close_target,
+          websocketpp::close::status::normal, "timeout", ec);
       });
     }
   }

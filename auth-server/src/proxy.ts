@@ -7,6 +7,8 @@ export function makeHttpProxy(target: string, pathRewrite?: Record<string, strin
   return createProxyMiddleware({
     target,
     changeOrigin: true,
+    proxyTimeout: 10_000,
+    timeout: 10_000,
     ...(pathRewrite ? { pathRewrite } : {}),
   }) as unknown as RequestHandler;
 }

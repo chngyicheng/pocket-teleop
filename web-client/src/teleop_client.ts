@@ -127,13 +127,14 @@ export class TeleopClient {
   private scheduleRetry(): void {
     this.retryAttempt += 1;
     this.options.onReconnecting?.(this.retryAttempt);
+    const delay = Math.min(this.retryIntervalMs * 2 ** (this.retryAttempt - 1), 30_000);
     this.retryTimeoutId = setTimeout(() => {
       this.retryTimeoutId = null;
       this.retryPending = false;
       this.connection.connect(this.url);
       this.startKeepalive();
       this.gamepadHandler.start();
-    }, this.retryIntervalMs);
+    }, delay);
   }
 
   private startKeepalive(): void {

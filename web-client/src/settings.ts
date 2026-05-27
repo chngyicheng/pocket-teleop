@@ -14,13 +14,25 @@ export class SettingsRouter {
 }
 
 export function loadVideoUrl(): string | null {
-  return localStorage.getItem(VIDEO_URL_KEY);
+  try {
+    return localStorage.getItem(VIDEO_URL_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function saveVideoUrl(url: string): void {
-  localStorage.setItem(VIDEO_URL_KEY, url);
+  try {
+    localStorage.setItem(VIDEO_URL_KEY, url);
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
 }
 
 export function clearVideoUrl(): void {
-  localStorage.removeItem(VIDEO_URL_KEY);
+  try {
+    localStorage.removeItem(VIDEO_URL_KEY);
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
 }

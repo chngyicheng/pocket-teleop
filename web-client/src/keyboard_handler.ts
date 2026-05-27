@@ -24,20 +24,17 @@ export class KeyboardHandler {
     this.onActivityCb = options.onActivity;
 
     this.boundKeyDown = (e: KeyboardEvent) => {
+      if (!this.enabled) return;
       this.keysDown.add(e.key);
       this.onActivityCb?.();
     };
     this.boundKeyUp = (e: KeyboardEvent) => {
+      if (!this.enabled) return;
       this.keysDown.delete(e.key);
       // Fire immediately — don't wait for next poll interval.
       // Ensures zero velocity is published the moment the last key is released.
-      if (this.enabled) {
-        const v  = this.velocity;
-        const lx = this.keysDown.has('w') ? v : this.keysDown.has('s') ? -v : 0;
-        const az = this.keysDown.has('a') ? v : this.keysDown.has('d') ? -v : 0;
-        const ly = this.keysDown.has('ArrowRight') ? v : this.keysDown.has('ArrowLeft') ? -v : 0;
-        this.onTwistCb(lx, ly, az);
-      }
+      const twist = this.computeTwist();
+      this.onTwistCb(twist.lx, twist.ly, twist.az);
     };
   }
 
@@ -67,10 +64,15 @@ export class KeyboardHandler {
 
   private poll(): void {
     if (!this.enabled) return;
+    const twist = this.computeTwist();
+    this.onTwistCb(twist.lx, twist.ly, twist.az);
+  }
+
+  private computeTwist(): { lx: number; ly: number; az: number } {
     const v  = this.velocity;
     const lx = this.keysDown.has('w') ? v : this.keysDown.has('s') ? -v : 0;
     const az = this.keysDown.has('a') ? v : this.keysDown.has('d') ? -v : 0;
     const ly = this.keysDown.has('ArrowRight') ? v : this.keysDown.has('ArrowLeft') ? -v : 0;
-    this.onTwistCb(lx, ly, az);
+    return { lx, ly, az };
   }
 }

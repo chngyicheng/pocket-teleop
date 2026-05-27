@@ -86,4 +86,26 @@ describe('saveCredentials', () => {
     expect(loaded.username).toBe('newuser');
     expect(loaded.mustChangePassword).toBe(false);
   });
+
+  it('atomic write: multiple consecutive saves preserve latest content', async () => {
+    const creds1: Credentials = {
+      username: 'user1',
+      passwordHash: await hashPassword('pass1'),
+      mustChangePassword: true,
+    };
+    const creds2: Credentials = {
+      username: 'user2',
+      passwordHash: await hashPassword('pass2'),
+      mustChangePassword: false,
+    };
+    // Save twice in quick succession
+    await saveCredentials(creds1, credPath);
+    await saveCredentials(creds2, credPath);
+    // Verify the second save won the race
+    const raw = fs.readFileSync(credPath, 'utf-8');
+    const loaded = JSON.parse(raw) as Credentials;
+    expect(loaded.username).toBe('user2');
+    expect(loaded.mustChangePassword).toBe(false);
+    expect(await verifyPassword('pass2', loaded.passwordHash)).toBe(true);
+  });
 });

@@ -80,17 +80,21 @@ export class WhepClient {
 
     try {
       const offer = await pc.createOffer();
+      if (this.pc !== pc) return;
       await pc.setLocalDescription(offer);
+      if (this.pc !== pc) return;
 
       // Wait for ICE gathering to complete before sending the offer.
       // On a LAN without STUN, gathering is fast (host candidates only).
       await this._waitForIceGathering(pc);
+      if (this.pc !== pc) return;
 
       const res = await fetch(this.url, {
         method:  'POST',
         headers: { 'Content-Type': 'application/sdp' },
         body:    pc.localDescription!.sdp,
       });
+      if (this.pc !== pc) return;
 
       if (!res.ok) {
         // 404 = stream not yet published (video-bridge not started yet)
@@ -105,6 +109,7 @@ export class WhepClient {
 
       const sdp = await res.text();
       await pc.setRemoteDescription({ type: 'answer', sdp });
+      if (this.pc !== pc) return;
       // ontrack fires once remote description is set and ICE completes.
 
     } catch (e) {
@@ -117,15 +122,15 @@ export class WhepClient {
   private _waitForIceGathering(pc: RTCPeerConnection): Promise<void> {
     return new Promise((resolve) => {
       if (pc.iceGatheringState === 'complete') { resolve(); return; }
+      const timerId = setTimeout(resolve, 5_000);
       const check = () => {
         if (pc.iceGatheringState === 'complete') {
           pc.removeEventListener('icegatheringstatechange', check);
+          clearTimeout(timerId);
           resolve();
         }
       };
       pc.addEventListener('icegatheringstatechange', check);
-      // Safety timeout: if gathering stalls, proceed anyway after 5s
-      setTimeout(resolve, 5_000);
     });
   }
 

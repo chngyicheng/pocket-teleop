@@ -45,5 +45,7 @@ export async function saveCredentials(
   creds: Credentials,
   credPath: string,
 ): Promise<void> {
-  await fs.writeFile(credPath, JSON.stringify(creds, null, 2));
+  const tmpPath = credPath + '.tmp';
+  await fs.writeFile(tmpPath, JSON.stringify(creds, null, 2));
+  await fs.rename(tmpPath, credPath);
 }

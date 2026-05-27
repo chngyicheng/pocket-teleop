@@ -116,6 +116,30 @@ describe('POST /auth/login', () => {
     expect(res.status).toBe(302);
     expect(res.headers['location']).toContain('/auth/login');
   });
+
+  it('timing-safe login: wrong username + correct password produces same error redirect as wrong password', async () => {
+    // This test verifies that both wrong-username and wrong-password paths
+    // produce identical responses (302 to /auth/login?error=1).
+    // Timing equivalence is checked manually/in load tests, not unit tests.
+    const app = getApp();
+    const wrongUserRes = await supertest(app)
+      .post('/auth/login')
+      .send('username=wronguser&password=correctpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+    const wrongPassRes = await supertest(app)
+      .post('/auth/login')
+      .send('username=admin&password=wrongpass')
+      .set('Content-Type', 'application/x-www-form-urlencoded');
+
+    // Both should redirect with error=1
+    expect(wrongUserRes.status).toBe(302);
+    expect(wrongUserRes.headers['location']).toContain('/auth/login');
+    expect(wrongUserRes.headers['location']).toContain('error=1');
+
+    expect(wrongPassRes.status).toBe(302);
+    expect(wrongPassRes.headers['location']).toContain('/auth/login');
+    expect(wrongPassRes.headers['location']).toContain('error=1');
+  });
 });
 
 describe('GET / authenticated', () => {
