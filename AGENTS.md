@@ -27,7 +27,7 @@
 >
 > **下一任務：** 待用戶指示。或：(a) 推此 commit；(b) 啟登錄速率限役；(c) HTTPS 役（合 CSRF 與 NODE_ENV）。
 
-**Head SHA：** `55a52b4`（待提交後更為實際 commit SHA；截至 2026-05-28）
+**Head SHA：** `d5fb6cd`（截至 2026-05-28）
 
 ### 已竣里程
 
