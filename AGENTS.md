@@ -167,6 +167,16 @@ Web client（手機瀏覽器）：`http://<robot-ip>:8080` — 首次訪問顯�
 
 見 `docs/superpowers/plans/` 獲取當前實現計劃。
 
+### 通訊模式（caveman skill 規）
+
+| 通道 | 模式 | 何故 |
+|---|---|---|
+| 控制器 ↔ 用戶 | `caveman full`（英） | 默認交互，省 token 而保技術精確 |
+| 控制器 ↔ Haiku 子代理 | `caveman wenyan-ultra`（文言極簡） | Haiku 提示亦壓縮，技術術語英文不譯 |
+| Code / commits / PRs / security warnings / 不可逆操作確認 | normal English | caveman skill 之 auto-clarity 規定 |
+
+用戶說 `normal` 或 `stop caveman` 則本輪 revert。等級持至改或會話終。
+
 ---
 
 ## 任務完成典則 — 每任務強制執行
