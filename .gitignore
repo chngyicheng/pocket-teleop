@@ -2,4 +2,6 @@
 .superpowers/
 auth-server/node_modules/
 auth-server/dist/
+web-client/node_modules/
+web-client/dist/
 .env
