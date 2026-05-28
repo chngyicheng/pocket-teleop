@@ -27,7 +27,7 @@
 >
 > **下一任務：** Wave 2 — 並派二 Haiku：Agent D 寫 `src/views/MissionControl.tsx`（phone layout，1:1 移自 `design_handoff_pocket_teleop/directions/mission.jsx` 之 `MissionControl` 函數）+ 測；Agent E 寫 `src/views/MissionTablet.tsx`（tablet 三欄 layout 220/1fr/240 + 52px top bar）+ 測。詳見計劃文 §Wave 2。
 
-**Head SHA：** `dea3f83`（截至 2026-05-28，branch `feat/mission-ui-react`；Phase 0 scaffold）
+**Head SHA：** `95d6d42`（截至 2026-05-28，branch `feat/mission-ui-react`；Wave 1 完）
 
 ### 已竣里程
 
