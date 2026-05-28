@@ -27,7 +27,7 @@
 >
 > **下一任務：** Wave 3 — 單 Haiku 寫 `src/App.tsx`（useMediaQuery / matchMedia tablet ≥ 900px 切、`useTeleopBridge({ url: 'ws://${location.host}/teleop' })` + `useWhepStream({ url: 'http://${location.host}/video/teleop/whep' })`、`drawerOpen` state、條件渲 `<MissionTablet>` vs `<MissionControl>`、`<SettingsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />`、`onMenu={() => setDrawerOpen(true)}` 透傳）+ `src/main.tsx`（標準 React 18 `createRoot` render）+ `src/index.css`（Mission palette）+ `test/App.test.tsx`（crown jewel ≥ 8 集成測 with FakeTeleopClient/FakeWhepClient inject）。然後控制器 build runtime webclient + `docker compose up -d webclient` + 求用戶瀏覽器煙測。詳見計劃文 §Wave 3。
 
-**Head SHA：** `95d6d42`（截至 2026-05-28，branch `feat/mission-ui-react`；Wave 1 完）
+**Head SHA：** `38d2095`（截至 2026-05-28，branch `feat/mission-ui-react`；Wave 2 完）
 
 ### 已竣里程
 
