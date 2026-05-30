@@ -348,4 +348,64 @@ describe('MissionTablet', () => {
     // Check for LAT with dash
     expect(document.body.textContent).toContain('—');
   });
+
+  it('top bar shows UP/BAT/SIG placeholder Readouts', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    render(<MissionTablet {...props} />);
+
+    // Check for UP, BAT, SIG placeholder values
+    expect(screen.getByText(/03:24:18/)).toBeTruthy();
+    expect(screen.getByText(/78%/)).toBeTruthy();
+    expect(screen.getByText(/-58dBm/)).toBeTruthy();
+  });
+
+  it('STREAM panel shows codec details', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    render(<MissionTablet {...props} />);
+
+    // Check for stream codec DataRows
+    expect(screen.getByText('WebRTC')).toBeTruthy();
+    expect(screen.getByText('H.264')).toBeTruthy();
+    expect(screen.getByText('30.1')).toBeTruthy();
+    expect(screen.getByText('1280×720')).toBeTruthy();
+
+    // Verify dynamic stream state still renders (from existing test constraint)
+    expect(screen.getByText(/● Live/)).toBeTruthy();
+  });
+
+  it('left rail footer shows ops info', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    render(<MissionTablet {...props} />);
+
+    // Check for ops footer text
+    expect(screen.getByText(/cmd_vel @ 50hz/)).toBeTruthy();
+    expect(screen.getByText(/last pong 0.04s/)).toBeTruthy();
+  });
 });

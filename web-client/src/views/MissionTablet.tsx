@@ -253,6 +253,11 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         {/* Spacer */}
         <div style={{ flex: 1 }} />
 
+        {/* UP, BAT, SIG placeholder readouts */}
+        <Readout label="UP" value="03:24:18" color={p.accent} />
+        <Readout label="BAT" value="78%" color={p.accent} />
+        <Readout label="SIG" value="-58dBm" color={p.accent} />
+
         {/* LAT readout pill */}
         <Readout
           label="LAT"
@@ -313,6 +318,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         }}
       >
         <SidePanel title="STREAM">
+          <DataRow k="src" v="WebRTC" />
+          <DataRow k="codec" v="H.264" />
+          <DataRow k="fps" v="30.1" />
+          <DataRow k="res" v="1280×720" />
           <div
             style={{
               fontSize: 10,
@@ -339,6 +348,12 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           <DataRow k="pos.y" v={odomPos.y.toFixed(2) + ' m'} />
           <DataRow k="hdg" v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360) + '°'} />
         </SidePanel>
+
+        {/* Footer ops info */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 9, opacity: 0.5, fontFamily: monoFont }}>
+          <span>cmd_vel @ 50hz</span>
+          <span>last pong 0.04s</span>
+        </div>
       </aside>
 
       {/* Main viewport */}
