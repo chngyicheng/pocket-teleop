@@ -2,7 +2,7 @@
  * App.tsx — React root component for Mission Control UI
  *
  * Layout detection:
- *   - tablet: window.matchMedia('(min-width: 900px)').matches
+ *   - tablet: window.matchMedia('(min-width: 700px)').matches
  *   - phone landscape: (orientation: landscape).matches
  *   - phone portrait: everything else
  *
@@ -30,7 +30,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
   // Layout detection hook: tablet ≥ 900px, phone landscape/portrait from orientation
   useEffect(() => {
     const updateLayout = () => {
-      const isTablet = window.matchMedia('(min-width: 900px)').matches;
+      const isTablet = window.matchMedia('(min-width: 700px)').matches;
       if (isTablet) {
         setLayout('tablet');
       } else {
@@ -42,7 +42,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
     updateLayout();
 
     // Listen to matchMedia changes
-    const tabletMQ = window.matchMedia('(min-width: 900px)');
+    const tabletMQ = window.matchMedia('(min-width: 700px)');
     const orientationMQ = window.matchMedia('(orientation: landscape)');
 
     const handleChange = () => updateLayout();

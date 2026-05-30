@@ -3,7 +3,7 @@
  * Inject FakeTeleopClient + FakeWhepClient via App props
  *
  * Tests verify:
- *   - Layout detection (tablet ≥ 900px, phone landscape/portrait)
+ *   - Layout detection (tablet ≥ 700px, phone landscape/portrait)
  *   - Bridge wiring and connection state UI feedback
  *   - Stream state management
  *   - Joystick input routing to sendTwist
@@ -121,7 +121,7 @@ class FakeWhepClient {
 // matchMedia stub factory — App.tsx queries it on mount for layout switching.
 // jsdom does not implement matchMedia, so each test installs a stub before
 // rendering. Default returns matches=false (phone layout); the tablet test
-// overrides to match on min-width: 900px.
+// overrides to match on min-width: 700px.
 type MQL = ReturnType<typeof window.matchMedia>;
 function installMatchMedia(matcher: (query: string) => boolean): void {
   window.matchMedia = ((query: string): MQL => ({
@@ -396,11 +396,11 @@ describe('App', () => {
   });
 
   /**
-   * Test 9: Viewport ≥ 900px renders MissionTablet layout
+   * Test 9: Viewport ≥ 700px renders MissionTablet layout
    */
-  it('tablet layout (≥ 900px) renders MissionTablet', () => {
-    // Override the top-level beforeEach default: match min-width: 900px.
-    installMatchMedia((q) => q.includes('min-width: 900px'));
+  it('tablet layout (≥ 700px) renders MissionTablet', () => {
+    // Override the top-level beforeEach default: match min-width: 700px.
+    installMatchMedia((q) => q.includes('min-width: 700px'));
 
     const teleopFactory: TeleopClientFactory = (opts) => {
       fakeTeleop = new FakeTeleopClient(opts);

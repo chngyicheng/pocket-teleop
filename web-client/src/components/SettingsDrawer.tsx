@@ -3,7 +3,8 @@
  *
  * Layout: 320px fixed width, 100vh height, fixed positioning.
  * Sections: Gamepad / Video / Connection (dark palette: #0b0d12 bg, #e6e9ef fg, z-index ≤ 9).
- * Transition: translateX(0) open, translateX(-100%) closed, 0.2s ease.
+ * Transition: translateX(0) open, translateX(100%) closed, 0.2s ease.
+ * Slides in from the right edge.
  *
  * Props:
  *   - open: boolean — visibility state.
@@ -104,14 +105,14 @@ export default function SettingsDrawer({
       style={{
         position: 'fixed',
         top: 0,
-        left: 0,
+        right: 0,
         width: '320px',
         height: '100vh',
         backgroundColor: '#0b0d12',
         color: '#e6e9ef',
-        borderRight: '1px solid #2a2f3a',
+        borderLeft: '1px solid #2a2f3a',
         zIndex: 9,
-        transform: open ? 'translateX(0)' : 'translateX(-100%)',
+        transform: open ? 'translateX(0)' : 'translateX(100%)',
         transition: 'transform 0.2s ease',
         overflow: 'hidden',
         display: 'flex',

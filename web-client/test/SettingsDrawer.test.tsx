@@ -62,7 +62,7 @@ describe('SettingsDrawer', () => {
     const drawer = container.querySelector('[role="dialog"]');
     expect(drawer).toBeTruthy();
     const style = (drawer as HTMLElement)?.style;
-    expect(style?.transform).not.toContain('translateX(-100%)');
+    expect(style?.transform).toBe('translateX(0)');
   });
 
   it('renders hidden when open=false', () => {
@@ -72,7 +72,7 @@ describe('SettingsDrawer', () => {
     const drawer = container.querySelector('[role="dialog"]');
     expect(drawer).toBeTruthy();
     const style = (drawer as HTMLElement)?.style;
-    expect(style?.transform).toContain('translateX(-100%)');
+    expect(style?.transform).toBe('translateX(100%)');
   });
 
   it('calls onClose when close button is clicked', async () => {
