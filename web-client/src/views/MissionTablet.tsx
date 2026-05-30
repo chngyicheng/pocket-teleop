@@ -253,6 +253,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         {/* Spacer */}
         <div style={{ flex: 1 }} />
 
+        {/* LAT readout pill */}
+        <Readout
+          label="LAT"
+          value={bridge.latencyMs !== null ? bridge.latencyMs + 'ms' : '—'}
+          color={p.accent}
+        />
+
         {/* Connection state chip */}
         <div
           style={{
@@ -416,8 +423,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             gap: 8,
           }}
         >
-          <Readout label="V" value="0.00 m/s" color={p.accent} />
-          <Readout label="ω" value="0.00 rad/s" color={p.accent} />
+          <Readout label="V" value={Math.hypot(lx, ly).toFixed(2) + ' m/s'} color={p.accent} />
+          <Readout label="ω" value={az.toFixed(2) + ' rad/s'} color={p.accent} />
         </div>
       </main>
 
@@ -453,7 +460,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
                 k="course"
                 v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360).toString().padStart(3, '0') + '°'}
               />
-              <DataRow k="track" v="0°" />
+              <DataRow k="track" v={(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0) + '°'} />
             </div>
           </div>
         </SidePanel>

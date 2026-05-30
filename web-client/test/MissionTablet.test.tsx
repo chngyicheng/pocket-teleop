@@ -246,4 +246,106 @@ describe('MissionTablet', () => {
     expect(video).toBeTruthy();
     expect(video?.srcObject).toBe(mockStream);
   });
+
+  it('V/ω readouts reflect joystick state', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    render(<MissionTablet {...props} />);
+
+    // Get DRIVE joystick (first joystick)
+    const drive = screen.getAllByTestId('joystick-zone')[0];
+
+    // Diagonal push: y-offset → forward (lx), x-offset → rotate (az)
+    fireEvent.pointerDown(drive, { pointerId: 1, clientX: 140, clientY: 140 });
+    fireEvent.pointerMove(drive, { pointerId: 1, clientX: 200, clientY: 60 });
+
+    // Find readout value spans (Readout renders label + value as siblings)
+    const domText = document.body.textContent ?? '';
+    const vMatch = domText.match(/([0-9]+\.[0-9]+)\s*m\/s/);
+    expect(vMatch).toBeTruthy();
+    expect(vMatch?.[1]).not.toBe('0.00');
+
+    const omegaMatch = domText.match(/([0-9]+\.[0-9]+)\s*rad\/s/);
+    expect(omegaMatch).toBeTruthy();
+    expect(omegaMatch?.[1]).not.toBe('0.00');
+  });
+
+  it('HEADING track reflects atan2(ly, lx)', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    const { container } = render(<MissionTablet {...props} />);
+
+    // Locate the track DataRow by finding the span whose textContent is 'track'
+    // and reading its sibling value span.
+    const findTrackValue = (): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const trackLabel = labelSpans.find((s) => s.textContent === 'track');
+      const valueSpan = trackLabel?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    // Baseline: lx=ly=0 → atan2(0,0)=0 → '0°'
+    expect(findTrackValue()).toBe('0°');
+
+    // Push STRAFE right so ly > 0
+    const strafe = screen.getAllByTestId('joystick-zone')[1];
+    fireEvent.pointerDown(strafe, { pointerId: 1, clientX: 140, clientY: 140 });
+    fireEvent.pointerMove(strafe, { pointerId: 1, clientX: 220, clientY: 140 });
+
+    // Push DRIVE forward so lx > 0
+    const drive = screen.getAllByTestId('joystick-zone')[0];
+    fireEvent.pointerDown(drive, { pointerId: 2, clientX: 140, clientY: 140 });
+    fireEvent.pointerMove(drive, { pointerId: 2, clientX: 140, clientY: 60 });
+
+    // atan2(ly, lx) of two positive values → positive angle ≠ 0°
+    const trackAfter = findTrackValue();
+    expect(trackAfter).not.toBe('0°');
+    expect(trackAfter).toMatch(/^-?\d+°$/);
+  });
+
+  it('top bar LAT shows bridge.latencyMs', () => {
+    const bridge = createFakeBridge({ latencyMs: 42 });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    const { rerender } = render(<MissionTablet {...props} />);
+
+    // Check for LAT with 42ms
+    expect(screen.getByText(/42ms/)).toBeTruthy();
+
+    // Rerender with null latencyMs
+    const bridgeNull = createFakeBridge({ latencyMs: null });
+    rerender(
+      <MissionTablet
+        bridge={bridgeNull}
+        stream={stream}
+        onMenu={onMenu}
+      />
+    );
+
+    // Check for LAT with dash
+    expect(document.body.textContent).toContain('—');
+  });
 });

@@ -279,61 +279,57 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           />
         </div>
 
-        {/* Top-right telemetry stack (landscape only) */}
-        {isLandscape && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              alignItems: 'flex-end',
-              fontFamily: monoFont,
-              fontSize: 10,
-              color: p.muted,
-            }}
-          >
-            <Readout
-              label="LAT"
-              value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
-              color={p.accent}
-            />
-            <Readout label="BAT" value="78%" color={p.accent} />
-            <Readout label="SIG" value="-58 dBm" color={p.accent} />
-          </div>
-        )}
+        {/* Top-right telemetry stack */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            alignItems: 'flex-end',
+            fontFamily: monoFont,
+            fontSize: 10,
+            color: p.muted,
+          }}
+        >
+          <Readout
+            label="LAT"
+            value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
+            color={p.accent}
+          />
+          <Readout label="BAT" value="78%" color={p.accent} />
+          <Readout label="SIG" value="-58 dBm" color={p.accent} />
+        </div>
 
-        {/* Bottom-right mini-map + compass (landscape only) */}
-        {isLandscape && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 8,
-              right: 8,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-              alignItems: 'flex-end',
-            }}
-          >
-            <MiniMap
-              pos={odomPos}
-              heading={odomPos.heading}
-              size={110}
-              color={p.accent}
-              bg="rgba(8,10,14,0.7)"
-              border={p.border}
-            />
-            <Compass
-              heading={odomPos.heading}
-              color={p.accent}
-              font={monoFont}
-              size={28}
-            />
-          </div>
-        )}
+        {/* Bottom-right mini-map + compass */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            alignItems: 'flex-end',
+          }}
+        >
+          <MiniMap
+            pos={odomPos}
+            heading={odomPos.heading}
+            size={isLandscape ? 110 : 88}
+            color={p.accent}
+            bg="rgba(8,10,14,0.7)"
+            border={p.border}
+          />
+          <Compass
+            heading={odomPos.heading}
+            color={p.accent}
+            font={monoFont}
+            size={isLandscape ? 28 : 22}
+          />
+        </div>
 
         {/* Center crosshair reticle */}
         <div
