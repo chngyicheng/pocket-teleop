@@ -146,7 +146,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         }}
       >
         {/* Hamburger menu */}
-        <div
+        <button
+          type="button"
+          aria-label="Open menu"
           onClick={onMenu}
           style={{
             width: 18,
@@ -158,10 +160,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             fontSize: 16,
             cursor: 'pointer',
             flex: '0 0 auto',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
           }}
         >
           ☰
-        </div>
+        </button>
 
         {/* Robot name */}
         <div

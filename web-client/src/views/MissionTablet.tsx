@@ -211,7 +211,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         }}
       >
         {/* Hamburger menu */}
-        <div
+        <button
+          type="button"
+          aria-label="Open menu"
           onClick={onMenu}
           style={{
             width: 18,
@@ -223,10 +225,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             fontSize: 16,
             cursor: 'pointer',
             flex: '0 0 auto',
+            background: 'transparent',
+            border: 'none',
+            padding: 0,
           }}
         >
           ☰
-        </div>
+        </button>
 
         {/* Robot name + namespace */}
         <div

@@ -140,14 +140,9 @@ describe('MissionControl', () => {
       />
     );
 
-    // Find the hamburger (☰) by traversing header
-    const header = document.querySelector('header');
-    expect(header).toBeTruthy();
-
-    const hamburger = header!.querySelector('div[style*="cursor: pointer"]');
-    expect(hamburger).toBeTruthy();
-
-    fireEvent.click(hamburger!);
+    // Hamburger is a <button aria-label="Open menu"> (accessible, focusable).
+    const hamburger = screen.getByLabelText('Open menu');
+    fireEvent.click(hamburger);
 
     expect(onMenu).toHaveBeenCalledOnce();
   });
