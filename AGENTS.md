@@ -27,7 +27,7 @@
 >
 > **下一任務：** Mission UI 設計對等修補（計劃 `docs/superpowers/plans/2026-05-30-mission-ui-design-parity-fixes.md`）。三 Task：**A** MissionTablet 功能缺（V/ω readouts 用實 lx/ly/az、HEADING track 用 atan2、頂 bar 加 LAT Readout）+ **B** MissionControl phone-portrait 去 `isLandscape && ...` 守令 telemetry/MiniMap/Compass 兩 layout 皆顯（size 隨變） — A + B 可並派（disjoint 文件域）；**C** MissionTablet 視覺對等補（頂 bar UP/BAT/SIG placeholders、STREAM 四 codec DataRows、左欄末 `cmd_vel @ 50hz`/`last pong 0.04s` ops footer）— C 與 A 同文件須序派。REC indicator 跳過（plan 預宣 deviation 之延續）。然後 docker build webclient + up -d + 求用戶煙測 phone-portrait + tablet 二回。
 
-**Head SHA：** `<TBD>`（截至 2026-05-30，branch `feat/mission-ui-react`；Wave 3 完）
+**Head SHA：** `2138ade`（截至 2026-05-30，branch `feat/mission-ui-react`；Wave 3 完）
 
 ### 已竣里程
 
