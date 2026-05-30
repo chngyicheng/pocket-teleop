@@ -27,7 +27,9 @@
 >
 > **下一任務：** 求用戶煙測 phone-portrait + tablet 二回，驗 (a) tablet 中央底 V/ω 隨 DRIVE/STRAFE 動而變、(b) tablet 右欄 HEADING track 隨軸動而變、(c) tablet 頂 bar 顯 LAT 自 latencyMs + UP/BAT/SIG 靜態、(d) tablet 左欄 STREAM 顯四 codec DataRow + 動態 stream state + 末 ops footer、(e) phone-portrait 顯 telemetry stack + MiniMap + Compass（不藏，size 較緊湊）。煙測通則待用戶許可推送。
 
-**Head SHA：** `0e6d0bd`（截至 2026-05-30，branch `feat/mission-ui-react`；設計對等役 Task C 完）
+**Head SHA：** `03ad898`（截至 2026-05-30，branch `feat/mission-ui-react`；設計對等役 + 用戶煙測修三事完）
+
+**設計對等後續用戶煙測修**（`03ad898`）：(1) `index.css` 加 `-webkit-tap-highlight-color: transparent` 全局（去 joystick 區 mobile tap-highlight 閃）；(2) `App.tsx` tablet 閾值自 `min-width: 900px` 降至 `700px`（Samsung Fold 6 inner display 約 707 CSS px wide，900 太高致 fold 不切 tablet layout）；(3) `SettingsDrawer.tsx` 自左滑改為右滑（`right: 0`、`borderLeft`、`translateX(100%)` closed → `0` open）。`App.test.tsx` 與 `SettingsDrawer.test.tsx` 之斷言同步更。
 
 ### 已竣里程
 
