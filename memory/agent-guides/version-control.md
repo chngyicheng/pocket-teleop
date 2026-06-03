@@ -14,7 +14,6 @@ Before every commit, in this order:
 2. `docker run --rm --network=host <image> bash -c ". /opt/ros/humble/setup.sh && cd /ros2_ws && colcon test --event-handlers console_direct+"` — 0 test failures required
 3. **Doc freshness check** — read "Keeping docs current" table below, update every applicable entry. Also verify:
    - `AGENTS.md` handoff table matches actual task state, written for new agent (see "Writing the handoff state for a new agent" below)
-   - Head SHA in `AGENTS.md` matches commit just made
    - **Do not edit `CLAUDE.md` directly** — symlink to `AGENTS.md`; edit `AGENTS.md` only
 
 All three steps must complete before `git commit`.
@@ -78,8 +77,6 @@ No changelog appends. Edit relevant section in place.
 ### Writing the handoff state for a new agent
 
 Handoff State in `CLAUDE.md` is first thing next agent reads. Must be self-contained — assume reader has zero context from this conversation.
-
-**Head SHA:** After staging all files but before `git commit`, run `git rev-parse --short HEAD` to get current HEAD. Commit about to be created extends this — use `--short HEAD` *after* committing and update SHA field (or use `$(git rev-parse --short HEAD)` in post-commit edit).
 
 **Task table rows:**
 - Completed task → `✅ Done` with Notes naming what was created or key test names now passing

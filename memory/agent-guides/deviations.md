@@ -62,3 +62,6 @@
 | Odom 面板在收到首條消息前隱藏 | `web-client/index.html` | 不發布 `/odom` 的機器人不應顯示陳舊或空白面板；默認隱藏防止混淆 |
 | `broadcast()` 忽略 `ws_server_.send` 的 `error_code` | `server/src/teleop_server.cpp` | 客戶端斷開通過 `on_close` 將 `has_client_` 置 false；對陳舊 send 的靜默錯誤無害，避免競態條件檢查 |
 | `showVideoStream()` 隱藏 `mjpegImg` 無單元測試 | `web-client/index.html` | 邏輯在 `<script type="module">` 內聯，vitest 無法導入；需 Playwright 等 e2e 工具方可覆蓋；用戶決策：人工測試（切換 MJPEG 源後等 WhepClient 重連確認無雙流疊加）|
+| REC indicator chip 不渲於 MissionTablet main viewport | `web-client/src/views/MissionTablet.tsx` | Design `mission.jsx:309-317` 有「REC 02:14」紅色 blinking badge，本港省去；bridge 無 recording 訊號源，渲固定字串誤導；待後續若加 session-recording 役（計劃池內），再實接入 |
+| Tablet layout 閾值 `min-width: 700px`（非 design 假設之 900+） | `web-client/src/App.tsx` | Samsung Fold 6 inner display CSS width 約 707 px（physical 1856 / DPR 2.625）；900 閾值致 fold 永留 phone layout；700 閾值令 Fold + iPad mini portrait 皆切 tablet；下行邊界仍排除 standard phone 寬（≤ 620 px landscape） |
+| `SettingsDrawer` 自右側滑（design 無對應 drawer 元素） | `web-client/src/components/SettingsDrawer.tsx` | 本港自加 drawer 容遊戲手柄/視頻源/namespace 設置，design 無此面板；用戶煙測偏好右側滑（一般 settings UX 模式），非左側 |
