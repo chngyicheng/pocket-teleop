@@ -194,20 +194,23 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         fontFamily: sansFont,
         display: 'grid',
         gridTemplateColumns: '220px 1fr 240px',
-        gridTemplateRows: '52px 1fr',
+        gridTemplateRows: '44px 1fr',
         position: 'relative',
       }}
     >
-      {/* Top bar spans all columns */}
+      {/* Top bar spans all columns. fontSize: 10 sets a small baseline so
+          Readouts (which don't set their own font-size) inherit it instead of
+          ballooning to the body default. */}
       <div
         style={{
           gridColumn: '1 / -1',
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          padding: '0 16px',
+          gap: 8,
+          padding: '0 10px',
           background: p.surface,
           borderBottom: `1px solid ${p.border}`,
+          fontSize: 10,
         }}
       >
         {/* Hamburger menu */}
@@ -237,10 +240,11 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         <div
           style={{
             fontFamily: monoFont,
-            fontSize: 11,
-            letterSpacing: '0.2em',
+            fontSize: 9,
+            letterSpacing: '0.1em',
             color: p.muted,
             fontWeight: 600,
+            textTransform: 'uppercase',
           }}
         >
           POCKET-TELEOP
@@ -288,7 +292,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             color: '#fff',
             border: 'none',
             borderRadius: 3,
-            padding: '6px 12px',
+            padding: '5px 12px',
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.1em',
@@ -508,7 +512,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         }}
       >
         <Joystick
-          variant="classic"
+          variant="zone"
           size={280}
           baseSize={140}
           knobSize={56}
@@ -534,7 +538,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         }}
       >
         <Joystick
-          variant="classic"
+          variant="zone"
           axes="x"
           size={280}
           baseSize={140}

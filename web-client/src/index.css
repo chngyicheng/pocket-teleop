@@ -4,6 +4,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  /* Prevent mobile browsers from auto-inflating text when content columns
+     are narrower than the viewport (Chrome Android, Safari iOS). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Establish a stable base; component inline `fontSize` values
+     (10/11/12 px) are absolute, so this only affects unset elements. */
+  font-size: 14px;
+}
+
 html, body, #app {
   margin: 0;
   padding: 0;
