@@ -30,7 +30,18 @@ Details: [version-control.md](memory/agent-guides/version-control.md).
 >
 > **Joystick-vs-drawer usability DONE (part of BUG 2).** `App` passes `controlsDisabled={drawerOpen}` to both views; while the Settings drawer is open the joystick wrappers are `pointerEvents:'none'` (zones/hints stay rendered one layer below the drawer, which already paints above them). The E-STOP button is deliberately left tappable above the drawer pending a product call.
 >
-> **Next task — finish BUG 2/3:** decide whether the E-STOP button (`zIndex:10`) should stay tappable over the drawer or be covered/disabled; BUG 3 overflow (tablet top-bar E-STOP bleeds off the right edge — make the top bar responsive); BUG 3 label unification ("■ STOP" in MissionControl vs "■ E-STOP" in MissionTablet — pick one). Then BUG 5 telemetry (wire `fps`/`res` from `RTCPeerConnection.getStats()`, decide BAT/SIG/UP, record deviations). Feature backlog ("Feature plan pool" below) also remains available.
+> **Resume state (2026-06-05):** all work is on branch **`feat/control-safety-fixes`**, pushed through **`44bfdee`** (the worktree at `.worktrees/feat-control-safety` is clean). `main` carries only the `*.original.md` cleanup chore **`bacefe8`** (pushed). Branch commits: `a59203b` BUG 1, `a1287d7` chore, `0d88e4d` BUG 4, `44bfdee` BUG 2-joysticks. The **running Docker stack is STALE** — it was rebuilt at the BUG 1 point and does NOT contain BUG 4 or the joystick-drawer fix.
+>
+> **Product decisions already made by the operator (do NOT re-ask):**
+> - E-STOP while the drawer is open → **stays tappable on top** of the drawer (it is a safety control). Just make sure it renders cleanly over the panel; do NOT cover/disable it.
+> - E-STOP label → unify to **"■ STOP"** everywhere (MissionTablet currently says "■ E-STOP"; change it to "■ STOP"). Shorter label also helps the tablet overflow.
+>
+> **Next task — resume here, IN ORDER:**
+> 1. **Rerun the stack first** so the operator can test BUG 4 + the joystick-drawer fix on hardware: from the worktree run `docker compose -p pocket-teleop --env-file /home/chngyicheng/pocket-teleop/.env down` then `... up --build -d` (the `-p pocket-teleop` pin reuses the existing `auth-data` volume, so credentials are NOT reset). Then wait for the operator's hardware feedback before piling on more changes.
+> 2. **BUG 3 overflow:** the tablet top-bar (UP/BAT/SIG/LAT/conn-pill/E-STOP in one row) runs off the right edge at 700–900px. Make it responsive (allow wrap / flex-shrink / smaller padding) so E-STOP stays on-screen. Apply the **"■ STOP"** label unification here (`views/MissionTablet.tsx`).
+> 3. **BUG 5 telemetry:** wire `fps`/`res` from `RTCPeerConnection.getStats()` (inbound video track `frameWidth`/`frameHeight`/`framesPerSecond`); decide BAT/SIG/UP (real source or remove — battery has a backlog plan); record any still-unbacked field as a deviation in `memory/agent-guides/deviations.md`.
+>
+> Baseline test counts to preserve: **server 44** / **webclient 290 unit+component pass** (pre-existing reds that are NOT regressions: `integration.test.ts` needs a live server; 9 `*.adversarial.test.*` documenting other open bugs; 1 `whep_client` ICE-timer flake) / video-bridge 19 / auth 34. Feature backlog ("Feature plan pool" below) also remains available.
 
 ### Milestones done
 
