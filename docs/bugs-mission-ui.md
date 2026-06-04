@@ -6,7 +6,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 1 — Robot does not stop when joystick is released (SAFETY) 🔴
+## BUG 1 — Robot does not stop when joystick is released (SAFETY) ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** `TeleopClient` now runs a 20 Hz continuous publisher (`PUBLISH_INTERVAL_MS = 50`, `STOP_REPEATS = 10`): while a non-zero command is held it republishes it every tick (a dropped/reordered packet self-corrects); on release (`sendTwist(0,0,0)`) it sends a bounded burst of `STOP_REPEATS` explicit zero-twists over ~500 ms then goes silent so keepalive/latency still work. Publisher is silent with no input (idle-reconnect/keepalive behavior unchanged) and resets on every (re)connect so a blip never resumes stale motion. The stale-closure cross-axis read (hypothesis 2) is gone: both views hold live axes in an `axesRef` and always send the full current intent, so releasing one joystick zeroes only its own axes. Tests: `web-client/test/teleop_client_continuous_publish.test.ts` + cross-axis guard in `MissionControl.test.tsx`. Hypothesis 3 (robot-side latching) is out of scope for the web client; the bounded zero burst + server watchdog cover it.
 
 **Symptom:** After letting go of a joystick, the robot keeps moving. Either velocity is still being published, or the robot never receives a stop.
 

@@ -135,6 +135,14 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const [ly, setLy] = useState(0);
   const [az, setAz] = useState(0);
 
+  /**
+   * axesRef holds the live (non-stale) current command.
+   * React useState setters are async — reading lx/ly/az in a closure can
+   * capture a stale render-cycle value.  The ref is always synchronously
+   * up-to-date and is the authoritative source for what gets sent.
+   */
+  const axesRef = useRef({ lx: 0, ly: 0, az: 0 });
+
   // Video srcObject sync
   useEffect(() => {
     if (videoRef.current && stream.stream) {
@@ -164,24 +172,32 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y);
     setAz(-x);
-    bridge.sendTwist(-y, ly, -x);
+    axesRef.current.lx = -y;
+    axesRef.current.az = -x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleDriveEnd = () => {
     setLx(0);
     setAz(0);
-    bridge.sendTwist(0, ly, 0);
+    axesRef.current.lx = 0;
+    axesRef.current.az = 0;
+    // ly preserved in axesRef — STRAFE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   // STRAFE joystick: ly (lateral)
   const handleStrafeMove = (x: number) => {
     setLy(x);
-    bridge.sendTwist(lx, x, az);
+    axesRef.current.ly = x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleStrafeEnd = () => {
     setLy(0);
-    bridge.sendTwist(lx, 0, az);
+    axesRef.current.ly = 0;
+    // lx and az preserved in axesRef — DRIVE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   return (
