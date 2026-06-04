@@ -71,6 +71,7 @@ void TeleopServer::on_open(ConnectionHdl hdl) {
 
   active_client_ = hdl;
   has_client_ = true;
+  estopped_ = false;
   reset_watchdog();
 
   nlohmann::json status = {
@@ -94,13 +95,28 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
 
   if (std::holds_alternative<TwistCommand>(result)) {
     reset_watchdog();
-    auto cmd = std::get<TwistCommand>(result);
-    publish_callback_(cmd.linear_x, cmd.linear_y, cmd.angular_z);
+    if (!estopped_) {
+      auto cmd = std::get<TwistCommand>(result);
+      publish_callback_(cmd.linear_x, cmd.linear_y, cmd.angular_z);
+    }
 
   } else if (std::holds_alternative<PingCommand>(result)) {
     reset_watchdog();
     nlohmann::json pong = {{"type", "pong"}};
     ws_server_.send(hdl, pong.dump(), websocketpp::frame::opcode::text);
+
+  } else if (std::holds_alternative<EStopCommand>(result)) {
+    estopped_ = true;
+    reset_watchdog();
+    publish_callback_(0.0, 0.0, 0.0);
+    nlohmann::json state = {{"type", "estop_state"}, {"engaged", true}};
+    ws_server_.send(hdl, state.dump(), websocketpp::frame::opcode::text);
+
+  } else if (std::holds_alternative<EStopResetCommand>(result)) {
+    estopped_ = false;
+    reset_watchdog();
+    nlohmann::json state = {{"type", "estop_state"}, {"engaged", false}};
+    ws_server_.send(hdl, state.dump(), websocketpp::frame::opcode::text);
 
   } else {
     auto err = std::get<ParseError>(result);

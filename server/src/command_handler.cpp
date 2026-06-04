@@ -16,6 +16,14 @@ ParseResult CommandHandler::parse(const std::string& json_message) {
       return PingCommand{};
     }
 
+    if (type == "estop") {
+      return EStopCommand{};
+    }
+
+    if (type == "estop_reset") {
+      return EStopResetCommand{};
+    }
+
     if (type == "twist") {
       for (const char* field : {"linear_x", "linear_y", "angular_z"}) {
         if (!j.contains(field) || !j[field].is_number()) {

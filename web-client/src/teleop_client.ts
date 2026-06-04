@@ -1,7 +1,7 @@
 import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
-import { buildPing, buildTwist, parseMessage } from './protocol.js';
+import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage } from './protocol.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
 export const PUBLISH_INTERVAL_MS = 50;
@@ -24,6 +24,7 @@ export interface TeleopClientOptions {
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
+  onEstopState?: (engaged: boolean) => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
   publishIntervalMs?: number;
@@ -53,6 +54,9 @@ export class TeleopClient {
   private repeatTwist: { lx: number; ly: number; az: number } | null = null;
   /** Counts down from STOP_REPEATS after a release, sending zeros each tick. */
   private zeroFramesLeft = 0;
+
+  /** True while e-stop is latched; sendTwist is a no-op in this state. */
+  private estopEngaged = false;
 
   constructor(options: TeleopClientOptions = {}) {
     this.options = options;
@@ -100,6 +104,7 @@ export class TeleopClient {
     // Fresh/reconnected session must not blindly resume stale motion.
     this.repeatTwist = null;
     this.zeroFramesLeft = 0;
+    this.estopEngaged = false;
     this.connection.connect(url);
     this.startKeepalive();
     this.startPublisher();
@@ -126,7 +131,27 @@ export class TeleopClient {
     this.gamepadHandler.setEnabled(enabled);
   }
 
+  engageEstop(): void {
+    this.connection.send(buildEstop());
+    this.estopEngaged = true;
+    // Clear publisher motion state so the continuous publisher stops sending
+    this.repeatTwist = null;
+    this.zeroFramesLeft = 0;
+    this.lastSentAt = Date.now();
+  }
+
+  resetEstop(): void {
+    this.connection.send(buildEstopReset());
+    this.estopEngaged = false;
+    this.lastSentAt = Date.now();
+  }
+
   sendTwist(lx: number, ly: number, az: number): void {
+    // While e-stop is latched, all motion commands are suppressed
+    if (this.estopEngaged) {
+      return;
+    }
+
     // Immediate one-shot send (existing behaviour, kept for responsiveness)
     this.connection.send(buildTwist(lx, ly, az));
     this.lastSentAt = Date.now();
@@ -159,6 +184,9 @@ export class TeleopClient {
       this.options.onPong?.();
     } else if (msg.type === 'odom') {
       this.options.onOdom?.(msg.x, msg.y, msg.heading);
+    } else if (msg.type === 'estop_state') {
+      this.estopEngaged = msg.engaged;
+      this.options.onEstopState?.(msg.engaged);
     }
   }
 

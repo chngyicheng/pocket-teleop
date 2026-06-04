@@ -52,7 +52,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 4 — E-STOP may not actually stop the robot (SAFETY) 🔴
+## BUG 4 — E-STOP may not actually stop the robot (SAFETY) ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** Now a real server-side latch. Client sends `{"type":"estop"}`; `TeleopServer` sets `estopped_`, publishes one zero `cmd_vel`, and **ignores all incoming twists until `{"type":"estop_reset"}`** — so a still-engaged joystick can no longer override the stop. Ping/keepalive still resets the watchdog so the connection survives while latched; the latch clears on a fresh connect. Server confirms with `{"type":"estop_state","engaged":bool}`; the UI shows an "⚠ E-STOP ENGAGED" banner and flips the button to a deliberate RESET (Space engages only, never resets). Client `sendTwist` is a no-op while latched. Tests: 4 new C++ (`EstopIgnoresSubsequentTwist`, `EstopResetResumesTwist`, `EstopRepliesWithEngagedState`, …) + webclient protocol/bridge/view tests.
 
 **Symptom:** Tapping E-STOP several times did not stop a rolling robot.
 

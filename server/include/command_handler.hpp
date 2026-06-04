@@ -10,11 +10,15 @@ struct TwistCommand {
 
 struct PingCommand {};
 
+struct EStopCommand {};
+
+struct EStopResetCommand {};
+
 struct ParseError {
   std::string message;
 };
 
-using ParseResult = std::variant<TwistCommand, PingCommand, ParseError>;
+using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand, ParseError>;
 
 class CommandHandler {
 public:

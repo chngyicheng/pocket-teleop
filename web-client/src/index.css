@@ -28,3 +28,9 @@ html, body, #app {
 body {
   overflow: hidden;
 }
+
+/* E-STOP engaged affordance: the latched STOP/RESET button pulses. */
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.55; }
+}

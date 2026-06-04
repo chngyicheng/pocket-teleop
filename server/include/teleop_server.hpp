@@ -55,6 +55,7 @@ private:
 
   std::atomic<bool> running_{false};
   std::atomic<bool> timed_out_{false};
+  std::atomic<bool> estopped_{false};
   std::thread watchdog_thread_;
   std::atomic<int64_t> last_message_ms_{0};
 };

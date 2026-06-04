@@ -124,6 +124,7 @@ function MissionPillToggle({ label, on }: { label: string; on: boolean }): JSX.E
  */
 export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, onMenu }) => {
   const p = MissionPalette;
+  const { estopEngaged } = bridge;
   const sansFont = 'Inter, ui-sans-serif, system-ui, sans-serif';
   const monoFont = '"JetBrains Mono", ui-monospace, monospace';
 
@@ -300,13 +301,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           {connLabel.text}
         </div>
 
-        {/* E-STOP button */}
+        {/* E-STOP button — engaged state shows RESET affordance */}
         <button
-          onClick={() => bridge.eStop()}
+          onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}
           style={{
-            background: p.danger,
+            background: estopEngaged ? '#ff0000' : p.danger,
             color: '#fff',
-            border: 'none',
+            border: estopEngaged ? '2px solid #fff' : 'none',
             borderRadius: 3,
             padding: '5px 12px',
             fontSize: 11,
@@ -316,11 +317,36 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             zIndex: 10,
+            animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
-          ■ E-STOP
+          {estopEngaged ? '■ RESET' : '■ E-STOP'}
         </button>
       </div>
+
+      {/* E-STOP engaged banner — spans full width, above all content */}
+      {estopEngaged && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 44,
+            left: 0,
+            right: 0,
+            background: '#ff0000',
+            color: '#fff',
+            textAlign: 'center',
+            fontFamily: monoFont,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            padding: '6px 0',
+            zIndex: 20,
+            gridColumn: '1 / -1',
+          }}
+        >
+          ⚠ E-STOP ENGAGED — tap RESET
+        </div>
+      )}
 
       {/* Left rail */}
       <aside

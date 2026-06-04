@@ -43,6 +43,17 @@ class FakeTeleopClient {
     this.twists.push([lx, ly, az]);
   }
 
+  engageEstopCalls = 0;
+  resetEstopCalls = 0;
+
+  engageEstop() {
+    this.engageEstopCalls += 1;
+  }
+
+  resetEstop() {
+    this.resetEstopCalls += 1;
+  }
+
   setGamepadProfile(_profileName: string) {
     // noop
   }
@@ -303,9 +314,9 @@ describe('App', () => {
   });
 
   /**
-   * Test 6: E-STOP button click → sendTwist([0, 0, 0])
+   * Test 6: E-STOP button click → engageEstop() called (latching, not a one-shot zero twist)
    */
-  it('E-STOP button click sends zero twist', async () => {
+  it('E-STOP button click calls engageEstop', async () => {
     const teleopFactory: TeleopClientFactory = (opts) => {
       fakeTeleop = new FakeTeleopClient(opts);
       return fakeTeleop as unknown as TeleopClient;
@@ -326,15 +337,14 @@ describe('App', () => {
       fireEvent.click(stopButton);
     });
 
-    // Last twist should be [0, 0, 0]
-    const lastTwist = fakeTeleop.twists[fakeTeleop.twists.length - 1];
-    expect(lastTwist).toEqual([0, 0, 0]);
+    // engageEstop must have been called (latching e-stop)
+    expect(fakeTeleop.engageEstopCalls).toBe(1);
   });
 
   /**
-   * Test 7: Space key down → sendTwist([0, 0, 0])
+   * Test 7: Space key down → engageEstop() called (latching, not a one-shot zero twist)
    */
-  it('Space keydown sends zero twist', async () => {
+  it('Space keydown calls engageEstop', async () => {
     const teleopFactory: TeleopClientFactory = (opts) => {
       fakeTeleop = new FakeTeleopClient(opts);
       return fakeTeleop as unknown as TeleopClient;
@@ -357,9 +367,8 @@ describe('App', () => {
       window.dispatchEvent(event);
     });
 
-    // Last twist should be [0, 0, 0]
-    const lastTwist = fakeTeleop.twists[fakeTeleop.twists.length - 1];
-    expect(lastTwist).toEqual([0, 0, 0]);
+    // engageEstop must have been called (latching e-stop)
+    expect(fakeTeleop.engageEstopCalls).toBe(1);
   });
 
   /**

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildTwist, buildPing, parseMessage } from '../src/protocol.js';
+import { buildTwist, buildPing, buildEstop, buildEstopReset, parseMessage } from '../src/protocol.js';
 
 describe('buildTwist', () => {
   it('produces correct JSON field names and values', () => {
@@ -28,6 +28,22 @@ describe('buildPing', () => {
   it('produces {"type":"ping"}', () => {
     const parsed = JSON.parse(buildPing()) as Record<string, unknown>;
     expect(parsed['type']).toBe('ping');
+    expect(Object.keys(parsed)).toHaveLength(1);
+  });
+});
+
+describe('buildEstop', () => {
+  it('produces {"type":"estop"}', () => {
+    const parsed = JSON.parse(buildEstop()) as Record<string, unknown>;
+    expect(parsed['type']).toBe('estop');
+    expect(Object.keys(parsed)).toHaveLength(1);
+  });
+});
+
+describe('buildEstopReset', () => {
+  it('produces {"type":"estop_reset"}', () => {
+    const parsed = JSON.parse(buildEstopReset()) as Record<string, unknown>;
+    expect(parsed['type']).toBe('estop_reset');
     expect(Object.keys(parsed)).toHaveLength(1);
   });
 });
@@ -115,5 +131,27 @@ describe('parseMessage', () => {
       '{"type":"status","connected":"yes","robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns"}'
     );
     expect(result.type).toBe('unknown');
+  });
+
+  it('parses estop_state engaged=true', () => {
+    const result = parseMessage('{"type":"estop_state","engaged":true}');
+    expect(result).toEqual({ type: 'estop_state', engaged: true });
+  });
+
+  it('parses estop_state engaged=false', () => {
+    const result = parseMessage('{"type":"estop_state","engaged":false}');
+    expect(result).toEqual({ type: 'estop_state', engaged: false });
+  });
+
+  it('estop_state with non-boolean engaged returns unknown', () => {
+    const raw = '{"type":"estop_state","engaged":"yes"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('estop_state with missing engaged field returns unknown', () => {
+    const raw = '{"type":"estop_state"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
   });
 });

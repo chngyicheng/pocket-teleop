@@ -24,6 +24,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotType: 'diff',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
+    estopEngaged: false,
+    resetEstop: vi.fn(),
     ...overrides,
   };
 }
@@ -233,6 +235,33 @@ describe('MissionControl', () => {
     // Chip text should be red (#ef4444)
     const chip = screen.getByText(/○ Down/);
     expect(chip).toBeTruthy();
+  });
+
+  it('estopEngaged=true shows banner and clicking button calls resetEstop', () => {
+    const bridge = createFakeBridge({ estopEngaged: true });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // Banner should be visible
+    expect(screen.getByText(/E-STOP ENGAGED/)).toBeTruthy();
+
+    // Button label changes to RESET
+    const resetButton = screen.getByRole('button', { name: /RESET/i });
+    expect(resetButton).toBeTruthy();
+
+    fireEvent.click(resetButton);
+
+    expect(bridge.resetEstop).toHaveBeenCalledOnce();
+    expect(bridge.eStop).not.toHaveBeenCalled();
   });
 
   /**

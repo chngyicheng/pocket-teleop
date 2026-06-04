@@ -43,6 +43,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   onMenu,
   layout,
 }) => {
+  const { estopEngaged } = bridge;
   const p = MissionPalette;
   const sansFont = 'Inter, ui-sans-serif, system-ui, sans-serif';
   const monoFont = '"JetBrains Mono", ui-monospace, monospace';
@@ -223,13 +224,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {isLandscape ? connLabel.text : stateShort}
         </div>
 
-        {/* E-STOP button */}
+        {/* E-STOP button — engaged state shows RESET affordance */}
         <button
-          onClick={() => bridge.eStop()}
+          onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}
           style={{
-            background: p.danger,
+            background: estopEngaged ? '#ff0000' : p.danger,
             color: '#fff',
-            border: 'none',
+            border: estopEngaged ? '2px solid #fff' : 'none',
             borderRadius: 3,
             padding: isLandscape ? '5px 12px' : '4px 8px',
             fontSize: 11,
@@ -240,11 +241,35 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             flex: '0 0 auto',
             whiteSpace: 'nowrap',
             zIndex: 10,
+            animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
-          ■ STOP
+          {estopEngaged ? '■ RESET' : '■ STOP'}
         </button>
       </header>
+
+      {/* E-STOP engaged banner — always visible above all content when latched */}
+      {estopEngaged && (
+        <div
+          style={{
+            position: 'absolute',
+            top: isLandscape ? 44 : 36,
+            left: 0,
+            right: 0,
+            background: '#ff0000',
+            color: '#fff',
+            textAlign: 'center',
+            fontFamily: monoFont,
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            padding: '5px 0',
+            zIndex: 20,
+          }}
+        >
+          ⚠ E-STOP ENGAGED — tap RESET
+        </div>
+      )}
 
       {/* Video viewport + overlays */}
       <div

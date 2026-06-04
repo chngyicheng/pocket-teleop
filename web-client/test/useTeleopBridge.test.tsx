@@ -6,6 +6,8 @@ import type { TeleopClientOptions } from '../src/teleop_client.js';
 // Fake TeleopClient for testing
 class FakeTeleopClient {
   twists: number[][] = [];
+  engageEstopCalls = 0;
+  resetEstopCalls = 0;
   opts: TeleopClientOptions;
 
   constructor(opts: TeleopClientOptions = {}) {
@@ -17,6 +19,14 @@ class FakeTeleopClient {
 
   sendTwist(lx: number, ly: number, az: number) {
     this.twists.push([lx, ly, az]);
+  }
+
+  engageEstop() {
+    this.engageEstopCalls += 1;
+  }
+
+  resetEstop() {
+    this.resetEstopCalls += 1;
   }
 
   setGamepadProfile() {}
@@ -37,6 +47,10 @@ class FakeTeleopClient {
 
   triggerOdom(x: number, y: number, heading: number) {
     this.opts.onOdom?.(x, y, heading);
+  }
+
+  triggerEstopState(engaged: boolean) {
+    this.opts.onEstopState?.(engaged);
   }
 
   triggerClose(code: number, reason: string) {
@@ -181,7 +195,7 @@ describe('useTeleopBridge', () => {
     expect(fakeClient.twists).toEqual([[0.1, 0.2, 0.3]]);
   });
 
-  it('eStop sends zero twist unconditionally', () => {
+  it('eStop calls client.engageEstop (not sendTwist)', () => {
     const { result } = renderHook(() =>
       useTeleopBridge({
         url: 'ws://localhost/ws',
@@ -189,17 +203,16 @@ describe('useTeleopBridge', () => {
       })
     );
 
-    // eStop should work even when not connected
-    expect(result.current.connected).toBe(false);
-
     act(() => {
       result.current.eStop();
     });
 
-    expect(fakeClient.twists).toEqual([[0, 0, 0]]);
+    expect(fakeClient.engageEstopCalls).toBe(1);
+    // Must NOT send a twist
+    expect(fakeClient.twists).toEqual([]);
   });
 
-  it('eStop always sends zero twist, even when connected', () => {
+  it('eStop calls client.engageEstop even when connected', () => {
     const { result } = renderHook(() =>
       useTeleopBridge({
         url: 'ws://localhost/ws',
@@ -217,7 +230,59 @@ describe('useTeleopBridge', () => {
       result.current.eStop();
     });
 
-    expect(fakeClient.twists).toEqual([[0, 0, 0]]);
+    expect(fakeClient.engageEstopCalls).toBe(1);
+    expect(fakeClient.twists).toEqual([]);
+  });
+
+  it('resetEstop calls client.resetEstop', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      result.current.resetEstop();
+    });
+
+    expect(fakeClient.resetEstopCalls).toBe(1);
+  });
+
+  it('onEstopState(true) flips estopEngaged to true', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.estopEngaged).toBe(false);
+
+    act(() => {
+      fakeClient.triggerEstopState(true);
+    });
+
+    expect(result.current.estopEngaged).toBe(true);
+  });
+
+  it('onEstopState(false) flips estopEngaged back to false', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerEstopState(true);
+    });
+    expect(result.current.estopEngaged).toBe(true);
+
+    act(() => {
+      fakeClient.triggerEstopState(false);
+    });
+    expect(result.current.estopEngaged).toBe(false);
   });
 
   it('disconnects on unmount', () => {

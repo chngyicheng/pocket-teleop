@@ -206,3 +206,112 @@ TEST_F(TeleopServerTest, SecondClientReceivesAlreadyConnectedError) {
   }
   EXPECT_TRUE(found_error);
 }
+
+// ---------------------------------------------------------------------------
+// Helper: connect, send multiple ordered payloads, collect responses
+// ---------------------------------------------------------------------------
+static std::vector<std::string> connect_send_many_collect(
+    const std::string& uri,
+    const std::vector<std::string>& payloads,
+    int wait_ms = 300) {
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  std::vector<std::string> messages;
+  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
+    for (const auto& p : payloads) {
+      client.send(hdl, p, websocketpp::frame::opcode::text);
+    }
+  });
+  client.set_message_handler(
+    [&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+      messages.push_back(msg->get_payload());
+    });
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection(uri, ec);
+  client.connect(con);
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+    client.stop();
+  });
+  client.run();
+  t.join();
+  return messages;
+}
+
+// ---------------------------------------------------------------------------
+// E-STOP tests
+// ---------------------------------------------------------------------------
+
+// After estop, a subsequent twist must NOT update the published values —
+// last published must remain (0,0,0) from the estop itself.
+TEST_F(TeleopServerTest, EstopIgnoresSubsequentTwist) {
+  connect_send_many_collect(
+    "ws://localhost:19091/teleop",
+    {
+      R"({"type":"estop"})",
+      R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":0.0})"
+    });
+  // The estop published (0,0,0); the twist must have been suppressed.
+  EXPECT_DOUBLE_EQ(last_lx_, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly_, 0.0);
+  EXPECT_DOUBLE_EQ(last_az_, 0.0);
+  // At least one publish (the estop zero) must have happened.
+  EXPECT_GE(callback_count_, 1);
+}
+
+// After estop then estop_reset, the next twist must publish normally.
+TEST_F(TeleopServerTest, EstopResetResumesTwist) {
+  connect_send_many_collect(
+    "ws://localhost:19091/teleop",
+    {
+      R"({"type":"estop"})",
+      R"({"type":"estop_reset"})",
+      R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":0.0})"
+    });
+  EXPECT_DOUBLE_EQ(last_lx_, 0.5);
+}
+
+// Sending estop must produce a reply with type=="estop_state" and engaged==true.
+TEST_F(TeleopServerTest, EstopRepliesWithEngagedState) {
+  auto msgs = connect_send_many_collect(
+    "ws://localhost:19091/teleop",
+    { R"({"type":"estop"})" });
+
+  bool found = false;
+  for (auto& m : msgs) {
+    try {
+      auto j = nlohmann::json::parse(m);
+      if (j.value("type", "") == "estop_state" &&
+          j.value("engaged", false) == true) {
+        found = true;
+      }
+    } catch (...) {}
+  }
+  EXPECT_TRUE(found);
+}
+
+// Sending estop_reset must produce a reply with type=="estop_state" and engaged==false.
+TEST_F(TeleopServerTest, EstopResetRepliesWithDisengagedState) {
+  auto msgs = connect_send_many_collect(
+    "ws://localhost:19091/teleop",
+    {
+      R"({"type":"estop"})",
+      R"({"type":"estop_reset"})"
+    });
+
+  bool found = false;
+  for (auto& m : msgs) {
+    try {
+      auto j = nlohmann::json::parse(m);
+      if (j.value("type", "") == "estop_state" &&
+          j.value("engaged", true) == false) {
+        found = true;
+      }
+    } catch (...) {}
+  }
+  EXPECT_TRUE(found);
+}
