@@ -66,7 +66,7 @@ describe('MissionTablet', () => {
     expect(screen.getByText(/Connected — diff_drive/i)).toBeTruthy();
 
     // Check for E-STOP button
-    const stopButton = screen.getByRole('button', { name: /E-STOP/i });
+    const stopButton = screen.getByRole('button', { name: /STOP/i });
     expect(stopButton).toBeTruthy();
 
     // Left rail panels: STREAM, VELOCITY, ODOMETRY
@@ -138,7 +138,7 @@ describe('MissionTablet', () => {
 
     render(<MissionTablet {...props} />);
 
-    const stopButton = screen.getByRole('button', { name: /E-STOP/i });
+    const stopButton = screen.getByRole('button', { name: /STOP/i });
     fireEvent.click(stopButton);
 
     expect(bridge.eStop).toHaveBeenCalledTimes(1);
@@ -457,5 +457,39 @@ describe('MissionTablet', () => {
     for (const z of screen.getAllByTestId('joystick-zone')) {
       expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
     }
+  });
+
+  // BUG 3 — top-bar overflow + label unification
+  describe('top bar (BUG 3)', () => {
+    it('renders the E-STOP button with the unified "■ STOP" label', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const btn = screen.getByRole('button', { name: /STOP/i });
+      expect(btn.textContent).toBe('■ STOP');
+      expect(btn.textContent).not.toContain('E-STOP');
+    });
+
+    it('pins the E-STOP button so it never shrinks off the top bar', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const btn = screen.getByRole('button', { name: /STOP/i });
+      expect(btn.style.flexShrink).toBe('0');
+    });
+
+    it('makes the robot-name label the sole shrink target and clips top-bar overflow', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      // Top bar is the parent of the hamburger button.
+      const topBar = screen.getByLabelText('Open menu').parentElement as HTMLElement;
+      expect(topBar.style.overflow).toBe('hidden');
+
+      // The robot-name label truncates (minWidth:0 + ellipsis) to give up space first.
+      // Read the serialized style: jsdom's CSSOM drops the unitless `0` of
+      // min-width when read via the typed `.style` accessor, so assert the attribute.
+      const nameEl = screen.getByText(/POCKET-TELEOP/i) as HTMLElement;
+      const nameStyle = nameEl.getAttribute('style') ?? '';
+      expect(nameStyle).toContain('min-width: 0');
+      expect(nameStyle).toContain('text-overflow: ellipsis');
+    });
   });
 });

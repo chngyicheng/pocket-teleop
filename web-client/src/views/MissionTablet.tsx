@@ -230,6 +230,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           background: p.surface,
           borderBottom: `1px solid ${p.border}`,
           fontSize: 10,
+          // Single-line bar: the robot-name label is the only element allowed to
+          // shrink (minWidth:0 + ellipsis below). overflow:hidden is a safety net
+          // so a too-wide bar clips instead of pushing E-STOP off the viewport.
+          overflow: 'hidden',
         }}
       >
         {/* Hamburger menu */}
@@ -255,7 +259,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           ☰
         </button>
 
-        {/* Robot name + namespace */}
+        {/* Robot name + namespace — fills remaining space and is the sole shrink
+            target: minWidth:0 + nowrap + ellipsis lets it truncate so the fixed
+            readouts / connection chip / E-STOP always keep their room. */}
         <div
           style={{
             fontFamily: monoFont,
@@ -264,6 +270,11 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             color: p.muted,
             fontWeight: 600,
             textTransform: 'uppercase',
+            flex: '1 1 auto',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           POCKET-TELEOP
@@ -272,9 +283,6 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             /{bridge.robotNamespace || 'ns/robot1'}
           </span>
         </div>
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
 
         {/* UP, BAT, SIG placeholder readouts */}
         <Readout label="UP" value="03:24:18" color={p.accent} />
@@ -318,11 +326,12 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             fontFamily: monoFont,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
             zIndex: 10,
             animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
-          {estopEngaged ? '■ RESET' : '■ E-STOP'}
+          {estopEngaged ? '■ RESET' : '■ STOP'}
         </button>
       </div>
 

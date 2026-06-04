@@ -43,7 +43,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 3 — E-STOP label inconsistent + button overflows the screen on tablet 🟠
+## BUG 3 — E-STOP label inconsistent + button overflows the screen on tablet ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** Symptom A: `MissionTablet`'s E-STOP label is unified to `■ STOP` (matches `MissionControl`); the engaged-state label stays `■ RESET`. Symptom B: the tablet top bar is now resilient on one fixed-height line — the robot-name label is the sole shrink target (`flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap`) so it truncates first, the E-STOP button is pinned `flexShrink:0` so it can never be squeezed off, and the bar carries `overflow:hidden` as a safety net. The readouts / connection chip keep their min-content room. Keeping a single 44px row preserves the absolutely-positioned `top:44` engaged banner. Tests: 3 added to `test/MissionTablet.test.tsx` (label unified, E-STOP `flexShrink:0`, name truncation + bar overflow); the two existing button queries moved from `/E-STOP/i` to `/STOP/i`.
 
 **Symptom A (label):** Portrait shows `■ STOP`; tablet and landscape show `■ E-STOP`.
 - `views/MissionControl.tsx:229` renders `■ STOP` (used for phone portrait *and* landscape).
