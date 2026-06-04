@@ -7,7 +7,7 @@ Environment variables
 VIDEO_TOPIC       Full topic path, e.g. /camera/image_raw/compressed.
                   If empty the node sleeps without subscribing.
 VIDEO_TOPIC_TYPE  'compressed' (default) or 'raw'.
-MEDIAMTX_RTSP     RTSP push URL (default: rtsp://localhost:8554/teleop).
+MEDIAMTX_RTMP     RTMP push URL (default: rtmp://localhost:1935/teleop).
 """
 import os
 import sys
@@ -25,7 +25,7 @@ from sensor_msgs.msg import CompressedImage, Image  # noqa: E402
 
 Gst.init(None)
 
-MEDIAMTX_RTSP = os.environ.get('MEDIAMTX_RTSP', 'rtsp://localhost:8554/teleop')
+MEDIAMTX_RTMP = os.environ.get('MEDIAMTX_RTMP', 'rtmp://127.0.0.1:1935/teleop')
 
 # ROS2 encoding string → GStreamer video/x-raw format string
 _FORMAT_MAP: dict[str, str] = {
@@ -47,8 +47,9 @@ def _compressed_pipeline() -> str:
         '! videoconvert '
         '! video/x-raw,format=I420 '
         '! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bitrate=2000 '
-        '! rtph264pay config-interval=-1 pt=96 '
-        f'! rtspclientsink location={MEDIAMTX_RTSP} protocols=tcp latency=0'
+        '! h264parse '
+        '! flvmux streamable=true '
+        f'! rtmpsink location={MEDIAMTX_RTMP} sync=false'
     )
 
 
@@ -63,8 +64,9 @@ def _raw_pipeline(width: int, height: int, gst_format: str) -> str:
         '! videoconvert '
         '! video/x-raw,format=I420 '
         '! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bitrate=2000 '
-        '! rtph264pay config-interval=-1 pt=96 '
-        f'! rtspclientsink location={MEDIAMTX_RTSP} protocols=tcp latency=0'
+        '! h264parse '
+        '! flvmux streamable=true '
+        f'! rtmpsink location={MEDIAMTX_RTMP} sync=false'
     )
 
 
@@ -84,7 +86,7 @@ class VideoBridgeNode(Node):
         )
         self.get_logger().info(
             f'video_bridge: subscribing to {topic} '
-            f'(type={topic_type}, rtsp={MEDIAMTX_RTSP})'
+            f'(type={topic_type}, rtmp={MEDIAMTX_RTMP})'
         )
 
     # ------------------------------------------------------------------
@@ -182,7 +184,8 @@ def main() -> None:
         print('video_bridge: VIDEO_TOPIC not set — sleeping (video disabled)', flush=True)
         # Stay alive without spinning so Docker reports healthy, but do nothing.
         try:
-            time.sleep(float('inf'))
+            while True:
+                time.sleep(3600)
         except KeyboardInterrupt:
             pass
         return

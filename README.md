@@ -141,6 +141,25 @@ Settings → Video → select **Disabled** and click Apply. The placeholder is s
 
 ## Troubleshooting
 
+### Video stream connects but never shows frames — `deadline exceeded while waiting connection` (10 s timeout)
+
+The WHEP signaling succeeds (auth-server logs show `/video` proxy requests completing), but the video panel displays a placeholder, and mediamtx logs show the session closes after 10 seconds. This is caused by the host firewall blocking UDP 8891 (WebRTC ICE media path).
+
+**Root cause:** mediamtx runs in `network_mode: host` and binds the WebRTC ICE UDP listener to port 8891. The mobile browser sends STUN binding requests directly to this port from the phone's IP address. If the host runs ufw (or another stateful firewall) with a default `DROP` policy for inbound traffic, UDP 8891 is not explicitly allowed, and the packets are silently dropped before reaching mediamtx. Mediamtx never sees the client, times out after 10 s, and closes the connection.
+
+**Solution:** Open UDP 8891 on the robot host:
+```bash
+# Allow WebRTC media from the phone's subnet (recommended):
+sudo ufw allow from 192.168.10.0/24 to any port 8891 proto udp
+
+# Or, allow from any source:
+sudo ufw allow 8891/udp
+```
+
+After adding the rule, the mobile browser can send STUN packets directly to UDP 8891, mediamtx completes the ICE handshake, and video streams immediately.
+
+**Note:** Port 8080 (auth-server signaling) operates over TCP and typically already has an allow rule. Port 8891 is separate and carries WebRTC media; it is not proxied through the auth-server and must have its own firewall rule.
+
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
 
 The auth-server runs in host network mode and connects to the teleop-server at `localhost:9091` by default. If the teleop-server is reachable at a different address (e.g. running outside Docker on a different machine), override it in `.env`:

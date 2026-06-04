@@ -41,12 +41,13 @@ services:
     build:
       context: .
       dockerfile: video-bridge/Dockerfile.video_bridge
+      target: runtime
       network: host
     network_mode: "host"
     environment:
       - VIDEO_TOPIC=${VIDEO_TOPIC:-}
       - VIDEO_TOPIC_TYPE=${VIDEO_TOPIC_TYPE:-compressed}
-      - MEDIAMTX_RTSP=rtsp://localhost:8554/teleop
+      - MEDIAMTX_RTMP=rtmp://127.0.0.1:1935/teleop
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
       - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-}
     restart: unless-stopped

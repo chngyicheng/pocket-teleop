@@ -1,6 +1,6 @@
 # MediaMTX configuration for pocket-teleop
 # Full reference: https://github.com/bluenviron/mediamtx
-logLevel: warn
+logLevel: info
 logDestinations: [stdout]
 
 # Enable the config/runtime API on a dedicated port (separate from WHEP port 8889).
@@ -11,21 +11,21 @@ apiAddress: 127.0.0.1:9997
 # Bind addresses — host network, so these are on the host directly.
 # Only RTSP (ingest) and WebRTC HTTP (WHEP) ports are used.
 rtspAddress: 127.0.0.1:8554
-rtmpAddress: :1935     # disabled below
+rtmpAddress: 127.0.0.1:1935
 hlsAddress: :8888      # disabled below
 webrtcAddress: :8889
 srtAddress: :8890
 
-rtmpDisable: yes
 hlsDisable: yes
 
-# WebRTC — single fixed UDP port so the user only needs one UFW rule.
-# ICE candidates advertise the host's own LAN IP automatically (host network).
-webrtcICEUDPMuxAddress: :8891
-webrtcICETCPMuxAddress: ""
+# WebRTC — pin ICE listener to LAN IP to prevent Docker bridge IPs (172.x.x.x)
+# from polluting ICE candidates and causing "deadline exceeded" failures.
+# Only 192.168.10.123:8891 is advertised; browsers connect directly to this address.
+webrtcLocalUDPAddress: 192.168.10.123:8891
+webrtcLocalTCPAddress: ""
 
 paths:
   teleop:
-    # video-bridge pushes RTSP here; mediamtx waits for the publisher.
+    # video-bridge pushes RTMP here; mediamtx waits for the publisher.
     source: publisher
     # Clients that connect before video-bridge is ready get a 404 — WhepClient retries.

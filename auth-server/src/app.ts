@@ -85,8 +85,9 @@ export function createApp(options: AppOptions): express.Application {
     next();
   });
 
-  // Video stream proxy (WHEP media)
-  app.use('/video', makeHttpProxy(mediaMtxUrl));
+  // Video stream proxy (WHEP media) — pathRewrite strips /video prefix so
+  // /video/teleop/whep → /teleop/whep on mediamtx (same reason as /mediamtx-api).
+  app.use('/video', makeHttpProxy(mediaMtxUrl, { '^/video': '' }));
 
   // MediaMTX config API — authenticated; /mediamtx-api/* → mediaMtxApiUrl/v3/*
   // http-proxy-middleware resets req.url = req.originalUrl in prepareProxyRequest, so
