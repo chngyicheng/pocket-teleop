@@ -1,0 +1,102 @@
+# Mission UI — open bug log
+
+> Logged 2026-06-04 from live testing on hardware (phone + tablet, real robot, WebRTC video working after the ufw fix). For the next agent. Nothing here is fixed yet — these are reproductions + code locations + hypotheses, not solutions.
+
+All line numbers are against `web-client/src/` at commit `d4d19a9`.
+
+---
+
+## BUG 1 — Robot does not stop when joystick is released (SAFETY) 🔴
+
+**Symptom:** After letting go of a joystick, the robot keeps moving. Either velocity is still being published, or the robot never receives a stop.
+
+**What the code does today**
+- On pointer-up the shared `Joystick` fires `onEnd` (`components/shared.tsx:214`).
+- The view's end handler sends a single zero on the released axis, e.g. `views/MissionControl.tsx:92` `handleDriveEnd` → `bridge.sendTwist(0, ly, 0)`; STRAFE end → `sendTwist(lx, 0, az)` (`:104`). Same in `views/MissionTablet.tsx:163` / `:179`.
+- `TeleopClient.sendTwist` (`teleop_client.ts:103`) sends **one** WebSocket message and returns. There is **no periodic/continuous publisher** and no client-side deadman.
+
+**Hypotheses (investigate in order)**
+1. **One-shot zero is fragile.** Real ROS teleop publishes `cmd_vel` continuously (e.g. 10–20 Hz) and lets a single dropped packet be corrected by the next. Here the stop is a single message — if it is dropped, reordered, or the robot's controller latches the last non-zero command, the robot keeps rolling. **Recommended fix:** publish the current command on a fixed-rate timer (e.g. 20 Hz) and send explicit zero on release; OR add a server-side watchdog that zeroes `cmd_vel` if no twist arrives within N ms.
+2. **Stale-closure cross-axis value.** End handlers read the *other* axis from a render-closure (`ly` in `handleDriveEnd`, `lx`/`az` in `handleStrafeEnd`). Because `setLx/setLy/setAz` are async React state, the value captured can lag, so the "stop" message may carry a stale non-zero component. Worth confirming whether a release ever emits a non-zero twist. Consider using a ref for the live axes instead of state, or always sending a full `(0,0,0)` on any release.
+3. **Server/robot side.** Check whether `teleop-server` republishes or whether the robot's base controller latches the last `cmd_vel`. If it latches, the single zero races with nothing and may be ignored.
+
+**Files:** `views/MissionControl.tsx:85-107`, `views/MissionTablet.tsx:160-185`, `components/shared.tsx:206-215`, `teleop_client.ts:103-107`.
+
+---
+
+## BUG 2 — E-STOP button renders on top of the Settings drawer 🟠
+
+**Symptom:** Opening Settings (slides in from the right) does not cover the E-STOP button; E-STOP paints over the drawer.
+
+**Cause (likely)**
+- `SettingsDrawer` is `position: fixed` and documented at `z-index ≤ 9` (`components/SettingsDrawer.tsx:4-5`).
+- E-STOP buttons set `zIndex: 10` (`views/MissionControl.tsx:226`, `views/MissionTablet.tsx:302`). They sit above the drawer.
+- Note: `z-index` only applies to positioned elements — confirm the E-STOP (or its header container) is positioned, and which stacking context each lives in.
+
+**Fix direction:** make the drawer's stacking context strictly above the E-STOP (raise drawer z-index / render via portal at top level), and/or hide-or-disable E-STOP while the drawer is open. Decide product-side whether E-STOP should remain tappable over the drawer (if so it must at least be visually on top and not visually broken).
+
+---
+
+## BUG 3 — E-STOP label inconsistent + button overflows the screen on tablet 🟠
+
+**Symptom A (label):** Portrait shows `■ STOP`; tablet and landscape show `■ E-STOP`.
+- `views/MissionControl.tsx:229` renders `■ STOP` (used for phone portrait *and* landscape).
+- `views/MissionTablet.tsx:305` renders `■ E-STOP`.
+- Decide on one label and apply everywhere.
+
+**Symptom B (overflow):** On tablet the E-STOP bleeds off the right edge — top-bar runs out of horizontal room.
+- Tablet top bar packs UP / BAT / SIG / LAT / connection pill / E-STOP in one row; E-STOP has `whiteSpace: 'nowrap'` (`views/MissionTablet.tsx:301`) and no shrink/wrap handling. At the 700–900 px tablet widths the row exceeds the viewport.
+- **Fix direction:** make the top bar responsive (allow wrap, flex-shrink, smaller padding, or collapse some readouts) so E-STOP stays on-screen. Several of the crowding items (UP/BAT/SIG) are fake placeholders anyway — see BUG 5.
+
+---
+
+## BUG 4 — E-STOP may not actually stop the robot (SAFETY) 🔴
+
+**Symptom:** Tapping E-STOP several times did not stop a rolling robot.
+
+**What the code does today**
+- `bridge.eStop()` = `clientRef.current.sendTwist(0, 0, 0)` (`hooks/useTeleopBridge.ts:81-85`) — a **single zero twist**. There is no dedicated e-stop protocol message and no latching state.
+
+**Why this is weak**
+1. Same one-shot fragility as BUG 1 — one zero, no repeat, no watchdog.
+2. It is **not a real e-stop**: it does not engage any latched safety state. The very next joystick `onMove` immediately publishes motion again and overrides the zero. If a joystick is still engaged (or BUG 1 is in play), the robot resumes instantly.
+3. No feedback that the stop was received/applied.
+
+**Fix direction:** add a real latching e-stop — a distinct protocol message that puts `teleop-server` (or the robot) into a stopped state that zeroes `cmd_vel` and **ignores incoming twists until explicitly reset**, with a UI affordance to arm/disarm and a visible engaged state. Pair with continuous publishing (BUG 1).
+
+**Files:** `hooks/useTeleopBridge.ts:81-85`, `protocol.ts` (no estop message type today), `teleop_client.ts`, server command handler.
+
+---
+
+## BUG 5 — Several frontend telemetry fields are hardcoded / fake 🟡
+
+The video FPS (and more) are not real. Audit of literal display values:
+
+| View | Field | Line | Value shown | Real? |
+|---|---|---|---|---|
+| Tablet | `UP` (uptime) | `MissionTablet.tsx:261` | `03:24:18` | ❌ hardcoded |
+| Tablet | `BAT` | `:262` | `78%` | ❌ hardcoded |
+| Tablet | `SIG` | `:263` | `-58dBm` | ❌ hardcoded |
+| Tablet | `src` | `:325` | `WebRTC` | ⚠️ static, but accurate |
+| Tablet | `codec` | `:326` | `H.264` | ⚠️ static, but accurate |
+| Tablet | `fps` | `:327` | `30.1` | ❌ **hardcoded — pipeline actually encodes 15 fps** |
+| Tablet | `res` | `:328` | `1280×720` | ❌ **hardcoded AND wrong — stream is 1920×1080** |
+| Phone | `BAT` | `MissionControl.tsx:302` | `78%` | ❌ hardcoded |
+| Phone | `SIG` | `:303` | `-58 dBm` | ❌ hardcoded |
+
+**Real (correctly wired) fields, for reference:** `LAT` (← `bridge.latencyMs`), `pos.x/pos.y/hdg`, `course`, `track`, `V` (`Math.hypot(lx, ly)`), `ω` (`az`) — all driven by `bridge.odom` / live axes.
+
+**Notes**
+- `fps`/`res` answer the user's question: the 30 fps was never real — it is the literal `30.1`. The encoder is configured `framerate=15/1, width=1920, height=1080` in `video-bridge/video_bridge.py`, so even `res` is wrong.
+- `src`/`codec` are static but currently match reality; either wire them from the WHEP stats or leave with a comment.
+- `BAT`/`SIG`/`UP` need real sources (battery telemetry plan + a signal/uptime source) or should be removed until backed by data. Battery has a backlog plan: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`.
+- **Recommended:** wire `fps`/`res` from `RTCPeerConnection.getStats()` (frameWidth/frameHeight/framesPerSecond on the inbound video track) so they reflect the actual decoded stream; mark anything still unbacked as a deviation in `memory/agent-guides/deviations.md`.
+
+---
+
+## Suggested priority for next agent
+
+1. **BUG 1 + BUG 4 together** (safety — stop on release + real latching e-stop + continuous publish). These share a root: one-shot twists with no deadman.
+2. **BUG 3 overflow** then **BUG 2 z-index** (E-STOP must be reliably visible and on-screen — safety-adjacent).
+3. **BUG 5** (fix `fps`/`res` from real stats; decide on BAT/SIG/UP; record deviations).
+4. **BUG 3 label** consistency (cosmetic).
