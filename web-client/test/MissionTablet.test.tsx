@@ -430,4 +430,32 @@ describe('MissionTablet', () => {
     expect(screen.getByText(/cmd_vel @ 50hz/)).toBeTruthy();
     expect(screen.getByText(/last pong 0.04s/)).toBeTruthy();
   });
+
+  it('disables joystick interaction when controlsDisabled, keeping the zones rendered', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} controlsDisabled />
+    );
+
+    const zones = screen.getAllByTestId('joystick-zone');
+    expect(zones.length).toBe(2);
+    for (const z of zones) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('none');
+    }
+  });
+
+  it('keeps joysticks interactive when controlsDisabled is false', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} controlsDisabled={false} />
+    );
+
+    for (const z of screen.getAllByTestId('joystick-zone')) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
+    }
+  });
 });

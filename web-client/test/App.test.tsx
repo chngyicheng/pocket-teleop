@@ -402,6 +402,14 @@ describe('App', () => {
     const gamepadSection = screen.queryByText(/Gamepad/i);
 
     expect(dialog || gamepadSection).toBeTruthy();
+
+    // While the drawer is open the joysticks must be non-interactive (hints
+    // stay rendered, one layer below the drawer).
+    const zones = screen.getAllByTestId('joystick-zone');
+    expect(zones.length).toBeGreaterThan(0);
+    for (const z of zones) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('none');
+    }
   });
 
   /**

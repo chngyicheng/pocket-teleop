@@ -20,6 +20,8 @@ export interface MissionTabletProps {
   bridge: TeleopBridge;
   stream: WhepStream;
   onMenu: () => void;
+  /** When true (Settings drawer open), joysticks render but cannot be grabbed. */
+  controlsDisabled?: boolean;
 }
 
 /**
@@ -122,7 +124,7 @@ function MissionPillToggle({ label, on }: { label: string; on: boolean }): JSX.E
 /**
  * MissionTablet component
  */
-export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, onMenu }) => {
+export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, onMenu, controlsDisabled = false }) => {
   const p = MissionPalette;
   const { estopEngaged } = bridge;
   const sansFont = 'Inter, ui-sans-serif, system-ui, sans-serif';
@@ -550,7 +552,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           width: 280,
           height: 280,
           zIndex: 5,
-          pointerEvents: 'auto',
+          pointerEvents: controlsDisabled ? 'none' : 'auto',
         }}
       >
         <Joystick
@@ -576,7 +578,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           width: 280,
           height: 280,
           zIndex: 5,
-          pointerEvents: 'auto',
+          pointerEvents: controlsDisabled ? 'none' : 'auto',
         }}
       >
         <Joystick

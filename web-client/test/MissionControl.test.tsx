@@ -315,4 +315,44 @@ describe('MissionControl', () => {
     // ly must be non-zero (the live STRAFE value) — proves no stale closure
     expect(lastCall[1]).not.toBe(0);
   });
+
+  it('disables joystick interaction when controlsDisabled, keeping the zones rendered', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+        controlsDisabled
+      />
+    );
+
+    const zones = screen.getAllByTestId('joystick-zone');
+    expect(zones.length).toBe(2); // hints still rendered, just below the drawer
+    for (const z of zones) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('none');
+    }
+  });
+
+  it('keeps joysticks interactive when controlsDisabled is false', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+        controlsDisabled={false}
+      />
+    );
+
+    for (const z of screen.getAllByTestId('joystick-zone')) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
+    }
+  });
 });

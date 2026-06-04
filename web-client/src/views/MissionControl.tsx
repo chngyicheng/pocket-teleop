@@ -19,6 +19,8 @@ export interface MissionControlProps {
   stream: WhepStream;
   onMenu: () => void;
   layout: MissionLayout;
+  /** When true (Settings drawer open), joysticks render but cannot be grabbed. */
+  controlsDisabled?: boolean;
 }
 
 /**
@@ -42,6 +44,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   stream,
   onMenu,
   layout,
+  controlsDisabled = false,
 }) => {
   const { estopEngaged } = bridge;
   const p = MissionPalette;
@@ -416,7 +419,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             left: 0,
             width: zone,
             height: zone,
-            pointerEvents: 'auto',
+            pointerEvents: controlsDisabled ? 'none' : 'auto',
           }}
         >
           <Joystick
@@ -442,7 +445,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             right: 0,
             width: zone,
             height: zone,
-            pointerEvents: 'auto',
+            pointerEvents: controlsDisabled ? 'none' : 'auto',
           }}
         >
           <Joystick

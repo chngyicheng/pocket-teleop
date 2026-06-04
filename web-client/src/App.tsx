@@ -75,6 +75,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
           bridge={bridge}
           stream={stream}
           onMenu={() => setDrawerOpen(true)}
+          controlsDisabled={drawerOpen}
         />
       ) : (
         <MissionControl
@@ -82,6 +83,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
           stream={stream}
           onMenu={() => setDrawerOpen(true)}
           layout={layout}
+          controlsDisabled={drawerOpen}
         />
       )}
       <SettingsDrawer

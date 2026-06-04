@@ -26,7 +26,11 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 2 — E-STOP button renders on top of the Settings drawer 🟠
+## BUG 2 — E-STOP button renders on top of the Settings drawer 🟠 PARTIAL
+
+> **Joysticks part fixed on `feat/control-safety-fixes`.** The drawer (`z-index:9`) already paints above the touch joysticks (phone joysticks are in-flow `auto`; tablet `z-index:5`), but they stayed *interactive* while it was open — and the left joystick is never covered by the 320px right-side panel. Fix: `App` passes `controlsDisabled={drawerOpen}` into both views; the joystick wrappers become `pointerEvents:'none'` while the drawer is open, so neither joystick can be grabbed. The zones (hints) stay rendered one layer below the drawer. Tests: `controlsDisabled` toggling in `MissionControl.test.tsx`/`MissionTablet.test.tsx` + an App-level guard that opening the drawer disables the joysticks.
+>
+> **Still open — the E-STOP button itself.** It keeps `zIndex:10` (above the drawer) and remains tappable while the drawer is open. Left intentionally for now: a safety control arguably *should* stay reachable. Confirm product-side whether E-STOP should be covered/disabled by the drawer or stay on top; if it stays it must be visually clean over the panel.
 
 **Symptom:** Opening Settings (slides in from the right) does not cover the E-STOP button; E-STOP paints over the drawer.
 
