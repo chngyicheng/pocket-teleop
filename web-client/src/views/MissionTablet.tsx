@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS } from '../components/shared.js';
+import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -138,6 +139,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const [ly, setLy] = useState(0);
   const [az, setAz] = useState(0);
 
+  // Collapsible rails state
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+
   /**
    * axesRef holds the live (non-stale) current command.
    * React useState setters are async — reading lx/ly/az in a closure can
@@ -212,9 +217,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         color: p.text,
         fontFamily: sansFont,
         display: 'grid',
-        gridTemplateColumns: '220px 1fr 240px',
+        gridTemplateColumns: `${leftOpen ? 220 : 0}px 1fr ${rightOpen ? 240 : 0}px`,
         gridTemplateRows: '44px 1fr',
         position: 'relative',
+        transition: 'grid-template-columns 0.2s ease',
       }}
     >
       {/* Top bar spans all columns. fontSize: 10 sets a small baseline so
@@ -360,59 +366,68 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       )}
 
       {/* Left rail */}
-      <aside
-        style={{
-          background: p.surface,
-          borderRight: `1px solid ${p.border}`,
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          fontFamily: monoFont,
-          fontSize: 10,
-          color: p.muted,
-          overflow: 'auto',
-        }}
+      <CollapsibleRail
+        side="left"
+        open={leftOpen}
+        onToggle={() => setLeftOpen(o => !o)}
+        title="STREAM"
+        width={220}
+        accent={p.accent}
+        border={p.border}
+        surface={p.surface}
+        muted={p.muted}
       >
-        <SidePanel title="STREAM">
-          <DataRow k="src" v="WebRTC" />
-          {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
-          <DataRow k="codec" v="H.264" />
-          <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
-          <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
-          <div
-            style={{
-              fontSize: 10,
-              fontFamily: monoFont,
-            }}
-          >
-            {stream.state === 'live' ? '● Live' : `● ${stream.state}`}
+        <div
+          style={{
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            fontFamily: monoFont,
+            fontSize: 10,
+            color: p.muted,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <DataRow k="src" v="WebRTC" />
+            {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
+            <DataRow k="codec" v="H.264" />
+            <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
+            <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
+            <div
+              style={{
+                fontSize: 10,
+                fontFamily: monoFont,
+              }}
+            >
+              {stream.state === 'live' ? '● Live' : `● ${stream.state}`}
+            </div>
           </div>
-        </SidePanel>
 
-        <SidePanel title="VELOCITY">
-          <VelBars
-            lx={lx}
-            ly={ly}
-            az={az}
-            color={p.accent}
-            trackColor="rgba(255,255,255,0.08)"
-            font={monoFont}
-          />
-        </SidePanel>
+          <SidePanel title="VELOCITY">
+            <VelBars
+              lx={lx}
+              ly={ly}
+              az={az}
+              color={p.accent}
+              trackColor="rgba(255,255,255,0.08)"
+              font={monoFont}
+            />
+          </SidePanel>
 
-        <SidePanel title="ODOMETRY">
-          <DataRow k="pos.x" v={odomPos.x.toFixed(2) + ' m'} />
-          <DataRow k="pos.y" v={odomPos.y.toFixed(2) + ' m'} />
-          <DataRow k="hdg" v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360) + '°'} />
-        </SidePanel>
+          <SidePanel title="ODOMETRY">
+            <DataRow k="pos.x" v={odomPos.x.toFixed(2) + ' m'} />
+            <DataRow k="pos.y" v={odomPos.y.toFixed(2) + ' m'} />
+            <DataRow k="hdg" v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360) + '°'} />
+          </SidePanel>
 
-        {/* Footer ops info */}
-        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 9, opacity: 0.5, fontFamily: monoFont }}>
-          <span>cmd_vel @ 50hz</span>
-          <span>last pong 0.04s</span>
+          {/* Footer ops info */}
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 4, fontSize: 9, opacity: 0.5, fontFamily: monoFont }}>
+            <span>cmd_vel @ 50hz</span>
+            <span>last pong 0.04s</span>
+          </div>
         </div>
-      </aside>
+      </CollapsibleRail>
 
       {/* Main viewport */}
       <main
@@ -433,7 +448,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             inset: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: 'contain',
           }}
         />
 
@@ -502,18 +517,28 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       </main>
 
       {/* Right rail */}
-      <aside
-        style={{
-          background: p.surface,
-          borderLeft: `1px solid ${p.border}`,
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 14,
-          overflow: 'auto',
-        }}
+      <CollapsibleRail
+        side="right"
+        open={rightOpen}
+        onToggle={() => setRightOpen(o => !o)}
+        title="MAP"
+        width={240}
+        accent={p.accent}
+        border={p.border}
+        surface={p.surface}
+        muted={p.muted}
       >
-        <SidePanel title="MAP">
+        <div
+          style={{
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 14,
+            fontFamily: monoFont,
+            fontSize: 10,
+            color: p.muted,
+          }}
+        >
           <MiniMap
             pos={odomPos}
             heading={odomPos.heading}
@@ -523,35 +548,35 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             border={p.border}
             grid={true}
           />
-        </SidePanel>
 
-        <SidePanel title="HEADING">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Compass heading={odomPos.heading} color={p.accent} font={monoFont} size={44} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontFamily: monoFont, fontSize: 10 }}>
-              <DataRow
-                k="course"
-                v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360).toString().padStart(3, '0') + '°'}
-              />
-              <DataRow k="track" v={(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0) + '°'} />
+          <SidePanel title="HEADING">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Compass heading={odomPos.heading} color={p.accent} font={monoFont} size={44} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontFamily: monoFont, fontSize: 10 }}>
+                <DataRow
+                  k="course"
+                  v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360).toString().padStart(3, '0') + '°'}
+                />
+                <DataRow k="track" v={(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0) + '°'} />
+              </div>
             </div>
-          </div>
-        </SidePanel>
+          </SidePanel>
 
-        <SidePanel title="LIGHTS">
-          <div style={{ display: 'flex', gap: 6 }}>
-            <MissionPillToggle label="HEAD" on={true} />
-            <MissionPillToggle label="AUX" on={false} />
-            <MissionPillToggle label="LASER" on={false} />
-          </div>
-        </SidePanel>
+          <SidePanel title="LIGHTS">
+            <div style={{ display: 'flex', gap: 6 }}>
+              <MissionPillToggle label="HEAD" on={true} />
+              <MissionPillToggle label="AUX" on={false} />
+              <MissionPillToggle label="LASER" on={false} />
+            </div>
+          </SidePanel>
 
-        <SidePanel title="HINT">
-          <div style={{ fontFamily: monoFont, fontSize: 10, color: p.muted, lineHeight: 1.55 }}>
-            Touch &amp; hold either bottom corner of the screen to engage a joystick. Spacebar triggers e-stop.
-          </div>
-        </SidePanel>
-      </aside>
+          <SidePanel title="HINT">
+            <div style={{ fontFamily: monoFont, fontSize: 10, color: p.muted, lineHeight: 1.55 }}>
+              Touch &amp; hold either bottom corner of the screen to engage a joystick. Spacebar triggers e-stop.
+            </div>
+          </SidePanel>
+        </div>
+      </CollapsibleRail>
 
       {/* Joystick overlays — bottom-left and bottom-right */}
       <div

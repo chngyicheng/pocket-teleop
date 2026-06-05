@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS } from '../components/shared.js';
+import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -52,6 +53,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const monoFont = '"JetBrains Mono", ui-monospace, monospace';
 
   const isLandscape = layout === 'phone-landscape';
+
+  // Collapsible rail state (landscape only)
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
 
   // Video ref for streaming MediaStream
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -140,7 +145,19 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
   return (
     <div
-      style={{
+      style={isLandscape ? {
+        width: '100%',
+        height: '100%',
+        background: p.bg,
+        color: p.text,
+        fontFamily: sansFont,
+        display: 'grid',
+        gridTemplateColumns: `${leftOpen ? 180 : 0}px 1fr ${rightOpen ? 180 : 0}px`,
+        gridTemplateRows: '44px 1fr',
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'grid-template-columns 0.2s ease',
+      } : {
         width: '100%',
         height: '100%',
         background: p.bg,
@@ -155,7 +172,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       {/* Header */}
       <header
         style={{
-          flex: '0 0 auto',
+          ...(isLandscape ? { gridColumn: '1 / -1' } : { flex: '0 0 auto' }),
           height: isLandscape ? 44 : 36,
           display: 'flex',
           alignItems: 'center',
@@ -274,8 +291,248 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       )}
 
-      {/* Video viewport + overlays */}
-      <div
+      {isLandscape ? (
+        <>
+          {/* Landscape: Left rail (STREAM, VELOCITY, LAT/BAT/SIG) */}
+          <CollapsibleRail
+            side="left"
+            title="STREAM"
+            open={leftOpen}
+            onToggle={() => setLeftOpen((o) => !o)}
+            width={180}
+            accent={p.accent}
+            border={p.border}
+            surface={p.surface}
+            muted={p.muted}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
+              {/* STREAM data */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: monoFont, fontSize: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ opacity: 0.6 }}>src</span>
+                  <span style={{ color: p.text, fontWeight: 500 }}>WebRTC</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ opacity: 0.6 }}>codec</span>
+                  <span style={{ color: p.text, fontWeight: 500 }}>H.264</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ opacity: 0.6 }}>fps</span>
+                  <span style={{ color: p.text, fontWeight: 500 }}>{stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                  <span style={{ opacity: 0.6 }}>res</span>
+                  <span style={{ color: p.text, fontWeight: 500 }}>{(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'}</span>
+                </div>
+              </div>
+
+              {/* VELOCITY bars */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
+                <VelBars
+                  lx={lx}
+                  ly={ly}
+                  az={az}
+                  color={p.accent}
+                  trackColor="rgba(255,255,255,0.08)"
+                  font={monoFont}
+                />
+              </div>
+
+              {/* LAT/BAT/SIG readouts */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Readout
+                  label="LAT"
+                  value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
+                  color={p.accent}
+                />
+                <Readout label="BAT" value="—" color={p.accent} />
+                <Readout label="SIG" value="—" color={p.accent} />
+              </div>
+            </div>
+          </CollapsibleRail>
+
+          {/* Landscape: Main viewport (video + reticle + mode + joysticks) */}
+          <main
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              background: p.bg,
+            }}
+            data-testid="landscape-main"
+          >
+            {/* Video element */}
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+              }}
+            />
+
+            {/* Center crosshair reticle */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 16,
+                height: 16,
+                pointerEvents: 'none',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 0,
+                  bottom: 0,
+                  width: 1,
+                  background: p.accent,
+                  opacity: 0.4,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: 0,
+                  right: 0,
+                  height: 1,
+                  background: p.accent,
+                  opacity: 0.4,
+                }}
+              />
+            </div>
+
+            {/* Mode chip */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: 12,
+                fontFamily: monoFont,
+                fontSize: 10,
+                letterSpacing: '0.1em',
+                color: p.text,
+                background: 'rgba(8,10,14,0.7)',
+                padding: '4px 8px',
+                borderRadius: 2,
+                border: `1px solid ${p.border}`,
+              }}
+            >
+              MANUAL · TELEOP
+            </div>
+
+            {/* DRIVE joystick (left bottom) */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: zone,
+                height: zone,
+                pointerEvents: controlsDisabled ? 'none' : 'auto',
+              }}
+              data-testid="joystick-zone"
+            >
+              <Joystick
+                variant={variant}
+                size={zone}
+                baseSize={baseSize}
+                knobSize={knobSize}
+                baseColor="rgba(240,169,42,0.08)"
+                ringColor={p.accent + 'aa'}
+                knobColor={p.accent}
+                knobBorder={p.bg}
+                onMove={handleDriveMove}
+                onEnd={handleDriveEnd}
+                label="DRIVE"
+              />
+            </div>
+
+            {/* STRAFE joystick (right bottom) */}
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: zone,
+                height: zone,
+                pointerEvents: controlsDisabled ? 'none' : 'auto',
+              }}
+              data-testid="joystick-zone"
+            >
+              <Joystick
+                variant={variant}
+                axes="x"
+                size={zone}
+                baseSize={baseSize}
+                knobSize={knobSize}
+                baseColor="rgba(78,201,214,0.08)"
+                ringColor={p.accent2 + 'aa'}
+                knobColor={p.accent2}
+                knobBorder={p.bg}
+                onMove={handleStrafeMove}
+                onEnd={handleStrafeEnd}
+                label="STRAFE"
+              />
+            </div>
+          </main>
+
+          {/* Landscape: Right rail (MAP, HEADING) */}
+          <CollapsibleRail
+            side="right"
+            title="MAP"
+            open={rightOpen}
+            onToggle={() => setRightOpen((o) => !o)}
+            width={180}
+            accent={p.accent}
+            border={p.border}
+            surface={p.surface}
+            muted={p.muted}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
+              {/* MAP */}
+              <MiniMap
+                pos={odomPos}
+                heading={odomPos.heading}
+                size={140}
+                color={p.accent}
+                bg={p.bg}
+                border={p.border}
+              />
+
+              {/* HEADING */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>HEADING</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <Compass heading={odomPos.heading} color={p.accent} font={monoFont} size={40} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: monoFont, fontSize: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ opacity: 0.6 }}>course</span>
+                      <span style={{ color: p.text, fontWeight: 500 }}>{Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360).toString().padStart(3, '0')}°</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                      <span style={{ opacity: 0.6 }}>track</span>
+                      <span style={{ color: p.text, fontWeight: 500 }}>{(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0)}°</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CollapsibleRail>
+        </>
+      ) : (
+        /* Portrait: Video viewport + overlays (original structure) */
+        <div
         style={{
           flex: 1,
           position: 'relative',
@@ -294,7 +551,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             inset: 0,
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
+            objectFit: 'contain',
           }}
         />
 
@@ -484,6 +741,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           MANUAL · TELEOP
         </div>
       </div>
+      )}
     </div>
   );
 };

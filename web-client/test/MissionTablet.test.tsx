@@ -505,6 +505,112 @@ describe('MissionTablet', () => {
     }
   });
 
+  // Trophy TDD — collapsible rails tests 5–9
+  describe('collapsible rails (tests 5–9)', () => {
+    it('renders two rail tab buttons (rail-tab-left and rail-tab-right)', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream();
+      const onMenu = vi.fn();
+
+      render(
+        <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
+      );
+
+      // Test 5: verify both rail tabs exist
+      const leftTab = screen.getByTestId('rail-tab-left');
+      const rightTab = screen.getByTestId('rail-tab-right');
+      expect(leftTab).toBeTruthy();
+      expect(rightTab).toBeTruthy();
+    });
+
+    it('displays STREAM and MAP content initially', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream();
+      const onMenu = vi.fn();
+
+      render(
+        <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
+      );
+
+      // Test 6: verify STREAM and MAP panels are visible
+      expect(screen.getByText('STREAM')).toBeTruthy();
+      expect(screen.getByText('MAP')).toBeTruthy();
+      // Also verify some content is visible
+      expect(screen.getByText('WebRTC')).toBeTruthy();
+      expect(screen.getByText('HEADING')).toBeTruthy();
+    });
+
+    it('toggles left rail collapse/expand state via gridTemplateColumns', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream();
+      const onMenu = vi.fn();
+
+      const { container } = render(
+        <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
+      );
+
+      const leftTab = screen.getByTestId('rail-tab-left');
+      const gridContainer = container.querySelector('[style*="grid-template-columns"]') as HTMLElement;
+
+      // Test 7a: initially left should be open (220px)
+      let gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toContain('220px');
+
+      // Click left tab to collapse
+      fireEvent.click(leftTab);
+      gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toMatch(/^0px /); // left collapsed → first column 0
+
+      // Click again to expand
+      fireEvent.click(leftTab);
+      gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toContain('220px'); // left expanded
+    });
+
+    it('toggles right rail collapse/expand state via gridTemplateColumns', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream();
+      const onMenu = vi.fn();
+
+      const { container } = render(
+        <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
+      );
+
+      const rightTab = screen.getByTestId('rail-tab-right');
+      const gridContainer = container.querySelector('[style*="grid-template-columns"]') as HTMLElement;
+
+      // Test 8a: initially right should be open (240px)
+      let gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toContain('240px');
+
+      // Click right tab to collapse
+      fireEvent.click(rightTab);
+      gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toMatch(/ 0px$/); // right collapsed → last column 0
+
+      // Click again to expand
+      fireEvent.click(rightTab);
+      gridStyle = gridContainer.style.gridTemplateColumns;
+      expect(gridStyle).toContain('240px'); // right expanded
+    });
+
+    it('video element uses objectFit: contain', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream();
+      const onMenu = vi.fn();
+
+      const { container } = render(
+        <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
+      );
+
+      // Test 9: verify video objectFit is contain
+      const video = container.querySelector('video') as HTMLVideoElement;
+      expect(video).toBeTruthy();
+      const style = window.getComputedStyle(video);
+      expect(style.objectFit).toBe('contain');
+    });
+  });
+
   // BUG 3 — top-bar overflow + label unification
   describe('top bar (BUG 3)', () => {
     it('renders the E-STOP button with the unified "■ STOP" label', () => {
