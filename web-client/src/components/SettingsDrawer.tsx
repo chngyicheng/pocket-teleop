@@ -1,16 +1,18 @@
 /**
  * SettingsDrawer.tsx — slide-in settings panel (React 18 + TypeScript).
  *
- * Layout: 320px fixed width, 100vh height, fixed positioning.
- * Sections: Gamepad / Video / Connection (dark palette: #0b0d12 bg, #e6e9ef fg, z-index ≤ 9).
- * Transition: translateX(0) open, translateX(100%) closed, 0.2s ease.
- * Slides in from the right edge.
+ * Layout: 320px fixed width, anchored to the LEFT edge below `topOffset` px so
+ * the top bar / E-STOP stay visible above it. Mission palette (#14171e surface,
+ * #f0a92a amber accent, JetBrains Mono headings), z-index ≤ 9.
+ * Transition: translateX(0) open, translateX(-100%) closed, 0.2s ease.
+ * A backdrop scrim (rendered only when open) closes the drawer on outside tap.
  *
  * Props:
  *   - open: boolean — visibility state.
- *   - onClose: () => void — called on close button click.
+ *   - onClose: () => void — called on close button / backdrop click.
  *   - activeGamepadProfile?: string — current profile name (optional).
  *   - onGamepadProfileChange?: (profileName: string) => void — callback on profile change (optional).
+ *   - topOffset?: number — px from viewport top (clears the top bar). Default 0.
  *
  * Sections:
  *   1. Gamepad: Select from getAllProfiles().
@@ -27,7 +29,66 @@ export interface SettingsDrawerProps {
   onClose: () => void;
   activeGamepadProfile?: string;
   onGamepadProfileChange?: (profileName: string) => void;
+  /**
+   * Pixels from the top of the viewport where the drawer (and backdrop) begin,
+   * so the top bar / E-STOP button stay visible and tappable above it.
+   * Defaults to 0 (full height).
+   */
+  topOffset?: number;
 }
+
+/** Mission palette — matches the dark industrial console used across the app. */
+const P = {
+  surface: '#14171e',
+  surface2: '#1a1e26',
+  border: '#2a2f3a',
+  text: '#e6e9ef',
+  muted: '#8a92a3',
+  accent: '#f0a92a', // amber
+  bg: '#0c0e12',
+  ok: '#22c55e',
+  danger: '#ef4444',
+};
+const SANS = 'Inter, ui-sans-serif, system-ui, sans-serif';
+const MONO = '"JetBrains Mono", ui-monospace, monospace';
+
+/** Shared style for the uppercase mono section headings. */
+const sectionHeading: React.CSSProperties = {
+  margin: '0 0 8px 0',
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: P.accent,
+  fontFamily: MONO,
+};
+
+/** Shared style for selects / text inputs. */
+const fieldStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '8px',
+  backgroundColor: P.surface2,
+  color: P.text,
+  border: `1px solid ${P.border}`,
+  borderRadius: 3,
+  fontSize: 13,
+  fontFamily: MONO,
+  boxSizing: 'border-box',
+};
+
+/** Shared style for the amber action buttons. */
+const actionButtonStyle: React.CSSProperties = {
+  padding: '8px 16px',
+  backgroundColor: P.accent,
+  color: P.bg,
+  border: 'none',
+  borderRadius: 3,
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: '0.08em',
+  cursor: 'pointer',
+  fontFamily: MONO,
+};
 
 const VIDEO_MODES: VideoSourceMode[] = ['ros2', 'rtsp', 'udp', 'srt', 'mjpeg', 'disabled'];
 
@@ -45,6 +106,7 @@ export default function SettingsDrawer({
   onClose,
   activeGamepadProfile = 'Default Profile',
   onGamepadProfileChange,
+  topOffset = 0,
 }: SettingsDrawerProps): JSX.Element {
   const [videoMode, setVideoMode] = useState<VideoSourceMode>('ros2');
   const [videoUrl, setVideoUrl] = useState('');
@@ -80,12 +142,12 @@ export default function SettingsDrawer({
   };
 
   const getVideoResultColor = (): string => {
-    if (!videoApplyResult) return '#e6e9ef';
-    if (videoApplyResult === 'ok') return '#22c55e';
+    if (!videoApplyResult) return P.text;
+    if (videoApplyResult === 'ok') return P.ok;
     if (videoApplyResult.startsWith('validation-error:') || videoApplyResult.startsWith('http-error:') || videoApplyResult.startsWith('network-error:')) {
-      return '#ef4444';
+      return P.danger;
     }
-    return '#e6e9ef';
+    return P.text;
   };
 
   const getVideoResultMessage = (): string => {
@@ -99,217 +161,184 @@ export default function SettingsDrawer({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-label="Settings"
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        width: '320px',
-        height: '100vh',
-        backgroundColor: '#0b0d12',
-        color: '#e6e9ef',
-        borderLeft: '1px solid #2a2f3a',
-        zIndex: 9,
-        transform: open ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.2s ease',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      {/* Header + Close button */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '16px',
-          borderBottom: '1px solid #2a2f3a',
-          minHeight: '60px',
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Settings</h2>
-        <button
-          aria-label="Close settings"
+    <>
+      {/* Backdrop scrim — only when open. Starts below the top bar so the
+          burger / E-STOP stay tappable; clicking it closes the drawer. */}
+      {open && (
+        <div
+          data-testid="settings-backdrop"
           onClick={onClose}
           style={{
-            background: 'none',
-            border: 'none',
-            color: '#e6e9ef',
-            fontSize: '24px',
-            cursor: 'pointer',
-            padding: 0,
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'fixed',
+            top: topOffset,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            zIndex: 8,
           }}
-        >
-          ×
-        </button>
-      </div>
+        />
+      )}
 
-      {/* Scrollable content */}
       <div
+        role="dialog"
+        aria-label="Settings"
         style={{
-          flex: 1,
-          overflow: 'auto',
-          padding: '16px',
+          position: 'fixed',
+          top: topOffset,
+          left: 0,
+          width: '320px',
+          height: topOffset ? `calc(100vh - ${topOffset}px)` : '100vh',
+          backgroundColor: P.surface,
+          color: P.text,
+          fontFamily: SANS,
+          borderRight: `1px solid ${P.border}`,
+          zIndex: 9,
+          transform: open ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.2s ease',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
         }}
       >
-        {/* Gamepad Section */}
-        <section>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600, color: '#3b82f6' }}>
-            Gamepad
-          </h3>
-          <select
-            value={activeGamepadProfile}
-            onChange={(e) => onGamepadProfileChange?.(e.target.value)}
+        {/* Header + Close button */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '14px 16px',
+            borderBottom: `1px solid ${P.border}`,
+            background: P.bg,
+            minHeight: '52px',
+          }}
+        >
+          <h2
             style={{
-              width: '100%',
-              padding: '8px',
-              backgroundColor: '#1a1f2e',
-              color: '#e6e9ef',
-              border: '1px solid #2a2f3a',
-              borderRadius: '4px',
-              fontSize: '14px',
-              fontFamily: 'inherit',
+              margin: 0,
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+              color: P.text,
+              fontFamily: MONO,
             }}
           >
-            {getAllProfiles().map((profile) => (
-              <option key={profile.name} value={profile.name}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-        </section>
+            Settings
+          </h2>
+          <button
+            aria-label="Close settings"
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: P.muted,
+              fontSize: '24px',
+              cursor: 'pointer',
+              padding: 0,
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ×
+          </button>
+        </div>
 
-        {/* Video Section */}
-        <section>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600, color: '#3b82f6' }}>
-            Video
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Scrollable content */}
+        <div
+          style={{
+            flex: 1,
+            overflow: 'auto',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '18px',
+          }}
+        >
+          {/* Gamepad Section */}
+          <section>
+            <h3 style={sectionHeading}>Gamepad</h3>
             <select
-              value={videoMode}
-              onChange={(e) => setVideoMode(e.target.value as VideoSourceMode)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                backgroundColor: '#1a1f2e',
-                color: '#e6e9ef',
-                border: '1px solid #2a2f3a',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontFamily: 'inherit',
-              }}
+              value={activeGamepadProfile}
+              onChange={(e) => onGamepadProfileChange?.(e.target.value)}
+              style={fieldStyle}
             >
-              {VIDEO_MODES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {MODE_LABELS[mode]}
+              {getAllProfiles().map((profile) => (
+                <option key={profile.name} value={profile.name}>
+                  {profile.name}
                 </option>
               ))}
             </select>
-            <input
-              type="text"
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
-              placeholder="Stream URL (if needed)"
-              style={{
-                width: '100%',
-                padding: '8px',
-                backgroundColor: '#1a1f2e',
-                color: '#e6e9ef',
-                border: '1px solid #2a2f3a',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit',
-              }}
-            />
-            <button
-              onClick={handleVideoApply}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#3b82f6',
-                color: '#0b0d12',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Apply
-            </button>
-            {videoApplyResult && (
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: getVideoResultColor(),
-                  marginTop: '4px',
-                  wordWrap: 'break-word',
-                  whiteSpace: 'normal',
-                }}
-              >
-                {getVideoResultMessage()}
-              </div>
-            )}
-          </div>
-        </section>
+          </section>
 
-        {/* Connection Section */}
-        <section>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 600, color: '#3b82f6' }}>
-            Connection
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <input
-              type="text"
-              value={robotNamespace}
-              onChange={(e) => setRobotNamespace(e.target.value)}
-              placeholder="Robot namespace (e.g., /robot)"
-              style={{
-                width: '100%',
-                padding: '8px',
-                backgroundColor: '#1a1f2e',
-                color: '#e6e9ef',
-                border: '1px solid #2a2f3a',
-                borderRadius: '4px',
-                fontSize: '14px',
-                boxSizing: 'border-box',
-                fontFamily: 'inherit',
-              }}
-            />
-            <button
-              onClick={handleNamespaceSave}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: '#3b82f6',
-                color: '#0b0d12',
-                border: 'none',
-                borderRadius: '4px',
-                fontSize: '14px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Save
-            </button>
-            {namespaceSaved && (
-              <div style={{ fontSize: '12px', color: '#22c55e', marginTop: '4px' }}>
-                Saved
-              </div>
-            )}
-          </div>
-        </section>
+          {/* Video Section */}
+          <section>
+            <h3 style={sectionHeading}>Video</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <select
+                value={videoMode}
+                onChange={(e) => setVideoMode(e.target.value as VideoSourceMode)}
+                style={fieldStyle}
+              >
+                {VIDEO_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {MODE_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="Stream URL (if needed)"
+                style={fieldStyle}
+              />
+              <button onClick={handleVideoApply} style={actionButtonStyle}>
+                Apply
+              </button>
+              {videoApplyResult && (
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: getVideoResultColor(),
+                    marginTop: '4px',
+                    wordWrap: 'break-word',
+                    whiteSpace: 'normal',
+                    fontFamily: MONO,
+                  }}
+                >
+                  {getVideoResultMessage()}
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Connection Section */}
+          <section>
+            <h3 style={sectionHeading}>Connection</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <input
+                type="text"
+                value={robotNamespace}
+                onChange={(e) => setRobotNamespace(e.target.value)}
+                placeholder="Robot namespace (e.g., /robot)"
+                style={fieldStyle}
+              />
+              <button onClick={handleNamespaceSave} style={actionButtonStyle}>
+                Save
+              </button>
+              {namespaceSaved && (
+                <div style={{ fontSize: '12px', color: P.ok, marginTop: '4px', fontFamily: MONO }}>
+                  Saved
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

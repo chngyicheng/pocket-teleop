@@ -68,20 +68,27 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
     WhepClientCtor,
   });
 
+  // Burger toggles the drawer (tap again to close).
+  const toggleDrawer = () => setDrawerOpen((o) => !o);
+
+  // Top bar heights: MissionTablet 44px, phone-landscape 44px, phone-portrait 36px.
+  // Drawer starts below the bar so the burger / E-STOP stay tappable above it.
+  const headerHeight = layout === 'phone-portrait' ? 36 : 44;
+
   return (
     <>
       {layout === 'tablet' ? (
         <MissionTablet
           bridge={bridge}
           stream={stream}
-          onMenu={() => setDrawerOpen(true)}
+          onMenu={toggleDrawer}
           controlsDisabled={drawerOpen}
         />
       ) : (
         <MissionControl
           bridge={bridge}
           stream={stream}
-          onMenu={() => setDrawerOpen(true)}
+          onMenu={toggleDrawer}
           layout={layout}
           controlsDisabled={drawerOpen}
         />
@@ -89,6 +96,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
       <SettingsDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
+        topOffset={headerHeight}
       />
     </>
   );

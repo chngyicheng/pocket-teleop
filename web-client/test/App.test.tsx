@@ -413,6 +413,57 @@ describe('App', () => {
   });
 
   /**
+   * Test 8b: Hamburger toggles the drawer — second click closes it.
+   */
+  it('hamburger menu button toggles the SettingsDrawer closed on second click', async () => {
+    const teleopFactory: TeleopClientFactory = (opts) => {
+      fakeTeleop = new FakeTeleopClient(opts);
+      return fakeTeleop as unknown as TeleopClient;
+    };
+    const whepFactory: WhepClientFactory = (_url, callbacks) => {
+      fakeWhep = new FakeWhepClient(_url, callbacks);
+      return fakeWhep as unknown as WhepClient;
+    };
+
+    render(<App TeleopClientCtor={teleopFactory} WhepClientCtor={whepFactory} />);
+    const menuButton = screen.getByRole('button', { name: /menu|hamburger/i });
+    const drawer = document.querySelector('[role="dialog"]') as HTMLElement;
+
+    // Open
+    await act(async () => { fireEvent.click(menuButton); });
+    expect(drawer.style.transform).toBe('translateX(0)');
+
+    // Second click closes (slides back off the left edge)
+    await act(async () => { fireEvent.click(menuButton); });
+    expect(drawer.style.transform).toBe('translateX(-100%)');
+  });
+
+  /**
+   * Test 8c: Clicking the backdrop closes the drawer.
+   */
+  it('clicking the backdrop closes the SettingsDrawer', async () => {
+    const teleopFactory: TeleopClientFactory = (opts) => {
+      fakeTeleop = new FakeTeleopClient(opts);
+      return fakeTeleop as unknown as TeleopClient;
+    };
+    const whepFactory: WhepClientFactory = (_url, callbacks) => {
+      fakeWhep = new FakeWhepClient(_url, callbacks);
+      return fakeWhep as unknown as WhepClient;
+    };
+
+    render(<App TeleopClientCtor={teleopFactory} WhepClientCtor={whepFactory} />);
+    const menuButton = screen.getByRole('button', { name: /menu|hamburger/i });
+    const drawer = document.querySelector('[role="dialog"]') as HTMLElement;
+
+    await act(async () => { fireEvent.click(menuButton); });
+    expect(drawer.style.transform).toBe('translateX(0)');
+
+    const backdrop = screen.getByTestId('settings-backdrop');
+    await act(async () => { fireEvent.click(backdrop); });
+    expect(drawer.style.transform).toBe('translateX(-100%)');
+  });
+
+  /**
    * Test 9: Viewport ≥ 700px renders MissionTablet layout
    */
   it('tablet layout (≥ 700px) renders MissionTablet', () => {
