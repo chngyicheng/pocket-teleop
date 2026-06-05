@@ -10,6 +10,12 @@ describe('collectPerf', () => {
       if (type === 'paint') {
         return [{ name: 'first-contentful-paint', startTime: 640.6 }] as unknown as PerformanceEntryList;
       }
+      if (type === 'resource') {
+        return [
+          { name: 'http://host/fonts/inter-latin.woff2', startTime: 5, requestStart: 6, responseEnd: 40, encodedBodySize: 48256 },
+          { name: 'http://host/assets/index-DNmxaq-L.js', startTime: 130.2, requestStart: 150.5, responseEnd: 410.9, encodedBodySize: 60123 },
+        ] as unknown as PerformanceEntryList;
+      }
       return [] as unknown as PerformanceEntryList;
     });
   });
@@ -27,7 +33,17 @@ describe('collectPerf', () => {
     expect(p.ua).toBe(navigator.userAgent);
   });
 
-  it('yields null timings when no navigation/paint entries exist', () => {
+  it('picks the index-*.js bundle resource and splits fetch vs transfer', () => {
+    const p = collectPerf(1234.7);
+    // responseEnd 410.9 − startTime 130.2 = 280.7 → 281
+    expect(p.bundleMs).toBe(281);
+    // responseEnd 410.9 − requestStart 150.5 = 260.4 → 260
+    expect(p.bundleTransferMs).toBe(260);
+    // 60123 / 1024 = 58.7 → 59
+    expect(p.bundleKB).toBe(59);
+  });
+
+  it('yields null timings when no navigation/paint/resource entries exist', () => {
     (performance.getEntriesByType as ReturnType<typeof vi.fn>).mockReturnValue(
       [] as unknown as PerformanceEntryList,
     );
@@ -36,6 +52,9 @@ describe('collectPerf', () => {
     expect(p.fcpMs).toBeNull();
     expect(p.domContentLoadedMs).toBeNull();
     expect(p.responseEndMs).toBeNull();
+    expect(p.bundleMs).toBeNull();
+    expect(p.bundleTransferMs).toBeNull();
+    expect(p.bundleKB).toBeNull();
   });
 });
 

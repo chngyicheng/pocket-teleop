@@ -19,6 +19,12 @@ export interface PerfPayload {
   domContentLoadedMs: number | null;
   /** Navigation responseEnd — HTML fully received (ms), or null. */
   responseEndMs: number | null;
+  /** Main JS bundle full fetch time (responseEnd − startTime, incl. queue), or null. */
+  bundleMs: number | null;
+  /** Main JS bundle network transfer only (responseEnd − requestStart), or null. */
+  bundleTransferMs: number | null;
+  /** Main JS bundle encoded (over-the-wire) size in KB, or null. */
+  bundleKB: number | null;
   ua: string;
 }
 
@@ -30,11 +36,21 @@ export function collectPerf(now: number = performance.now()): PerfPayload {
   const fcp = performance
     .getEntriesByType('paint')
     .find((p) => p.name === 'first-contentful-paint');
+  // Main app bundle (Vite emits /assets/index-<hash>.js). Its fetch time vs the
+  // total readyMs splits the white-screen cost into download (network) vs
+  // execute+render (CPU): a large bundleMs means WiFi-bound, a small bundleMs
+  // with a large readyMs means parse/execute-bound.
+  const bundle = (performance.getEntriesByType('resource') as PerformanceResourceTiming[]).find(
+    (r) => /\/assets\/index-[^/]*\.js$/.test(r.name),
+  );
   return {
     readyMs: Math.round(now),
     fcpMs: fcp ? Math.round(fcp.startTime) : null,
     domContentLoadedMs: nav ? Math.round(nav.domContentLoadedEventEnd) : null,
     responseEndMs: nav ? Math.round(nav.responseEnd) : null,
+    bundleMs: bundle ? Math.round(bundle.responseEnd - bundle.startTime) : null,
+    bundleTransferMs: bundle ? Math.round(bundle.responseEnd - bundle.requestStart) : null,
+    bundleKB: bundle ? Math.round((bundle.encodedBodySize || 0) / 1024) : null,
     ua: navigator.userAgent,
   };
 }
