@@ -207,10 +207,10 @@ This profile (`server/fastrtps_profiles_observer.xml`) disables multicast and se
 All suites run entirely inside Docker — no local Node.js or Python installation needed.
 
 ```bash
-# Web-client unit + integration tests (157 tests)
+# Web-client unit + component tests (363 pass; live integration + adversarial suites excluded)
 docker compose --profile test run --rm webclient-test
 
-# Auth-server tests (34 tests)
+# Auth-server tests (49 pass)
 docker compose --profile test run --rm auth-server-test
 
 # video-bridge Python tests (19 tests)
