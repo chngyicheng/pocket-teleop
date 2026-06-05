@@ -181,6 +181,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       ? `⟳ Reconnecting… (${bridge.retryCount})`
       : connLabel.text;
 
+  // Robot identity: prefer the reported name, fall back to the robot model
+  // (robotType). When neither is known yet, render nothing (no fake placeholder).
+  const robotLabel = bridge.robotName || bridge.robotType;
+
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y);
@@ -289,10 +293,14 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           }}
         >
           POCKET-TELEOP
-          <span style={{ color: p.accent, marginLeft: 10 }}>● {bridge.robotName || 'bot-07'}</span>
-          <span style={{ color: p.muted, marginLeft: 8, opacity: 0.5 }}>
-            /{bridge.robotNamespace || 'ns/robot1'}
-          </span>
+          {robotLabel && (
+            <span style={{ color: p.accent, marginLeft: 10 }}>● {robotLabel}</span>
+          )}
+          {bridge.robotNamespace && (
+            <span style={{ color: p.muted, marginLeft: 8, opacity: 0.5 }}>
+              /{bridge.robotNamespace}
+            </span>
+          )}
         </div>
 
         {/* UP, BAT, SIG placeholder readouts (—) */}

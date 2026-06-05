@@ -80,6 +80,25 @@ describe('MissionControl', () => {
     );
     // Not the hardcoded placeholder "(3)" — the real attempt number from bridge.
     expect(screen.getByText(/Reconnecting… \(2\)/)).toBeTruthy();
+  });
+
+  it('header robot label falls back to robotType when name is empty', () => {
+    // 'turtlebot' is distinct from the live chip's placeholder ("… diff_drive").
+    const bridge = createFakeBridge({ robotName: '', robotType: 'turtlebot' });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />,
+    );
+    expect(screen.getByText(/turtlebot/)).toBeTruthy();
+  });
+
+  it('header shows no robot placeholder when name and type are both empty', () => {
+    const bridge = createFakeBridge({ robotName: '', robotType: '' });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />,
+    );
+    // No fake "bot-07" placeholder, and no bare "●" identity marker rendered.
+    expect(screen.queryByText(/bot-07/)).toBeNull();
+    expect(screen.getByText('POCKET-TELEOP').textContent).toBe('POCKET-TELEOP');
 
     // E-STOP button
     const stopButton = screen.getByRole('button', { name: /STOP/i });

@@ -169,6 +169,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         ? `⟳ Retry ${bridge.retryCount}`
         : '○ Down';
 
+  // Robot identity: prefer the reported name, fall back to the robot model
+  // (robotType). When neither is known yet, render nothing (no fake placeholder).
+  const robotLabel = bridge.robotName || bridge.robotType;
+
   return (
     <div
       style={isLandscape ? {
@@ -247,10 +251,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             flex: 1,
           }}
         >
-          POCKET-TELEOP{' '}
-          <span style={{ color: p.accent, marginLeft: 6 }}>
-            ● {bridge.robotName || 'bot-07'}
-          </span>
+          POCKET-TELEOP
+          {robotLabel && (
+            <span style={{ color: p.accent, marginLeft: 6 }}>
+              ● {robotLabel}
+            </span>
+          )}
         </div>
 
         {/* Connection state chip */}
