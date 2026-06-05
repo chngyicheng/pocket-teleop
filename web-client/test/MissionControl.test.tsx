@@ -531,4 +531,202 @@ describe('MissionControl', () => {
     expect(video).toBeTruthy();
     expect((video.style as CSSStyleDeclaration).objectFit).toBe('contain');
   });
+
+  // Video signal overlay tests (T6 — phone-landscape + phone-portrait)
+  describe('VideoSignalOverlay (phone-landscape)', () => {
+    it('does not render overlay when state is live', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'live' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      expect(screen.queryByTestId('video-signal-overlay')).toBeNull();
+    });
+
+    it('renders CONNECTING… when state is connecting', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'connecting' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('CONNECTING…')).toBeTruthy();
+    });
+
+    it('renders RECONNECTING… when state is retrying', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'retrying' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('RECONNECTING…')).toBeTruthy();
+    });
+
+    it('renders NO SIGNAL when state is error', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('NO SIGNAL')).toBeTruthy();
+    });
+
+    it('overlay has pointerEvents none so it does not block joysticks', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      const overlay = screen.getByTestId('video-signal-overlay') as HTMLElement;
+      expect(overlay.style.pointerEvents).toBe('none');
+    });
+
+    it('joystick remains visible and interactive when overlay is present (landscape)', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-landscape"
+        />
+      );
+
+      // Overlay present
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+
+      // Joysticks still rendered
+      expect(screen.getByText('DRIVE')).toBeTruthy();
+      expect(screen.getByText('STRAFE')).toBeTruthy();
+    });
+  });
+
+  describe('VideoSignalOverlay (phone-portrait)', () => {
+    it('does not render overlay when state is live', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'live' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-portrait"
+        />
+      );
+
+      expect(screen.queryByTestId('video-signal-overlay')).toBeNull();
+    });
+
+    it('renders CONNECTING… when state is connecting', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'connecting' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-portrait"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('CONNECTING…')).toBeTruthy();
+    });
+
+    it('renders RECONNECTING… when state is retrying', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'retrying' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-portrait"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('RECONNECTING…')).toBeTruthy();
+    });
+
+    it('renders NO SIGNAL when state is error', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-portrait"
+        />
+      );
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('NO SIGNAL')).toBeTruthy();
+    });
+
+    it('joystick remains visible and interactive when overlay is present (portrait)', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(
+        <MissionControl
+          bridge={bridge}
+          stream={stream}
+          onMenu={vi.fn()}
+          layout="phone-portrait"
+        />
+      );
+
+      // Overlay present
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+
+      // Joysticks still rendered and functional
+      expect(screen.getByText('DRIVE')).toBeTruthy();
+      expect(screen.getByText('STRAFE')).toBeTruthy();
+    });
+  });
 });

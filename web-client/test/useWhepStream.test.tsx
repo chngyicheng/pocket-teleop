@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useWhepStream, type UseWhepStreamOpts } from '../src/hooks/useWhepStream.js';
 import type { WhepCallbacks, WhepState } from '../src/whep_client.js';
@@ -41,8 +41,13 @@ describe('useWhepStream', () => {
   let fakeStream: MediaStream;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     // Create a minimal fake MediaStream
     fakeStream = new MediaStream();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('initializes with connecting state and null stream', () => {
@@ -55,6 +60,10 @@ describe('useWhepStream', () => {
         },
       })
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     expect(result.current.stream).toBeNull();
     expect(result.current.state).toBe('connecting');
@@ -71,6 +80,10 @@ describe('useWhepStream', () => {
         },
       })
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     act(() => {
       fakeClient.triggerStream(fakeStream);
@@ -90,6 +103,10 @@ describe('useWhepStream', () => {
         },
       })
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     act(() => {
       fakeClient.triggerStateChange('retrying');
@@ -116,6 +133,10 @@ describe('useWhepStream', () => {
     );
 
     act(() => {
+      vi.runAllTimers();
+    });
+
+    act(() => {
       fakeClient.triggerError('connection failed');
     });
 
@@ -132,6 +153,10 @@ describe('useWhepStream', () => {
         },
       })
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     act(() => {
       fakeClient.triggerStream(fakeStream);
@@ -157,6 +182,10 @@ describe('useWhepStream', () => {
       })
     );
 
+    act(() => {
+      vi.runAllTimers();
+    });
+
     expect(result.current.stats).toBeNull();
 
     act(() => {
@@ -176,6 +205,10 @@ describe('useWhepStream', () => {
         },
       })
     );
+
+    act(() => {
+      vi.runAllTimers();
+    });
 
     act(() => {
       fakeClient.triggerStats({ fps: 15, width: 1920, height: 1080 });
@@ -205,8 +238,94 @@ describe('useWhepStream', () => {
       })
     );
 
+    act(() => {
+      vi.runAllTimers();
+    });
+
     unmount();
 
     expect(stopSpy.called).toBe(true);
+  });
+
+  it('does not start synchronously — defers to scheduled callback', () => {
+    const startSpy = { called: false };
+    const FakeClientWithSpy = class extends FakeWhepClient {
+      start() {
+        startSpy.called = true;
+      }
+    };
+
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          return new FakeClientWithSpy(url, callbacks);
+        },
+      })
+    );
+
+    // Before runAllTimers, start should not have been called
+    expect(startSpy.called).toBe(false);
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // After runAllTimers, start should have been called
+    expect(startSpy.called).toBe(true);
+  });
+
+  it('injected factory path stays synchronous (no dynamic import)', () => {
+    const startSpy = { called: false };
+    const FakeClientWithSpy = class extends FakeWhepClient {
+      start() {
+        startSpy.called = true;
+      }
+    };
+
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          return new FakeClientWithSpy(url, callbacks);
+        },
+      })
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // Injected factory is synchronous, so after runAllTimers (no microtask needed)
+    // the client should be built and started
+    expect(startSpy.called).toBe(true);
+  });
+
+  it('unmount before scheduled callback does not start client', () => {
+    const startSpy = { called: false };
+    const FakeClientWithSpy = class extends FakeWhepClient {
+      start() {
+        startSpy.called = true;
+      }
+    };
+
+    const { unmount } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          return new FakeClientWithSpy(url, callbacks);
+        },
+      })
+    );
+
+    // Unmount before the scheduled callback fires
+    unmount();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // start should never be called because the component unmounted before the callback
+    expect(startSpy.called).toBe(false);
   });
 });

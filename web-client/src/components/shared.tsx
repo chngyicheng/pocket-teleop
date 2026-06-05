@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
+import type { WhepState } from '../whep_client.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -683,6 +684,40 @@ export const Readout: React.FC<ReadoutProps> = ({
       >
         {value}
       </span>
+    </div>
+  );
+};
+
+// ─── VideoSignalOverlay ────────────────────────────────────────────────────────
+
+export interface VideoSignalOverlayProps {
+  state: WhepState;
+}
+
+export const VideoSignalOverlay: React.FC<VideoSignalOverlayProps> = ({ state }) => {
+  const label = state === 'live' ? null : state === 'connecting' ? 'CONNECTING…' : state === 'retrying' ? 'RECONNECTING…' : 'NO SIGNAL';
+
+  if (!label) return null;
+
+  return (
+    <div
+      data-testid="video-signal-overlay"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+        zIndex: 2,
+        color: '#8b92a0',
+        fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+        fontSize: 13,
+        letterSpacing: '0.18em',
+        opacity: 0.85,
+      }}
+    >
+      {label}
     </div>
   );
 };

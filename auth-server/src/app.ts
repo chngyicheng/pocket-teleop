@@ -70,6 +70,15 @@ export function createApp(options: AppOptions): express.Application {
   // Unauthenticated static fonts route — must be before auth-redirect middleware
   app.use('/auth-static', express.static(path.join(__dirname, '../public')));
 
+  // UI performance beacon — client POSTs first-paint / load timing here after
+  // React mounts, so the server log carries a real "UI ready at +N ms" line per
+  // page load. Unauthenticated + before the auth-redirect so it always records;
+  // body parser scoped to this route only (proxy routes need raw streams).
+  app.post('/perf', express.json({ limit: '4kb' }), (req, res) => {
+    console.log(`[perf] ${new Date().toISOString()} ${JSON.stringify(req.body)}`);
+    res.sendStatus(204);
+  });
+
   // Body parsers scoped to /auth only — proxy routes must receive raw streams.
   // Global body parsers consume the request stream before the proxy can pipe it,
   // causing the proxy request to hang (http-proxy pipes the drained stream, which

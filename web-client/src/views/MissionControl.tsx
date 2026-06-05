@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS } from '../components/shared.js';
+import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
@@ -376,6 +376,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               }}
             />
 
+            {/* Video signal overlay */}
+            <VideoSignalOverlay state={stream.state} />
+
             {/* Center crosshair reticle */}
             <div
               style={{
@@ -554,6 +557,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             objectFit: 'contain',
           }}
         />
+
+        {/* Video signal overlay */}
+        <VideoSignalOverlay state={stream.state} />
 
         {/* Top-left vel bars */}
         <div

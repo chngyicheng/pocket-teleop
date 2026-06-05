@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS } from '../components/shared.js';
+import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
@@ -451,6 +451,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             objectFit: 'contain',
           }}
         />
+
+        {/* Video signal overlay */}
+        <VideoSignalOverlay state={stream.state} />
 
         {/* Center reticle */}
         <div

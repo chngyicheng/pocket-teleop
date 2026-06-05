@@ -644,4 +644,70 @@ describe('MissionTablet', () => {
       expect(nameStyle).toContain('text-overflow: ellipsis');
     });
   });
+
+  // Video signal overlay tests (T6)
+  describe('VideoSignalOverlay', () => {
+    it('does not render overlay when state is live', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'live' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      expect(screen.queryByTestId('video-signal-overlay')).toBeNull();
+    });
+
+    it('renders CONNECTING… when state is connecting', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'connecting' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('CONNECTING…')).toBeTruthy();
+    });
+
+    it('renders RECONNECTING… when state is retrying', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'retrying' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('RECONNECTING…')).toBeTruthy();
+    });
+
+    it('renders NO SIGNAL when state is error', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+      expect(screen.getByText('NO SIGNAL')).toBeTruthy();
+    });
+
+    it('overlay has pointerEvents none so it never blocks joysticks', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      const overlay = screen.getByTestId('video-signal-overlay') as HTMLElement;
+      expect(overlay.style.pointerEvents).toBe('none');
+    });
+
+    it('joystick remains visible and interactive when overlay is present', () => {
+      const bridge = createFakeBridge();
+      const stream = createFakeStream({ state: 'error' });
+
+      render(<MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} />);
+
+      // Overlay present
+      expect(screen.getByTestId('video-signal-overlay')).toBeTruthy();
+
+      // Joysticks still rendered and at z 5 (not hidden)
+      const zones = screen.getAllByTestId('joystick-zone');
+      expect(zones.length).toBe(2);
+    });
+  });
 });

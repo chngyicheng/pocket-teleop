@@ -11,5 +11,8 @@ RUN npm run build
 
 # ---- runtime stage: nginx serves vite-built dist/ ----
 FROM nginx:alpine AS runtime
+# Custom server config: enables gzip (default nginx ships it off) + immutable
+# caching for hashed assets — the diagnosed fix for the slow-WiFi white screen.
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html/
 EXPOSE 80
