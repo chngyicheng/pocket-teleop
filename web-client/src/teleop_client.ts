@@ -1,7 +1,16 @@
 import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
-import { buildPing, buildTwist, parseMessage } from './protocol.js';
+import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage } from './protocol.js';
+
+/** Continuous publish rate: one packet every 50 ms → 20 Hz. */
+export const PUBLISH_INTERVAL_MS = 50;
+
+/**
+ * Number of zero-twist frames sent after a joystick release before the
+ * publisher goes silent.  10 × 50 ms = 500 ms of explicit stop.
+ */
+export const STOP_REPEATS = 10;
 
 export interface TeleopClientOptions {
   onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string) => void;
@@ -15,13 +24,17 @@ export interface TeleopClientOptions {
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
+  onEstopState?: (engaged: boolean) => void;
   keepaliveIntervalMs?: number;
+  /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
+  publishIntervalMs?: number;
 }
 
 export class TeleopClient {
   private readonly connection: Connection;
   private readonly gamepadHandler: GamepadHandler;
   private keepaliveId: ReturnType<typeof setInterval> | null = null;
+  private publishId: ReturnType<typeof setInterval> | null = null;
   private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private lastSentAt = 0;
   private pingSentAt = 0;
@@ -33,17 +46,29 @@ export class TeleopClient {
   private retryPending = false;
   private readonly retryIntervalMs: number;
   private readonly keepaliveIntervalMs: number;
+  private readonly publishIntervalMs: number;
   private readonly options: TeleopClientOptions;
+
+  // Continuous-publish state
+  /** Non-null while a joystick is held; the values to repeat each tick. */
+  private repeatTwist: { lx: number; ly: number; az: number } | null = null;
+  /** Counts down from STOP_REPEATS after a release, sending zeros each tick. */
+  private zeroFramesLeft = 0;
+
+  /** True while e-stop is latched; sendTwist is a no-op in this state. */
+  private estopEngaged = false;
 
   constructor(options: TeleopClientOptions = {}) {
     this.options = options;
     this.retryIntervalMs = options.retryIntervalMs ?? 5000;
     this.keepaliveIntervalMs = options.keepaliveIntervalMs ?? 200;
+    this.publishIntervalMs = options.publishIntervalMs ?? PUBLISH_INTERVAL_MS;
     this.connection = new Connection({
       onMessage: (raw) => this.handleMessage(raw),
       onOpen: () => { /* retryAttempt is reset in handleMessage on status */ },
       onClose: (code, reason) => {
         this.stopKeepalive();
+        this.stopPublisher();
         this.gamepadHandler.stop();
         if (this.intentionalDisconnect) {
           this.options.onClose?.(code, reason);
@@ -76,8 +101,13 @@ export class TeleopClient {
     this.intentionalDisconnect = false;
     this.retryAttempt = 0;
     this.retryPending = false;
+    // Fresh/reconnected session must not blindly resume stale motion.
+    this.repeatTwist = null;
+    this.zeroFramesLeft = 0;
+    this.estopEngaged = false;
     this.connection.connect(url);
     this.startKeepalive();
+    this.startPublisher();
     this.gamepadHandler.start();
   }
 
@@ -88,6 +118,7 @@ export class TeleopClient {
       this.retryTimeoutId = null;
     }
     this.stopKeepalive();
+    this.stopPublisher();
     this.gamepadHandler.stop();
     this.connection.disconnect();
   }
@@ -100,10 +131,42 @@ export class TeleopClient {
     this.gamepadHandler.setEnabled(enabled);
   }
 
+  engageEstop(): void {
+    this.connection.send(buildEstop());
+    this.estopEngaged = true;
+    // Clear publisher motion state so the continuous publisher stops sending
+    this.repeatTwist = null;
+    this.zeroFramesLeft = 0;
+    this.lastSentAt = Date.now();
+  }
+
+  resetEstop(): void {
+    this.connection.send(buildEstopReset());
+    this.estopEngaged = false;
+    this.lastSentAt = Date.now();
+  }
+
   sendTwist(lx: number, ly: number, az: number): void {
+    // While e-stop is latched, all motion commands are suppressed
+    if (this.estopEngaged) {
+      return;
+    }
+
+    // Immediate one-shot send (existing behaviour, kept for responsiveness)
     this.connection.send(buildTwist(lx, ly, az));
     this.lastSentAt = Date.now();
     this.options.onTwist?.(lx, ly, az);
+
+    // Update continuous-publish state
+    if (lx !== 0 || ly !== 0 || az !== 0) {
+      // Joystick held: repeat this command on every publisher tick
+      this.repeatTwist = { lx, ly, az };
+      this.zeroFramesLeft = 0;
+    } else {
+      // Joystick released: stop repeating and initiate stop burst
+      this.repeatTwist = null;
+      this.zeroFramesLeft = STOP_REPEATS;
+    }
   }
 
   private handleMessage(raw: string): void {
@@ -121,6 +184,9 @@ export class TeleopClient {
       this.options.onPong?.();
     } else if (msg.type === 'odom') {
       this.options.onOdom?.(msg.x, msg.y, msg.heading);
+    } else if (msg.type === 'estop_state') {
+      this.estopEngaged = msg.engaged;
+      this.options.onEstopState?.(msg.engaged);
     }
   }
 
@@ -131,8 +197,12 @@ export class TeleopClient {
     this.retryTimeoutId = setTimeout(() => {
       this.retryTimeoutId = null;
       this.retryPending = false;
+      // Reset publish state before reconnecting — do not resume stale motion.
+      this.repeatTwist = null;
+      this.zeroFramesLeft = 0;
       this.connection.connect(this.url);
       this.startKeepalive();
+      this.startPublisher();
       this.gamepadHandler.start();
     }, delay);
   }
@@ -153,6 +223,40 @@ export class TeleopClient {
     if (this.keepaliveId !== null) {
       clearInterval(this.keepaliveId);
       this.keepaliveId = null;
+    }
+  }
+
+  /**
+   * Publisher tick: runs every publishIntervalMs while connected.
+   *
+   * Priority:
+   *   1. repeatTwist non-null → resend the held command (continuous 20 Hz)
+   *   2. zeroFramesLeft > 0  → send explicit zero (stop burst)
+   *   3. otherwise           → silent (keepalive ping still fires separately)
+   *
+   * The publisher does NOT send pings; that remains the keepalive's job so
+   * latency measurement continues to work independently.
+   */
+  private startPublisher(): void {
+    this.stopPublisher();
+    this.publishId = setInterval(() => {
+      if (this.repeatTwist !== null) {
+        const { lx, ly, az } = this.repeatTwist;
+        this.connection.send(buildTwist(lx, ly, az));
+        this.lastSentAt = Date.now();
+      } else if (this.zeroFramesLeft > 0) {
+        this.connection.send(buildTwist(0, 0, 0));
+        this.zeroFramesLeft -= 1;
+        this.lastSentAt = Date.now();
+      }
+      // else: idle — publisher is silent; keepalive ping fires when needed.
+    }, this.publishIntervalMs);
+  }
+
+  private stopPublisher(): void {
+    if (this.publishId !== null) {
+      clearInterval(this.publishId);
+      this.publishId = null;
     }
   }
 }

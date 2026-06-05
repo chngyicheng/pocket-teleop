@@ -3,6 +3,7 @@ export type InboundMessage =
   | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string }
   | { type: 'error'; message: string }
   | { type: 'odom'; x: number; y: number; heading: number }
+  | { type: 'estop_state'; engaged: boolean }
   | { type: 'unknown'; raw: string };
 
 export function buildTwist(lx: number, ly: number, az: number): string {
@@ -11,6 +12,14 @@ export function buildTwist(lx: number, ly: number, az: number): string {
 
 export function buildPing(): string {
   return JSON.stringify({ type: 'ping' });
+}
+
+export function buildEstop(): string {
+  return JSON.stringify({ type: 'estop' });
+}
+
+export function buildEstopReset(): string {
+  return JSON.stringify({ type: 'estop_reset' });
 }
 
 export function parseMessage(raw: string): InboundMessage {
@@ -39,6 +48,12 @@ export function parseMessage(raw: string): InboundMessage {
         typeof msg['y'] === 'number' &&
         typeof msg['heading'] === 'number') {
       return { type: 'odom', x: msg['x'], y: msg['y'], heading: msg['heading'] };
+    }
+    if (msg['type'] === 'estop_state') {
+      if (typeof msg['engaged'] !== 'boolean') {
+        return { type: 'unknown', raw };
+      }
+      return { type: 'estop_state', engaged: msg['engaged'] };
     }
     return { type: 'unknown', raw };
   } catch {

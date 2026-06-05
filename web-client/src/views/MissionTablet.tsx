@@ -20,6 +20,8 @@ export interface MissionTabletProps {
   bridge: TeleopBridge;
   stream: WhepStream;
   onMenu: () => void;
+  /** When true (Settings drawer open), joysticks render but cannot be grabbed. */
+  controlsDisabled?: boolean;
 }
 
 /**
@@ -122,8 +124,9 @@ function MissionPillToggle({ label, on }: { label: string; on: boolean }): JSX.E
 /**
  * MissionTablet component
  */
-export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, onMenu }) => {
+export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, onMenu, controlsDisabled = false }) => {
   const p = MissionPalette;
+  const { estopEngaged } = bridge;
   const sansFont = 'Inter, ui-sans-serif, system-ui, sans-serif';
   const monoFont = '"JetBrains Mono", ui-monospace, monospace';
 
@@ -134,6 +137,14 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const [lx, setLx] = useState(0);
   const [ly, setLy] = useState(0);
   const [az, setAz] = useState(0);
+
+  /**
+   * axesRef holds the live (non-stale) current command.
+   * React useState setters are async — reading lx/ly/az in a closure can
+   * capture a stale render-cycle value.  The ref is always synchronously
+   * up-to-date and is the authoritative source for what gets sent.
+   */
+  const axesRef = useRef({ lx: 0, ly: 0, az: 0 });
 
   // Video srcObject sync
   useEffect(() => {
@@ -164,24 +175,32 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y);
     setAz(-x);
-    bridge.sendTwist(-y, ly, -x);
+    axesRef.current.lx = -y;
+    axesRef.current.az = -x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleDriveEnd = () => {
     setLx(0);
     setAz(0);
-    bridge.sendTwist(0, ly, 0);
+    axesRef.current.lx = 0;
+    axesRef.current.az = 0;
+    // ly preserved in axesRef — STRAFE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   // STRAFE joystick: ly (lateral)
   const handleStrafeMove = (x: number) => {
     setLy(x);
-    bridge.sendTwist(lx, x, az);
+    axesRef.current.ly = x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleStrafeEnd = () => {
     setLy(0);
-    bridge.sendTwist(lx, 0, az);
+    axesRef.current.ly = 0;
+    // lx and az preserved in axesRef — DRIVE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   return (
@@ -211,6 +230,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           background: p.surface,
           borderBottom: `1px solid ${p.border}`,
           fontSize: 10,
+          // Single-line bar: the robot-name label is the only element allowed to
+          // shrink (minWidth:0 + ellipsis below). overflow:hidden is a safety net
+          // so a too-wide bar clips instead of pushing E-STOP off the viewport.
+          overflow: 'hidden',
         }}
       >
         {/* Hamburger menu */}
@@ -236,7 +259,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           ☰
         </button>
 
-        {/* Robot name + namespace */}
+        {/* Robot name + namespace — fills remaining space and is the sole shrink
+            target: minWidth:0 + nowrap + ellipsis lets it truncate so the fixed
+            readouts / connection chip / E-STOP always keep their room. */}
         <div
           style={{
             fontFamily: monoFont,
@@ -245,6 +270,11 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             color: p.muted,
             fontWeight: 600,
             textTransform: 'uppercase',
+            flex: '1 1 auto',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
           POCKET-TELEOP
@@ -254,13 +284,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           </span>
         </div>
 
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* UP, BAT, SIG placeholder readouts */}
-        <Readout label="UP" value="03:24:18" color={p.accent} />
-        <Readout label="BAT" value="78%" color={p.accent} />
-        <Readout label="SIG" value="-58dBm" color={p.accent} />
+        {/* UP, BAT, SIG placeholder readouts (—) */}
+        <Readout label="UP" value="—" color={p.accent} />
+        <Readout label="BAT" value="—" color={p.accent} />
+        <Readout label="SIG" value="—" color={p.accent} />
 
         {/* LAT readout pill */}
         <Readout
@@ -284,13 +311,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           {connLabel.text}
         </div>
 
-        {/* E-STOP button */}
+        {/* E-STOP button — engaged state shows RESET affordance */}
         <button
-          onClick={() => bridge.eStop()}
+          onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}
           style={{
-            background: p.danger,
+            background: estopEngaged ? '#ff0000' : p.danger,
             color: '#fff',
-            border: 'none',
+            border: estopEngaged ? '2px solid #fff' : 'none',
             borderRadius: 3,
             padding: '5px 12px',
             fontSize: 11,
@@ -299,12 +326,38 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             fontFamily: monoFont,
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
             zIndex: 10,
+            animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
-          ■ E-STOP
+          {estopEngaged ? '■ RESET' : '■ STOP'}
         </button>
       </div>
+
+      {/* E-STOP engaged banner — spans full width, above all content */}
+      {estopEngaged && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 44,
+            left: 0,
+            right: 0,
+            background: '#ff0000',
+            color: '#fff',
+            textAlign: 'center',
+            fontFamily: monoFont,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            padding: '6px 0',
+            zIndex: 20,
+            gridColumn: '1 / -1',
+          }}
+        >
+          ⚠ E-STOP ENGAGED — tap RESET
+        </div>
+      )}
 
       {/* Left rail */}
       <aside
@@ -323,9 +376,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       >
         <SidePanel title="STREAM">
           <DataRow k="src" v="WebRTC" />
+          {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
           <DataRow k="codec" v="H.264" />
-          <DataRow k="fps" v="30.1" />
-          <DataRow k="res" v="1280×720" />
+          <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
+          <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
           <div
             style={{
               fontSize: 10,
@@ -508,7 +562,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           width: 280,
           height: 280,
           zIndex: 5,
-          pointerEvents: 'auto',
+          pointerEvents: controlsDisabled ? 'none' : 'auto',
         }}
       >
         <Joystick
@@ -534,7 +588,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           width: 280,
           height: 280,
           zIndex: 5,
-          pointerEvents: 'auto',
+          pointerEvents: controlsDisabled ? 'none' : 'auto',
         }}
       >
         <Joystick

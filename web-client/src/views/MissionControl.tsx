@@ -19,6 +19,8 @@ export interface MissionControlProps {
   stream: WhepStream;
   onMenu: () => void;
   layout: MissionLayout;
+  /** When true (Settings drawer open), joysticks render but cannot be grabbed. */
+  controlsDisabled?: boolean;
 }
 
 /**
@@ -42,7 +44,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   stream,
   onMenu,
   layout,
+  controlsDisabled = false,
 }) => {
+  const { estopEngaged } = bridge;
   const p = MissionPalette;
   const sansFont = 'Inter, ui-sans-serif, system-ui, sans-serif';
   const monoFont = '"JetBrains Mono", ui-monospace, monospace';
@@ -56,6 +60,14 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const [lx, setLx] = useState(0);
   const [ly, setLy] = useState(0);
   const [az, setAz] = useState(0);
+
+  /**
+   * axesRef holds the live (non-stale) current command.
+   * React useState setters are async — reading lx/ly/az in a closure can
+   * capture a stale render-cycle value.  The ref is always synchronously
+   * up-to-date and is the authoritative source for what gets sent.
+   */
+  const axesRef = useRef({ lx: 0, ly: 0, az: 0 });
 
   // Video srcObject sync
   useEffect(() => {
@@ -86,24 +98,32 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y); // y-axis inverted → forward+
     setAz(-x); // x-axis inverted → ccw+
-    bridge.sendTwist(-y, ly, -x);
+    axesRef.current.lx = -y;
+    axesRef.current.az = -x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleDriveEnd = () => {
     setLx(0);
     setAz(0);
-    bridge.sendTwist(0, ly, 0);
+    axesRef.current.lx = 0;
+    axesRef.current.az = 0;
+    // ly preserved in axesRef — STRAFE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   // STRAFE joystick: ly (lateral)
   const handleStrafeMove = (x: number) => {
     setLy(x);
-    bridge.sendTwist(lx, x, az);
+    axesRef.current.ly = x;
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   const handleStrafeEnd = () => {
     setLy(0);
-    bridge.sendTwist(lx, 0, az);
+    axesRef.current.ly = 0;
+    // lx and az preserved in axesRef — DRIVE may still be active
+    bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
   // Derive minimap/compass data from bridge.odom
@@ -207,13 +227,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {isLandscape ? connLabel.text : stateShort}
         </div>
 
-        {/* E-STOP button */}
+        {/* E-STOP button — engaged state shows RESET affordance */}
         <button
-          onClick={() => bridge.eStop()}
+          onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}
           style={{
-            background: p.danger,
+            background: estopEngaged ? '#ff0000' : p.danger,
             color: '#fff',
-            border: 'none',
+            border: estopEngaged ? '2px solid #fff' : 'none',
             borderRadius: 3,
             padding: isLandscape ? '5px 12px' : '4px 8px',
             fontSize: 11,
@@ -224,11 +244,35 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             flex: '0 0 auto',
             whiteSpace: 'nowrap',
             zIndex: 10,
+            animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
-          ■ STOP
+          {estopEngaged ? '■ RESET' : '■ STOP'}
         </button>
       </header>
+
+      {/* E-STOP engaged banner — always visible above all content when latched */}
+      {estopEngaged && (
+        <div
+          style={{
+            position: 'absolute',
+            top: isLandscape ? 44 : 36,
+            left: 0,
+            right: 0,
+            background: '#ff0000',
+            color: '#fff',
+            textAlign: 'center',
+            fontFamily: monoFont,
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            padding: '5px 0',
+            zIndex: 20,
+          }}
+        >
+          ⚠ E-STOP ENGAGED — tap RESET
+        </div>
+      )}
 
       {/* Video viewport + overlays */}
       <div
@@ -299,8 +343,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
             color={p.accent}
           />
-          <Readout label="BAT" value="78%" color={p.accent} />
-          <Readout label="SIG" value="-58 dBm" color={p.accent} />
+          <Readout label="BAT" value="—" color={p.accent} />
+          <Readout label="SIG" value="—" color={p.accent} />
         </div>
 
         {/* Bottom-right mini-map + compass */}
@@ -375,7 +419,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             left: 0,
             width: zone,
             height: zone,
-            pointerEvents: 'auto',
+            pointerEvents: controlsDisabled ? 'none' : 'auto',
           }}
         >
           <Joystick
@@ -401,7 +445,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             right: 0,
             width: zone,
             height: zone,
-            pointerEvents: 'auto',
+            pointerEvents: controlsDisabled ? 'none' : 'auto',
           }}
         >
           <Joystick

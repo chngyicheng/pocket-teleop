@@ -5,10 +5,13 @@
 ```json
 {"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":-0.3}
 {"type":"ping"}
+{"type":"estop"}
+{"type":"estop_reset"}
 ```
 
 - Values clamped to `[-1.0, 1.0]` inclusive — out-of-range returns `ParseError`, not clamp.
 - `linear_y` always present in twist messages even for differential drive (client sends `0.0`).
+- `estop` latches the server: it publishes a single zero `cmd_vel` and then **ignores all incoming `twist` messages** until `estop_reset`. Pings still work and keep the connection alive while latched. The latch clears on a fresh connection.
 
 ## Message protocol — server → client
 
@@ -16,7 +19,10 @@
 {"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1"}
 {"type":"pong"}
 {"type":"error","message":"<reason>"}
+{"type":"estop_state","engaged":true}
 ```
+
+- `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
 
 - `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
 - Client treats missing fields as `""` for backwards compatibility.
@@ -24,11 +30,13 @@
 ## C++ result types (CommandHandler)
 
 ```cpp
-struct TwistCommand { double linear_x; double linear_y; double angular_z; };
-struct PingCommand  {};
-struct ParseError   { std::string message; };
+struct TwistCommand      { double linear_x; double linear_y; double angular_z; };
+struct PingCommand       {};
+struct EStopCommand      {};
+struct EStopResetCommand {};
+struct ParseError        { std::string message; };
 
-using ParseResult = std::variant<TwistCommand, PingCommand, ParseError>;
+using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand, ParseError>;
 ```
 
 Callers use `std::holds_alternative<>` to dispatch on variant.

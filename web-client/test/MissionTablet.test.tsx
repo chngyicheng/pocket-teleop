@@ -24,6 +24,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotType: 'diff',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
+    estopEngaged: false,
+    resetEstop: vi.fn(),
     ...overrides,
   };
 }
@@ -36,6 +38,7 @@ function createFakeStream(overrides?: Partial<WhepStream>): WhepStream {
     stream: null,
     state: 'live',
     error: null,
+    stats: null,
     ...overrides,
   };
 }
@@ -64,7 +67,7 @@ describe('MissionTablet', () => {
     expect(screen.getByText(/Connected — diff_drive/i)).toBeTruthy();
 
     // Check for E-STOP button
-    const stopButton = screen.getByRole('button', { name: /E-STOP/i });
+    const stopButton = screen.getByRole('button', { name: /STOP/i });
     expect(stopButton).toBeTruthy();
 
     // Left rail panels: STREAM, VELOCITY, ODOMETRY
@@ -136,7 +139,7 @@ describe('MissionTablet', () => {
 
     render(<MissionTablet {...props} />);
 
-    const stopButton = screen.getByRole('button', { name: /E-STOP/i });
+    const stopButton = screen.getByRole('button', { name: /STOP/i });
     fireEvent.click(stopButton);
 
     expect(bridge.eStop).toHaveBeenCalledTimes(1);
@@ -349,7 +352,7 @@ describe('MissionTablet', () => {
     expect(document.body.textContent).toContain('—');
   });
 
-  it('top bar shows UP/BAT/SIG placeholder Readouts', () => {
+  it('top bar shows UP/BAT/SIG as dashes (placeholder Readouts)', () => {
     const bridge = createFakeBridge();
     const stream = createFakeStream();
     const onMenu = vi.fn();
@@ -360,17 +363,24 @@ describe('MissionTablet', () => {
       onMenu,
     };
 
-    render(<MissionTablet {...props} />);
+    const { container } = render(<MissionTablet {...props} />);
 
-    // Check for UP, BAT, SIG placeholder values
-    expect(screen.getByText(/03:24:18/)).toBeTruthy();
-    expect(screen.getByText(/78%/)).toBeTruthy();
-    expect(screen.getByText(/-58dBm/)).toBeTruthy();
+    // Check for UP, BAT, SIG with '—' values
+    const findReadoutValue = (label: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const labelSpan = labelSpans.find((s) => s.textContent === label);
+      const valueSpan = labelSpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findReadoutValue('UP')).toBe('—');
+    expect(findReadoutValue('BAT')).toBe('—');
+    expect(findReadoutValue('SIG')).toBe('—');
   });
 
-  it('STREAM panel shows codec details', () => {
+  it('STREAM panel shows codec details; fps/res show — when stats=null', () => {
     const bridge = createFakeBridge();
-    const stream = createFakeStream();
+    const stream = createFakeStream({ stats: null });
     const onMenu = vi.fn();
 
     const props: MissionTabletProps = {
@@ -379,16 +389,74 @@ describe('MissionTablet', () => {
       onMenu,
     };
 
-    render(<MissionTablet {...props} />);
+    const { container } = render(<MissionTablet {...props} />);
 
-    // Check for stream codec DataRows
+    // Check for static source/codec (always WebRTC/H.264)
     expect(screen.getByText('WebRTC')).toBeTruthy();
     expect(screen.getByText('H.264')).toBeTruthy();
-    expect(screen.getByText('30.1')).toBeTruthy();
-    expect(screen.getByText('1280×720')).toBeTruthy();
 
-    // Verify dynamic stream state still renders (from existing test constraint)
+    // Check for fps/res rows with '—' when stats=null
+    const findDataRowValue = (key: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const keySpan = labelSpans.find((s) => s.textContent === key);
+      const valueSpan = keySpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findDataRowValue('fps')).toBe('—');
+    expect(findDataRowValue('res')).toBe('—');
+
+    // Verify dynamic stream state still renders
     expect(screen.getByText(/● Live/)).toBeTruthy();
+  });
+
+  it('STREAM panel shows fps/res from stream.stats when available', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream({ stats: { fps: 15, width: 1920, height: 1080 } });
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    const { container } = render(<MissionTablet {...props} />);
+
+    // Check static codec
+    expect(screen.getByText('WebRTC')).toBeTruthy();
+    expect(screen.getByText('H.264')).toBeTruthy();
+
+    // Check fps/res from stats
+    const findDataRowValue = (key: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const keySpan = labelSpans.find((s) => s.textContent === key);
+      const valueSpan = keySpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findDataRowValue('fps')).toBe('15.0');
+    expect(findDataRowValue('res')).toBe('1920×1080');
+  });
+
+  it('estopEngaged=true shows banner and clicking button calls resetEstop', () => {
+    const bridge = createFakeBridge({ estopEngaged: true });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(<MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />);
+
+    // Banner should be visible
+    expect(screen.getByText(/E-STOP ENGAGED/)).toBeTruthy();
+
+    // Button label changes to RESET
+    const resetButton = screen.getByRole('button', { name: /RESET/i });
+    expect(resetButton).toBeTruthy();
+
+    fireEvent.click(resetButton);
+
+    expect(bridge.resetEstop).toHaveBeenCalledOnce();
+    expect(bridge.eStop).not.toHaveBeenCalled();
   });
 
   it('left rail footer shows ops info', () => {
@@ -407,5 +475,67 @@ describe('MissionTablet', () => {
     // Check for ops footer text
     expect(screen.getByText(/cmd_vel @ 50hz/)).toBeTruthy();
     expect(screen.getByText(/last pong 0.04s/)).toBeTruthy();
+  });
+
+  it('disables joystick interaction when controlsDisabled, keeping the zones rendered', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} controlsDisabled />
+    );
+
+    const zones = screen.getAllByTestId('joystick-zone');
+    expect(zones.length).toBe(2);
+    for (const z of zones) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('none');
+    }
+  });
+
+  it('keeps joysticks interactive when controlsDisabled is false', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet bridge={bridge} stream={stream} onMenu={vi.fn()} controlsDisabled={false} />
+    );
+
+    for (const z of screen.getAllByTestId('joystick-zone')) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
+    }
+  });
+
+  // BUG 3 — top-bar overflow + label unification
+  describe('top bar (BUG 3)', () => {
+    it('renders the E-STOP button with the unified "■ STOP" label', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const btn = screen.getByRole('button', { name: /STOP/i });
+      expect(btn.textContent).toBe('■ STOP');
+      expect(btn.textContent).not.toContain('E-STOP');
+    });
+
+    it('pins the E-STOP button so it never shrinks off the top bar', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const btn = screen.getByRole('button', { name: /STOP/i });
+      expect(btn.style.flexShrink).toBe('0');
+    });
+
+    it('makes the robot-name label the sole shrink target and clips top-bar overflow', () => {
+      render(<MissionTablet bridge={createFakeBridge()} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      // Top bar is the parent of the hamburger button.
+      const topBar = screen.getByLabelText('Open menu').parentElement as HTMLElement;
+      expect(topBar.style.overflow).toBe('hidden');
+
+      // The robot-name label truncates (minWidth:0 + ellipsis) to give up space first.
+      // Read the serialized style: jsdom's CSSOM drops the unitless `0` of
+      // min-width when read via the typed `.style` accessor, so assert the attribute.
+      const nameEl = screen.getByText(/POCKET-TELEOP/i) as HTMLElement;
+      const nameStyle = nameEl.getAttribute('style') ?? '';
+      expect(nameStyle).toContain('min-width: 0');
+      expect(nameStyle).toContain('text-overflow: ellipsis');
+    });
   });
 });

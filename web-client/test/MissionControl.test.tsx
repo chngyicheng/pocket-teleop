@@ -24,6 +24,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotType: 'diff',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
+    estopEngaged: false,
+    resetEstop: vi.fn(),
     ...overrides,
   };
 }
@@ -36,6 +38,7 @@ function createFakeStream(overrides?: Partial<WhepStream>): WhepStream {
     stream: null,
     state: 'live',
     error: null,
+    stats: null,
     ...overrides,
   };
 }
@@ -233,5 +236,152 @@ describe('MissionControl', () => {
     // Chip text should be red (#ef4444)
     const chip = screen.getByText(/○ Down/);
     expect(chip).toBeTruthy();
+  });
+
+  it('estopEngaged=true shows banner and clicking button calls resetEstop', () => {
+    const bridge = createFakeBridge({ estopEngaged: true });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // Banner should be visible
+    expect(screen.getByText(/E-STOP ENGAGED/)).toBeTruthy();
+
+    // Button label changes to RESET
+    const resetButton = screen.getByRole('button', { name: /RESET/i });
+    expect(resetButton).toBeTruthy();
+
+    fireEvent.click(resetButton);
+
+    expect(bridge.resetEstop).toHaveBeenCalledOnce();
+    expect(bridge.eStop).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Cross-axis regression guard (BUG 1 axes-ref fix).
+   *
+   * Scenario: DRIVE joystick is pushed (sets lx/az), then STRAFE is pushed
+   * (sets ly), then DRIVE is released.  The final sendTwist call when DRIVE
+   * ends must zero lx and az but PRESERVE the live ly from the STRAFE push.
+   *
+   * Without the axesRef fix, handleDriveEnd reads ly from the React render
+   * closure which lags one render cycle and may still be 0.
+   */
+  it('DRIVE end preserves live STRAFE ly via axesRef (cross-axis no stale closure)', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    const allZones = document.querySelectorAll('[data-testid="joystick-zone"]');
+    // First zone is DRIVE (left), second is STRAFE (right)
+    const driveEl = allZones[0] as Element;
+    const strafeEl = allZones[1] as Element;
+
+    // 1. Push DRIVE diagonally to get lx and az non-zero
+    fireEvent.pointerDown(driveEl, { clientX: 95, clientY: 95, pointerId: 1 });
+    fireEvent.pointerMove(driveEl, { clientX: 130, clientY: 60, pointerId: 1 });
+
+    // 2. Push STRAFE to set ly (x-axis only joystick)
+    fireEvent.pointerDown(strafeEl, { clientX: 95, clientY: 95, pointerId: 2 });
+    fireEvent.pointerMove(strafeEl, { clientX: 130, clientY: 95, pointerId: 2 });
+
+    // 3. Release DRIVE — the handleDriveEnd should zero lx/az but preserve ly
+    (bridge.sendTwist as ReturnType<typeof vi.fn>).mockClear();
+    fireEvent.pointerUp(driveEl, { clientX: 130, clientY: 60, pointerId: 1 });
+
+    const calls = (bridge.sendTwist as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+
+    // Last call: lx and az must be 0; ly must equal what STRAFE set
+    const lastCall = calls[calls.length - 1] as [number, number, number];
+    expect(lastCall[0]).toBe(0); // lx zeroed
+    expect(lastCall[2]).toBe(0); // az zeroed
+    // ly must be non-zero (the live STRAFE value) — proves no stale closure
+    expect(lastCall[1]).not.toBe(0);
+  });
+
+  it('disables joystick interaction when controlsDisabled, keeping the zones rendered', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+        controlsDisabled
+      />
+    );
+
+    const zones = screen.getAllByTestId('joystick-zone');
+    expect(zones.length).toBe(2); // hints still rendered, just below the drawer
+    for (const z of zones) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('none');
+    }
+  });
+
+  it('keeps joysticks interactive when controlsDisabled is false', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+        controlsDisabled={false}
+      />
+    );
+
+    for (const z of screen.getAllByTestId('joystick-zone')) {
+      expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
+    }
+  });
+
+  it('BAT and SIG telemetry readouts display "—" (placeholder) in phone view', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-portrait"
+      />
+    );
+
+    // Find the BAT label span, then check its sibling value span
+    const allSpans = screen.getAllByText(/BAT|SIG/);
+    const batLabelSpan = allSpans.find((el) => el.textContent === 'BAT');
+    expect(batLabelSpan).toBeTruthy();
+    const batValueSpan = batLabelSpan?.nextElementSibling as HTMLElement | undefined;
+    expect(batValueSpan?.textContent).toBe('—');
+
+    // Find the SIG label span, then check its sibling value span
+    const sigLabelSpan = allSpans.find((el) => el.textContent === 'SIG');
+    expect(sigLabelSpan).toBeTruthy();
+    const sigValueSpan = sigLabelSpan?.nextElementSibling as HTMLElement | undefined;
+    expect(sigValueSpan?.textContent).toBe('—');
   });
 });

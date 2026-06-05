@@ -6,7 +6,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 1 — Robot does not stop when joystick is released (SAFETY) 🔴
+## BUG 1 — Robot does not stop when joystick is released (SAFETY) ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** `TeleopClient` now runs a 20 Hz continuous publisher (`PUBLISH_INTERVAL_MS = 50`, `STOP_REPEATS = 10`): while a non-zero command is held it republishes it every tick (a dropped/reordered packet self-corrects); on release (`sendTwist(0,0,0)`) it sends a bounded burst of `STOP_REPEATS` explicit zero-twists over ~500 ms then goes silent so keepalive/latency still work. Publisher is silent with no input (idle-reconnect/keepalive behavior unchanged) and resets on every (re)connect so a blip never resumes stale motion. The stale-closure cross-axis read (hypothesis 2) is gone: both views hold live axes in an `axesRef` and always send the full current intent, so releasing one joystick zeroes only its own axes. Tests: `web-client/test/teleop_client_continuous_publish.test.ts` + cross-axis guard in `MissionControl.test.tsx`. Hypothesis 3 (robot-side latching) is out of scope for the web client; the bounded zero burst + server watchdog cover it.
 
 **Symptom:** After letting go of a joystick, the robot keeps moving. Either velocity is still being published, or the robot never receives a stop.
 
@@ -24,7 +26,11 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 2 — E-STOP button renders on top of the Settings drawer 🟠
+## BUG 2 — E-STOP button renders on top of the Settings drawer 🟠 PARTIAL
+
+> **Joysticks part fixed on `feat/control-safety-fixes`.** The drawer (`z-index:9`) already paints above the touch joysticks (phone joysticks are in-flow `auto`; tablet `z-index:5`), but they stayed *interactive* while it was open — and the left joystick is never covered by the 320px right-side panel. Fix: `App` passes `controlsDisabled={drawerOpen}` into both views; the joystick wrappers become `pointerEvents:'none'` while the drawer is open, so neither joystick can be grabbed. The zones (hints) stay rendered one layer below the drawer. Tests: `controlsDisabled` toggling in `MissionControl.test.tsx`/`MissionTablet.test.tsx` + an App-level guard that opening the drawer disables the joysticks.
+>
+> **Still open — the E-STOP button itself.** It keeps `zIndex:10` (above the drawer) and remains tappable while the drawer is open. Left intentionally for now: a safety control arguably *should* stay reachable. Confirm product-side whether E-STOP should be covered/disabled by the drawer or stay on top; if it stays it must be visually clean over the panel.
 
 **Symptom:** Opening Settings (slides in from the right) does not cover the E-STOP button; E-STOP paints over the drawer.
 
@@ -37,7 +43,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 3 — E-STOP label inconsistent + button overflows the screen on tablet 🟠
+## BUG 3 — E-STOP label inconsistent + button overflows the screen on tablet ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** Symptom A: `MissionTablet`'s E-STOP label is unified to `■ STOP` (matches `MissionControl`); the engaged-state label stays `■ RESET`. Symptom B: the tablet top bar is now resilient on one fixed-height line — the robot-name label is the sole shrink target (`flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap`) so it truncates first, the E-STOP button is pinned `flexShrink:0` so it can never be squeezed off, and the bar carries `overflow:hidden` as a safety net. The readouts / connection chip keep their min-content room. Keeping a single 44px row preserves the absolutely-positioned `top:44` engaged banner. Tests: 3 added to `test/MissionTablet.test.tsx` (label unified, E-STOP `flexShrink:0`, name truncation + bar overflow); the two existing button queries moved from `/E-STOP/i` to `/STOP/i`.
 
 **Symptom A (label):** Portrait shows `■ STOP`; tablet and landscape show `■ E-STOP`.
 - `views/MissionControl.tsx:229` renders `■ STOP` (used for phone portrait *and* landscape).
@@ -50,7 +58,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 4 — E-STOP may not actually stop the robot (SAFETY) 🔴
+## BUG 4 — E-STOP may not actually stop the robot (SAFETY) ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** Now a real server-side latch. Client sends `{"type":"estop"}`; `TeleopServer` sets `estopped_`, publishes one zero `cmd_vel`, and **ignores all incoming twists until `{"type":"estop_reset"}`** — so a still-engaged joystick can no longer override the stop. Ping/keepalive still resets the watchdog so the connection survives while latched; the latch clears on a fresh connect. Server confirms with `{"type":"estop_state","engaged":bool}`; the UI shows an "⚠ E-STOP ENGAGED" banner and flips the button to a deliberate RESET (Space engages only, never resets). Client `sendTwist` is a no-op while latched. Tests: 4 new C++ (`EstopIgnoresSubsequentTwist`, `EstopResetResumesTwist`, `EstopRepliesWithEngagedState`, …) + webclient protocol/bridge/view tests.
 
 **Symptom:** Tapping E-STOP several times did not stop a rolling robot.
 
@@ -68,7 +78,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 5 — Several frontend telemetry fields are hardcoded / fake 🟡
+## BUG 5 — Several frontend telemetry fields are hardcoded / fake ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** `fps`/`res` are now real: `WhepClient` polls `RTCPeerConnection.getStats()` every 1 s once the track is live, reads the inbound-rtp video report's `framesPerSecond`/`frameWidth`/`frameHeight`, and emits them via a new `onStats` callback; `useWhepStream` exposes them as `stats: VideoStats | null`, and the tablet STREAM panel renders `stats.fps.toFixed(1)` / `${width}×${height}`, falling back to `—` until the first sample (so the old fake `30.1` / wrong `1280×720` are gone — live stream now reports its true 15 fps / 1920×1080). The fake `UP` / `BAT` / `SIG` placeholders (tablet top bar + phone telemetry stack) now render `—` instead of invented values, since there is no real uptime/battery/signal telemetry source yet (battery has a backlog plan). `src`/`codec` stay static (`WebRTC` / `H.264`) — true pipeline values, now commented as static-but-accurate. `LAT` was already real. Deviations recorded in `memory/agent-guides/deviations.md`. Tests: whep_client +3 (getStats polling), useWhepStream +2 (stats update/clear), MissionTablet +1 (fps/res from stats + `—` fallbacks), MissionControl +1 (BAT/SIG `—`). Webclient 300 pass.
 
 The video FPS (and more) are not real. Audit of literal display values:
 

@@ -12,6 +12,8 @@ export interface TeleopBridge {
   robotType: string;
   sendTwist: (lx: number, ly: number, az: number) => void;
   eStop: () => void;
+  estopEngaged: boolean;
+  resetEstop: () => void;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -32,6 +34,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [robotName, setRobotName] = useState('');
   const [robotNamespace, setRobotNamespace] = useState('');
   const [robotType, setRobotType] = useState('');
+  const [estopEngaged, setEstopEngaged] = useState(false);
 
   const clientRef = useRef<TeleopClient | null>(null);
 
@@ -54,6 +57,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onOdom: (x, y, heading) => {
         setOdom({ x, y, heading });
+      },
+      onEstopState: (engaged) => {
+        setEstopEngaged(engaged);
       },
       onClose: () => {
         setConnectionState('disconnected');
@@ -80,7 +86,13 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
 
   const eStop = () => {
     if (clientRef.current) {
-      clientRef.current.sendTwist(0, 0, 0);
+      clientRef.current.engageEstop();
+    }
+  };
+
+  const resetEstop = () => {
+    if (clientRef.current) {
+      clientRef.current.resetEstop();
     }
   };
 
@@ -95,5 +107,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     robotType,
     sendTwist,
     eStop,
+    estopEngaged,
+    resetEstop,
   };
 }

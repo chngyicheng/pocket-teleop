@@ -13,21 +13,32 @@
  */
 export type WhepState = 'connecting' | 'live' | 'retrying' | 'error';
 
+/** Live decoded-video stats sampled from RTCPeerConnection.getStats(). */
+export interface VideoStats {
+  fps:    number | null;
+  width:  number | null;
+  height: number | null;
+}
+
 export interface WhepCallbacks {
   onStream: (stream: MediaStream) => void;
   onError:  (msg: string) => void;
   onClose:  () => void;
   onStateChange?: (state: WhepState) => void;
+  /** Periodic decoded-video stats while the stream is live. */
+  onStats?: (stats: VideoStats) => void;
 }
 
 const BASE_RETRY_MS  = 3_000;
 const MAX_RETRY_MS   = 30_000;
+const STATS_INTERVAL_MS = 1_000;
 
 export class WhepClient {
   private readonly url:       string;
   private readonly callbacks: WhepCallbacks;
   private pc:         RTCPeerConnection | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
+  private statsTimer: ReturnType<typeof setInterval> | null = null;
   private retryDelay  = BASE_RETRY_MS;
   private stopped     = false;
 
@@ -46,6 +57,7 @@ export class WhepClient {
   stop(): void {
     this.stopped = true;
     this._clearRetry();
+    this._clearStats();
     this._closePc();
   }
 
@@ -68,6 +80,7 @@ export class WhepClient {
         this.retryDelay = BASE_RETRY_MS; // reset back-off on success
         this.callbacks.onStateChange?.('live');
         this.callbacks.onStream(e.streams[0]);
+        this._startStats(pc);
       }
     };
 
@@ -152,7 +165,47 @@ export class WhepClient {
     }
   }
 
+  // ── Live video stats ─────────────────────────────────────────────────────
+
+  /** Begin sampling decoded-video stats once the track is live. */
+  private _startStats(pc: RTCPeerConnection): void {
+    if (!this.callbacks.onStats) return;
+    this._clearStats();
+    this.statsTimer = setInterval(() => { void this._pollStats(pc); }, STATS_INTERVAL_MS);
+  }
+
+  /** Read one getStats() sample and report the inbound video stats, if any. */
+  private async _pollStats(pc: RTCPeerConnection): Promise<void> {
+    if (this.pc !== pc) { this._clearStats(); return; }
+    try {
+      const report = await pc.getStats();
+      if (this.pc !== pc) return;
+      let stats: VideoStats | null = null;
+      report.forEach((r: Record<string, unknown>) => {
+        const kind = r.kind ?? r.mediaType; // newer browsers expose `kind`
+        if (r.type === 'inbound-rtp' && kind === 'video') {
+          stats = {
+            fps:    typeof r.framesPerSecond === 'number' ? r.framesPerSecond : null,
+            width:  typeof r.frameWidth === 'number' ? r.frameWidth : null,
+            height: typeof r.frameHeight === 'number' ? r.frameHeight : null,
+          };
+        }
+      });
+      if (stats) this.callbacks.onStats?.(stats);
+    } catch {
+      // getStats can transiently reject while the pc is tearing down; ignore.
+    }
+  }
+
+  private _clearStats(): void {
+    if (this.statsTimer !== null) {
+      clearInterval(this.statsTimer);
+      this.statsTimer = null;
+    }
+  }
+
   private _closePc(): void {
+    this._clearStats();
     this.pc?.close();
     this.pc = null;
   }
