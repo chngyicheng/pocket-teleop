@@ -460,9 +460,9 @@ describe('MissionControl', () => {
     // Click to close
     fireEvent.click(leftTab);
 
-    // After toggle, should be closed (22px)
+    // After toggle, should be closed (left column slides to 0)
     gridTemplateColumns = (gridContainer?.style.gridTemplateColumns || '').toString();
-    expect(gridTemplateColumns).toContain('22');
+    expect(gridTemplateColumns).toMatch(/^0px /);
 
     // Click again to reopen
     fireEvent.click(leftTab);

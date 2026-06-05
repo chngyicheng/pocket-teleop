@@ -141,4 +141,44 @@ describe('CollapsibleRail', () => {
     const tabButton = container.querySelector('[data-testid="rail-tab-right"]');
     expect(tabButton?.textContent).toContain('◀');
   });
+
+  it('panel sits in place (translateX(0)) when open', () => {
+    const { container } = render(
+      <CollapsibleRail side="left" open={true} onToggle={() => {}} title="Stream">
+        <div>Content</div>
+      </CollapsibleRail>
+    );
+    const panel = container.querySelector('[data-testid="rail-panel-left"]') as HTMLElement;
+    expect(panel.style.transform).toBe('translateX(0)');
+  });
+
+  it('left panel slides fully out (translateX(-100%)) when collapsed', () => {
+    const { container } = render(
+      <CollapsibleRail side="left" open={false} onToggle={() => {}} title="Stream">
+        <div>Content</div>
+      </CollapsibleRail>
+    );
+    const panel = container.querySelector('[data-testid="rail-panel-left"]') as HTMLElement;
+    expect(panel.style.transform).toBe('translateX(-100%)');
+  });
+
+  it('right panel slides fully out (translateX(100%)) when collapsed', () => {
+    const { container } = render(
+      <CollapsibleRail side="right" open={false} onToggle={() => {}} title="Map">
+        <div>Content</div>
+      </CollapsibleRail>
+    );
+    const panel = container.querySelector('[data-testid="rail-panel-right"]') as HTMLElement;
+    expect(panel.style.transform).toBe('translateX(100%)');
+  });
+
+  it('toggle z-index sits above joystick hold-zones (z 5) so landscape taps register', () => {
+    const { container } = render(
+      <CollapsibleRail side="left" open={true} onToggle={() => {}} title="Stream">
+        <div>Content</div>
+      </CollapsibleRail>
+    );
+    const tabButton = container.querySelector('[data-testid="rail-tab-left"]') as HTMLElement;
+    expect(Number(tabButton.style.zIndex)).toBeGreaterThan(5);
+  });
 });

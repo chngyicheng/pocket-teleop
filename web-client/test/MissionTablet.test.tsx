@@ -559,7 +559,7 @@ describe('MissionTablet', () => {
       // Click left tab to collapse
       fireEvent.click(leftTab);
       gridStyle = gridContainer.style.gridTemplateColumns;
-      expect(gridStyle).toContain('22px'); // left collapsed
+      expect(gridStyle).toMatch(/^0px /); // left collapsed → first column 0
 
       // Click again to expand
       fireEvent.click(leftTab);
@@ -586,7 +586,7 @@ describe('MissionTablet', () => {
       // Click right tab to collapse
       fireEvent.click(rightTab);
       gridStyle = gridContainer.style.gridTemplateColumns;
-      expect(gridStyle).toContain('22px'); // right collapsed
+      expect(gridStyle).toMatch(/ 0px$/); // right collapsed → last column 0
 
       // Click again to expand
       fireEvent.click(rightTab);

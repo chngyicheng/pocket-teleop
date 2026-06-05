@@ -217,7 +217,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         color: p.text,
         fontFamily: sansFont,
         display: 'grid',
-        gridTemplateColumns: `${leftOpen ? 220 : 22}px 1fr ${rightOpen ? 240 : 22}px`,
+        gridTemplateColumns: `${leftOpen ? 220 : 0}px 1fr ${rightOpen ? 240 : 0}px`,
         gridTemplateRows: '44px 1fr',
         position: 'relative',
         transition: 'grid-template-columns 0.2s ease',
@@ -371,6 +371,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         open={leftOpen}
         onToggle={() => setLeftOpen(o => !o)}
         title="STREAM"
+        width={220}
         accent={p.accent}
         border={p.border}
         surface={p.surface}
@@ -521,6 +522,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         open={rightOpen}
         onToggle={() => setRightOpen(o => !o)}
         title="MAP"
+        width={240}
         accent={p.accent}
         border={p.border}
         surface={p.surface}

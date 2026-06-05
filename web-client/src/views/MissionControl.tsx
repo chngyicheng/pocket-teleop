@@ -152,7 +152,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         color: p.text,
         fontFamily: sansFont,
         display: 'grid',
-        gridTemplateColumns: `${leftOpen ? 180 : 22}px 1fr ${rightOpen ? 180 : 22}px`,
+        gridTemplateColumns: `${leftOpen ? 180 : 0}px 1fr ${rightOpen ? 180 : 0}px`,
         gridTemplateRows: '44px 1fr',
         position: 'relative',
         overflow: 'hidden',
@@ -299,6 +299,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             title="STREAM"
             open={leftOpen}
             onToggle={() => setLeftOpen((o) => !o)}
+            width={180}
             accent={p.accent}
             border={p.border}
             surface={p.surface}
@@ -492,6 +493,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             title="MAP"
             open={rightOpen}
             onToggle={() => setRightOpen((o) => !o)}
+            width={180}
             accent={p.accent}
             border={p.border}
             surface={p.surface}
