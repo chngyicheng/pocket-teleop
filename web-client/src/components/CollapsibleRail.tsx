@@ -62,7 +62,9 @@ const CollapsibleRail: React.FC<CollapsibleRailProps> = ({
         borderRadius: 0,
       }
     : {
-        top: 12,
+        // Vertically centered on the rail edge.
+        top: '50%',
+        transform: 'translateY(-50%)',
         height: 56,
         width: 26,
         // Anchor to the (now 0-width) column edge and protrude inward over the video.
