@@ -537,31 +537,17 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             color: p.muted,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <MiniMap
-              pos={odomPos}
-              heading={odomPos.heading}
-              size={200}
-              color={p.accent}
-              bg={p.bg}
-              border={p.border}
-              grid={true}
-            />
-          </div>
+          <MiniMap
+            pos={odomPos}
+            heading={odomPos.heading}
+            size={200}
+            color={p.accent}
+            bg={p.bg}
+            border={p.border}
+            grid={true}
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                opacity: 0.5,
-                textTransform: 'uppercase',
-                fontFamily: monoFont,
-              }}
-            >
-              HEADING
-            </div>
+          <SidePanel title="HEADING">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <Compass heading={odomPos.heading} color={p.accent} font={monoFont} size={44} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontFamily: monoFont, fontSize: 10 }}>
@@ -572,45 +558,21 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
                 <DataRow k="track" v={(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0) + '°'} />
               </div>
             </div>
-          </div>
+          </SidePanel>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                opacity: 0.5,
-                textTransform: 'uppercase',
-                fontFamily: monoFont,
-              }}
-            >
-              LIGHTS
-            </div>
+          <SidePanel title="LIGHTS">
             <div style={{ display: 'flex', gap: 6 }}>
               <MissionPillToggle label="HEAD" on={true} />
               <MissionPillToggle label="AUX" on={false} />
               <MissionPillToggle label="LASER" on={false} />
             </div>
-          </div>
+          </SidePanel>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.18em',
-                opacity: 0.5,
-                textTransform: 'uppercase',
-                fontFamily: monoFont,
-              }}
-            >
-              HINT
-            </div>
+          <SidePanel title="HINT">
             <div style={{ fontFamily: monoFont, fontSize: 10, color: p.muted, lineHeight: 1.55 }}>
               Touch &amp; hold either bottom corner of the screen to engage a joystick. Spacebar triggers e-stop.
             </div>
-          </div>
+          </SidePanel>
         </div>
       </CollapsibleRail>
 
