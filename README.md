@@ -56,7 +56,7 @@ docker compose up --build
 
 On first login you will be prompted to change the password. After that, credentials persist in the `auth-data` Docker volume across reboots and image rebuilds.
 
-**To reset credentials:** `docker compose down -v` (deletes the volume) then restart.
+**To reset credentials to defaults:** `docker compose down -v` (deletes the volume) then restart. This forces a password change on next login.
 
 ## Managing the stack
 

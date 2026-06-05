@@ -49,3 +49,15 @@ export async function saveCredentials(
   await fs.writeFile(tmpPath, JSON.stringify(creds, null, 2));
   await fs.rename(tmpPath, credPath);
 }
+
+export async function enforceDefaultCredentialChange(
+  adminPassword: string,
+  credPath: string,
+): Promise<void> {
+  if (!existsSync(credPath)) return;
+  const creds = await readCredentials(credPath);
+  if ((await verifyPassword(adminPassword, creds.passwordHash)) && creds.mustChangePassword === false) {
+    creds.mustChangePassword = true;
+    await saveCredentials(creds, credPath);
+  }
+}

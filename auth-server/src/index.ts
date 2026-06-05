@@ -1,5 +1,5 @@
 import { createApp } from './app.js';
-import { initCredentials } from './credentials.js';
+import { initCredentials, enforceDefaultCredentialChange } from './credentials.js';
 import { makeWsUpgradeHandler } from './proxy.js';
 
 const adminUser     = process.env['TELEOP_ADMIN_USER'];
@@ -19,6 +19,7 @@ const PORT          = parseInt(process.env['PORT'] ?? '3000', 10);
 const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'http://localhost:9091';
 
 await initCredentials(adminUser, adminPassword, CRED_PATH);
+await enforceDefaultCredentialChange(adminPassword, CRED_PATH);
 
 const app = createApp({
   credPath:      CRED_PATH,

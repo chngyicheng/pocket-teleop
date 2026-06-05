@@ -2,6 +2,8 @@ import express from 'express';
 import session from 'express-session';
 import FileStoreCreator from 'session-file-store';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { authRouter } from './routes/auth.js';
 import { makeHttpProxy } from './proxy.js';
 
@@ -25,6 +27,8 @@ export interface AppOptions {
 const FileStore = (FileStoreCreator as any)(session);
 
 export function createApp(options: AppOptions): express.Application {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
   const webClientUrl = options.webClientUrl
     ?? process.env['WEBCLIENT_URL']
     ?? 'http://webclient:80';
@@ -62,6 +66,9 @@ export function createApp(options: AppOptions): express.Application {
   }));
 
   app.get('/health', (_req, res) => res.sendStatus(200));
+
+  // Unauthenticated static fonts route — must be before auth-redirect middleware
+  app.use('/auth-static', express.static(path.join(__dirname, '../public')));
 
   // Body parsers scoped to /auth only — proxy routes must receive raw streams.
   // Global body parsers consume the request stream before the proxy can pipe it,

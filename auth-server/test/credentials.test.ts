@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import {
   hashPassword, verifyPassword,
-  initCredentials, readCredentials, saveCredentials,
+  initCredentials, readCredentials, saveCredentials, enforceDefaultCredentialChange,
   type Credentials,
 } from '../src/credentials.js';
 
@@ -107,5 +107,42 @@ describe('saveCredentials', () => {
     expect(loaded.username).toBe('user2');
     expect(loaded.mustChangePassword).toBe(false);
     expect(await verifyPassword('pass2', loaded.passwordHash)).toBe(true);
+  });
+});
+
+describe('enforceDefaultCredentialChange', () => {
+  it('sets mustChangePassword to true when stored hash matches default password', async () => {
+    const p = path.join(tmpDir, 'enforce-default-test.json');
+    const hash = await hashPassword('pass123');
+    const creds: Credentials = {
+      username: 'admin',
+      passwordHash: hash,
+      mustChangePassword: false,
+    };
+    fs.writeFileSync(p, JSON.stringify(creds));
+    await enforceDefaultCredentialChange('pass123', p);
+    const loaded = await readCredentials(p);
+    expect(loaded.mustChangePassword).toBe(true);
+  });
+
+  it('does not change mustChangePassword when stored hash does not match default password', async () => {
+    const p = path.join(tmpDir, 'enforce-changed-password-test.json');
+    const hash = await hashPassword('changedpass');
+    const creds: Credentials = {
+      username: 'admin',
+      passwordHash: hash,
+      mustChangePassword: false,
+    };
+    fs.writeFileSync(p, JSON.stringify(creds));
+    await enforceDefaultCredentialChange('pass123', p);
+    const loaded = await readCredentials(p);
+    expect(loaded.mustChangePassword).toBe(false);
+  });
+
+  it('is a no-op when credentials file does not exist', async () => {
+    const p = path.join(tmpDir, 'nonexistent-credentials.json');
+    // Should not throw or create the file
+    await enforceDefaultCredentialChange('pass123', p);
+    expect(fs.existsSync(p)).toBe(false);
   });
 });
