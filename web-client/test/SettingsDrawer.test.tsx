@@ -72,7 +72,8 @@ describe('SettingsDrawer', () => {
     const drawer = container.querySelector('[role="dialog"]');
     expect(drawer).toBeTruthy();
     const style = (drawer as HTMLElement)?.style;
-    expect(style?.transform).toBe('translateX(100%)');
+    // Slides in from the LEFT edge — hidden state is shifted left.
+    expect(style?.transform).toBe('translateX(-100%)');
   });
 
   it('calls onClose when close button is clicked', async () => {
@@ -81,6 +82,39 @@ describe('SettingsDrawer', () => {
     const closeBtn = screen.getByLabelText('Close settings');
     await userEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('slides in from the left edge (anchored left, border on the right)', () => {
+    const { container } = render(<SettingsDrawer open={true} onClose={() => {}} />);
+    const drawer = container.querySelector('[role="dialog"]') as HTMLElement;
+    const styleAttr = drawer.getAttribute('style') ?? '';
+    expect(styleAttr).toContain('left: 0');
+    expect(styleAttr).toContain('border-right');
+    expect(styleAttr).not.toContain('border-left');
+  });
+
+  it('renders a backdrop when open and calls onClose when it is clicked', async () => {
+    const onClose = vi.fn();
+    render(<SettingsDrawer open={true} onClose={onClose} />);
+    const backdrop = screen.getByTestId('settings-backdrop');
+    expect(backdrop).toBeTruthy();
+    await userEvent.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render a backdrop when closed', () => {
+    render(<SettingsDrawer open={false} onClose={() => {}} />);
+    expect(screen.queryByTestId('settings-backdrop')).toBeNull();
+  });
+
+  it('starts below the top bar by topOffset and fills the remaining height', () => {
+    const { container } = render(
+      <SettingsDrawer open={true} onClose={() => {}} topOffset={44} />
+    );
+    const drawer = container.querySelector('[role="dialog"]') as HTMLElement;
+    expect(drawer.style.width).toBe('320px');
+    expect(drawer.style.top).toBe('44px');
+    expect(drawer.style.height).toBe('calc(100vh - 44px)');
   });
 
   // ─── Gamepad Section Tests ────────────────────────────────────────────────
@@ -295,7 +329,8 @@ describe('SettingsDrawer', () => {
     // Accept either serialization to stay robust.
     const bg = style?.backgroundColor ?? '';
     const fg = style?.color ?? '';
-    expect(bg === '#0b0d12' || bg === 'rgb(11, 13, 18)').toBe(true);
+    // Mission palette surface (#14171e) + text (#e6e9ef).
+    expect(bg === '#14171e' || bg === 'rgb(20, 23, 30)').toBe(true);
     expect(fg === '#e6e9ef' || fg === 'rgb(230, 233, 239)').toBe(true);
   });
 
