@@ -129,7 +129,8 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 | **Mission Control UI React migration plan (2026-05-28)** | `docs/superpowers/plans/2026-05-28-mission-ui-react-migration.md` |
 | **Mission UI design parity fix plan (2026-05-30)** | `docs/superpowers/plans/2026-05-30-mission-ui-design-parity-fixes.md` |
 | **Collapsible rails + video auto-fit plan (2026-06-05)** | `docs/superpowers/plans/2026-06-05-collapsible-rails-video-fit.md` |
-| **Post-merge bugfixes plan (2026-06-05, ✅ built — branch `fix/post-merge-bugs`)** | `docs/superpowers/plans/2026-06-05-post-merge-bugfixes.md` |
+| **Post-merge bugfixes plan (2026-06-05, ✅ built — merged `7bb948f`)** | `docs/superpowers/plans/2026-06-05-post-merge-bugfixes.md` |
+| **⬜ Video lazy-load + NO SIGNAL plan (2026-06-05, NEXT — not built)** | `docs/superpowers/plans/2026-06-05-video-lazy-load.md` |
 | **Feature backlog (from 2026-05-06)** | See "Feature plan pool" below |
 
 ### Feature plan pool (waiting on user to pick priority)
