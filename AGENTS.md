@@ -22,7 +22,7 @@ Details: [version-control.md](memory/agent-guides/version-control.md).
 
 ## Handover state — continue from here
 
-> **Current state (2026-06-05):** `main` @ `85ad697`, clean + pushed; working tree carries only untracked `.claude/` + `design_handoff_pocket_teleop/`. No open backlog. Latest work (video lazy-load + NO SIGNAL + gzip first-paint) is merged; details in the latest **Milestones** row + [deviations.md](memory/agent-guides/deviations.md). Per-feature rationale lives in deviations + plans — this block stays orientation-only.
+> **Current state (2026-06-06):** `main` @ `85ad697` + uncommitted adversarial-backlog fixes (web-client + auth-server) in the working tree, pending commit. No other open backlog. Latest merged work (video lazy-load + NO SIGNAL + gzip first-paint); details in the **Milestones** rows + [deviations.md](memory/agent-guides/deviations.md). Per-feature rationale lives in deviations + plans — this block stays orientation-only.
 >
 > **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` from repo root. The `-p pocket-teleop` pin reuses the `auth-data` volume so operator creds survive rebuilds; `down` to stop, `down -v` to reset creds. Currently up + healthy.
 >
@@ -30,7 +30,7 @@ Details: [version-control.md](memory/agent-guides/version-control.md).
 >
 > **Product decisions — do NOT re-ask:** E-STOP stays tappable on top while the drawer is open (safety; never cover/disable). E-STOP label is `■ STOP` everywhere (engaged → `■ RESET`).
 >
-> **Test baseline:** webclient **363** pass / auth **49** pass / video-bridge **19** / C++ **44**. Docker only (see [repository-structure.md](memory/agent-guides/repository-structure.md); iterate with a targeted file list). Pre-existing reds — leave red, not regressions: webclient `integration.test.ts` (needs live server) + 9 `*.adversarial.test.*` + 1 `whep_client` ICE-timer flake; auth 2 adversarial (`proxy_auth`, `change_password_reject_same`).
+> **Test baseline:** webclient **372** pass / auth **51** pass / video-bridge **19** / C++ **44**. Docker only (see [repository-structure.md](memory/agent-guides/repository-structure.md); iterate with a targeted file list). Adversarial backlog (9 webclient + 2 auth) cleared — see latest **Milestones** row. Pre-existing reds — leave red, not regressions: webclient `integration.test.ts` (needs live server) + 1 `whep_client` ICE-timer flake; auth `mediamtx_integration.test.ts` (3 tests; needs the `mediamtx-test` companion container — green only via full `--profile test` compose).
 >
 > **Subagent/worktree gotchas:** (1) a Haiku subagent's cwd can pin to the **main repo instead of the worktree** — verify `git status` in BOTH before trusting reports (transfer stray edits with `git diff | git apply`). (2) Docker test runs may leave a **root-owned** `web-client/node_modules`; chown back before removing a worktree: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
 >
@@ -75,6 +75,7 @@ Tests column = webclient / auth / video-bridge / C++ (— where not yet present)
 | Post-merge bugfixes — offline vendored woff2, auth theme + /auth-static route, enforceDefaultCredentialChange | 343 / 46 / 19 / 44 | `fix/post-merge-bugs` (merged `7bb948f`) |
 | Collapsible rails + video fit — CollapsibleRail slide-out bookmark, toggle z15 > joystick z5, objectFit contain; portrait unchanged | 323 / 34 / 19 / 44 | `feat/collapsible-rails-video-fit` (merged `00f14b4`) |
 | Video lazy-load + NO SIGNAL + gzip first-paint — 甲 useWhepStream defers start (requestIdleCallback) + code-splits WhepClient; 乙 VideoSignalOverlay (CONNECTING…/RECONNECTING…/NO SIGNAL, z2 < joystick z5); 丙 `/perf` beacon (Navigation/Paint/resource timing → auth log); 丁 instant `#boot-splash` in index.html; **戊 root cause: nginx gzip was off** — new `nginx.conf` (`gzip on` + immutable /assets cache), bundle 186→57 KB, `readyMs` 7919→~1937 ms | 363 / 49 / 19 / 44 | `feat/video-lazy-load` (merged `85ad697`) |
+| Adversarial backlog cleared — 6 hardening fixes: protocol odom `Number.isFinite` guard, MissionControl LAT readout (neg/NaN/Inf → `— ms`), Space-key E-STOP ignored while editable field focused, TeleopClient `maxMissedPongs` zombie-link detector (onClose + reconnect), auth change-password rejects new==current (400), **/ws upgrade now session-authenticated** (`makeWsUpgradeHandler` runs express-session, fail-closed); pong-timeout test rewritten to standard `vi.mock(connection)` harness | 372 / 51 / 19 / 44 | — |
 
 ### Known deviations (still relevant)
 

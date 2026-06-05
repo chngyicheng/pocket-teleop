@@ -51,7 +51,7 @@ export function createApp(options: AppOptions): express.Application {
 
   const app = express();
 
-  app.use(session({
+  const sessionMiddleware = session({
     store,
     secret: options.sessionSecret,
     resave: false,
@@ -63,7 +63,10 @@ export function createApp(options: AppOptions): express.Application {
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
     rolling: true,
-  }));
+  });
+  app.use(sessionMiddleware);
+  // Exposed so the WebSocket upgrade handler can authenticate /ws the same way.
+  app.set('sessionMiddleware', sessionMiddleware);
 
   app.get('/health', (_req, res) => res.sendStatus(200));
 

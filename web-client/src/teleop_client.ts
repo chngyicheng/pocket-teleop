@@ -28,6 +28,11 @@ export interface TeleopClientOptions {
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
   publishIntervalMs?: number;
+  /**
+   * Consecutive unanswered pings before the link is treated as a zombie and
+   * torn down (onClose + reconnect). Default: 3.
+   */
+  maxMissedPongs?: number;
 }
 
 export class TeleopClient {
@@ -47,7 +52,11 @@ export class TeleopClient {
   private readonly retryIntervalMs: number;
   private readonly keepaliveIntervalMs: number;
   private readonly publishIntervalMs: number;
+  private readonly maxMissedPongs: number;
   private readonly options: TeleopClientOptions;
+
+  // Zombie-link detection: counts pings sent with no pong reply in between.
+  private missedPongs = 0;
 
   // Continuous-publish state
   /** Non-null while a joystick is held; the values to repeat each tick. */
@@ -63,6 +72,7 @@ export class TeleopClient {
     this.retryIntervalMs = options.retryIntervalMs ?? 5000;
     this.keepaliveIntervalMs = options.keepaliveIntervalMs ?? 200;
     this.publishIntervalMs = options.publishIntervalMs ?? PUBLISH_INTERVAL_MS;
+    this.maxMissedPongs = options.maxMissedPongs ?? 3;
     this.connection = new Connection({
       onMessage: (raw) => this.handleMessage(raw),
       onOpen: () => { /* retryAttempt is reset in handleMessage on status */ },
@@ -105,6 +115,8 @@ export class TeleopClient {
     this.repeatTwist = null;
     this.zeroFramesLeft = 0;
     this.estopEngaged = false;
+    this.missedPongs = 0;
+    this.pingSentAt = 0;
     this.connection.connect(url);
     this.startKeepalive();
     this.startPublisher();
@@ -181,6 +193,7 @@ export class TeleopClient {
         this.options.onLatency?.(Date.now() - this.pingSentAt);
         this.pingSentAt = 0;
       }
+      this.missedPongs = 0; // live link — clear the zombie counter
       this.options.onPong?.();
     } else if (msg.type === 'odom') {
       this.options.onOdom?.(msg.x, msg.y, msg.heading);
@@ -212,11 +225,37 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
     this.keepaliveId = setInterval(() => {
       if (Date.now() - this.lastSentAt >= 200) {
+        // A still-pending pingSentAt means the previous ping was never answered.
+        if (this.pingSentAt > 0) {
+          this.missedPongs += 1;
+          if (this.missedPongs >= this.maxMissedPongs) {
+            this.handlePongTimeout();
+            return;
+          }
+        }
         this.pingSentAt = Date.now();
         this.connection.send(buildPing());
         this.lastSentAt = Date.now();
       }
     }, this.keepaliveIntervalMs);
+  }
+
+  /**
+   * The server stopped answering pings: the socket is a zombie (open but dead).
+   * Tear down the keepalive/publisher, notify via onClose, and reconnect so the
+   * operator regains a live link instead of silently steering a stale stream.
+   */
+  private handlePongTimeout(): void {
+    this.stopKeepalive();
+    this.stopPublisher();
+    this.gamepadHandler.stop();
+    this.pingSentAt = 0;
+    this.missedPongs = 0;
+    this.options.onClose?.(4000, 'pong timeout');
+    if (!this.intentionalDisconnect && !this.retryPending) {
+      this.retryPending = true;
+      this.scheduleRetry();
+    }
   }
 
   private stopKeepalive(): void {

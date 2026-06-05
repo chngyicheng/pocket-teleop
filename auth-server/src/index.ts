@@ -31,4 +31,4 @@ const server = app.listen(PORT, () => {
   console.log(`auth-server listening on port ${PORT}`);
 });
 
-server.on('upgrade', makeWsUpgradeHandler(TELEOP_URL));
+server.on('upgrade', makeWsUpgradeHandler(TELEOP_URL, app.get('sessionMiddleware')));

@@ -44,9 +44,9 @@ export function parseMessage(raw: string): InboundMessage {
       return { type: 'error', message: msg['message'] as string };
     }
     if (msg['type'] === 'odom' &&
-        typeof msg['x'] === 'number' &&
-        typeof msg['y'] === 'number' &&
-        typeof msg['heading'] === 'number') {
+        typeof msg['x'] === 'number' && Number.isFinite(msg['x']) &&
+        typeof msg['y'] === 'number' && Number.isFinite(msg['y']) &&
+        typeof msg['heading'] === 'number' && Number.isFinite(msg['heading'])) {
       return { type: 'odom', x: msg['x'], y: msg['y'], heading: msg['heading'] };
     }
     if (msg['type'] === 'estop_state') {

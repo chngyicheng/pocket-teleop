@@ -85,6 +85,18 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
+        // Ignore Space while typing in a form field — it must insert a
+        // character, not fire E-STOP. Only fire when no editable element holds focus.
+        const t = e.target;
+        if (
+          t instanceof HTMLElement &&
+          (t.tagName === 'INPUT' ||
+            t.tagName === 'TEXTAREA' ||
+            t.tagName === 'SELECT' ||
+            t.isContentEditable)
+        ) {
+          return;
+        }
         e.preventDefault();
         bridge.eStop();
       }
@@ -133,6 +145,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
   // Derive minimap/compass data from bridge.odom
   const odomPos = bridge.odom ?? { x: 0, y: 0, heading: 0 };
+
+  // Latency readout: only render a number for a real, finite, non-negative
+  // value. Negative / NaN / Infinity all fall back to the em-dash placeholder.
+  const latText =
+    bridge.latencyMs !== null &&
+    Number.isFinite(bridge.latencyMs) &&
+    bridge.latencyMs >= 0
+      ? `${bridge.latencyMs} ms`
+      : '— ms';
 
   // Connection state label
   const connLabel = CONNECTION_LABELS[bridge.connectionState];
@@ -343,7 +364,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <Readout
                   label="LAT"
-                  value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
+                  value={latText}
                   color={p.accent}
                 />
                 <Readout label="BAT" value="—" color={p.accent} />
@@ -603,7 +624,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         >
           <Readout
             label="LAT"
-            value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
+            value={latText}
             color={p.accent}
           />
           <Readout label="BAT" value="—" color={p.accent} />

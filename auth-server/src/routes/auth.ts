@@ -67,6 +67,9 @@ export function authRouter(credPath: string): Router {
       if (!await verifyPassword(currentPassword, creds.passwordHash)) {
         return res.redirect('/auth/change-password?error=1');
       }
+      if (newPassword === currentPassword) {
+        return res.status(400).send('New password must differ from the current password');
+      }
       const newUsernameVal = newUsername ?? creds.username;
       if (newUsernameVal === 'admin' && newPassword === 'admin') {
         return res.status(400).send('Cannot use default admin credentials');
