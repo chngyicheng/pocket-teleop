@@ -343,8 +343,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             value={bridge.latencyMs !== null ? `${bridge.latencyMs} ms` : '— ms'}
             color={p.accent}
           />
-          <Readout label="BAT" value="78%" color={p.accent} />
-          <Readout label="SIG" value="-58 dBm" color={p.accent} />
+          <Readout label="BAT" value="—" color={p.accent} />
+          <Readout label="SIG" value="—" color={p.accent} />
         </div>
 
         {/* Bottom-right mini-map + compass */}

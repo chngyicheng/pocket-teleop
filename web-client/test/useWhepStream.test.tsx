@@ -30,6 +30,10 @@ class FakeWhepClient {
   triggerClose() {
     this.callbacks.onClose();
   }
+
+  triggerStats(stats: { fps: number | null; width: number | null; height: number | null }) {
+    this.callbacks.onStats?.(stats);
+  }
 }
 
 describe('useWhepStream', () => {
@@ -140,6 +144,48 @@ describe('useWhepStream', () => {
     });
 
     expect(result.current.stream).toBeNull();
+  });
+
+  it('initializes with null stats and exposes onStats updates', () => {
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          fakeClient = new FakeWhepClient(url, callbacks);
+          return fakeClient;
+        },
+      })
+    );
+
+    expect(result.current.stats).toBeNull();
+
+    act(() => {
+      fakeClient.triggerStats({ fps: 15, width: 1920, height: 1080 });
+    });
+
+    expect(result.current.stats).toEqual({ fps: 15, width: 1920, height: 1080 });
+  });
+
+  it('clears stats on close', () => {
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          fakeClient = new FakeWhepClient(url, callbacks);
+          return fakeClient;
+        },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerStats({ fps: 15, width: 1920, height: 1080 });
+    });
+    expect(result.current.stats).not.toBeNull();
+
+    act(() => {
+      fakeClient.triggerClose();
+    });
+    expect(result.current.stats).toBeNull();
   });
 
   it('stops client on unmount', () => {

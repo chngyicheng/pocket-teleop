@@ -38,6 +38,7 @@ function createFakeStream(overrides?: Partial<WhepStream>): WhepStream {
     stream: null,
     state: 'live',
     error: null,
+    stats: null,
     ...overrides,
   };
 }
@@ -351,7 +352,7 @@ describe('MissionTablet', () => {
     expect(document.body.textContent).toContain('—');
   });
 
-  it('top bar shows UP/BAT/SIG placeholder Readouts', () => {
+  it('top bar shows UP/BAT/SIG as dashes (placeholder Readouts)', () => {
     const bridge = createFakeBridge();
     const stream = createFakeStream();
     const onMenu = vi.fn();
@@ -362,17 +363,24 @@ describe('MissionTablet', () => {
       onMenu,
     };
 
-    render(<MissionTablet {...props} />);
+    const { container } = render(<MissionTablet {...props} />);
 
-    // Check for UP, BAT, SIG placeholder values
-    expect(screen.getByText(/03:24:18/)).toBeTruthy();
-    expect(screen.getByText(/78%/)).toBeTruthy();
-    expect(screen.getByText(/-58dBm/)).toBeTruthy();
+    // Check for UP, BAT, SIG with '—' values
+    const findReadoutValue = (label: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const labelSpan = labelSpans.find((s) => s.textContent === label);
+      const valueSpan = labelSpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findReadoutValue('UP')).toBe('—');
+    expect(findReadoutValue('BAT')).toBe('—');
+    expect(findReadoutValue('SIG')).toBe('—');
   });
 
-  it('STREAM panel shows codec details', () => {
+  it('STREAM panel shows codec details; fps/res show — when stats=null', () => {
     const bridge = createFakeBridge();
-    const stream = createFakeStream();
+    const stream = createFakeStream({ stats: null });
     const onMenu = vi.fn();
 
     const props: MissionTabletProps = {
@@ -381,16 +389,54 @@ describe('MissionTablet', () => {
       onMenu,
     };
 
-    render(<MissionTablet {...props} />);
+    const { container } = render(<MissionTablet {...props} />);
 
-    // Check for stream codec DataRows
+    // Check for static source/codec (always WebRTC/H.264)
     expect(screen.getByText('WebRTC')).toBeTruthy();
     expect(screen.getByText('H.264')).toBeTruthy();
-    expect(screen.getByText('30.1')).toBeTruthy();
-    expect(screen.getByText('1280×720')).toBeTruthy();
 
-    // Verify dynamic stream state still renders (from existing test constraint)
+    // Check for fps/res rows with '—' when stats=null
+    const findDataRowValue = (key: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const keySpan = labelSpans.find((s) => s.textContent === key);
+      const valueSpan = keySpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findDataRowValue('fps')).toBe('—');
+    expect(findDataRowValue('res')).toBe('—');
+
+    // Verify dynamic stream state still renders
     expect(screen.getByText(/● Live/)).toBeTruthy();
+  });
+
+  it('STREAM panel shows fps/res from stream.stats when available', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream({ stats: { fps: 15, width: 1920, height: 1080 } });
+    const onMenu = vi.fn();
+
+    const props: MissionTabletProps = {
+      bridge,
+      stream,
+      onMenu,
+    };
+
+    const { container } = render(<MissionTablet {...props} />);
+
+    // Check static codec
+    expect(screen.getByText('WebRTC')).toBeTruthy();
+    expect(screen.getByText('H.264')).toBeTruthy();
+
+    // Check fps/res from stats
+    const findDataRowValue = (key: string): string | null => {
+      const labelSpans = Array.from(container.querySelectorAll('span'));
+      const keySpan = labelSpans.find((s) => s.textContent === key);
+      const valueSpan = keySpan?.nextElementSibling as HTMLSpanElement | null;
+      return valueSpan?.textContent ?? null;
+    };
+
+    expect(findDataRowValue('fps')).toBe('15.0');
+    expect(findDataRowValue('res')).toBe('1920×1080');
   });
 
   it('estopEngaged=true shows banner and clicking button calls resetEstop', () => {

@@ -28,6 +28,10 @@ class MockRTCPeerConnection {
   addEventListener    = vi.fn();
   removeEventListener = vi.fn();
 
+  /** getStats() returns this report Map; tests set it via _statsReport. */
+  _statsReport: Map<string, unknown> = new Map();
+  getStats = vi.fn(() => Promise.resolve(this._statsReport));
+
   constructor(_config?: RTCConfiguration) {
     MockRTCPeerConnection._instances.push(this);
   }
@@ -397,6 +401,78 @@ describe('WhepClient', () => {
       // clearTimeout should have been called
       expect(clearTimeoutSpy).toHaveBeenCalled();
       clearTimeoutSpy.mockRestore();
+    });
+  });
+
+  describe('video stats polling (BUG 5)', () => {
+    it('polls getStats and reports inbound video fps/width/height via onStats', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onStats = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(), onStats,
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', { type: 'inbound-rtp', kind: 'video', framesPerSecond: 15, frameWidth: 1920, frameHeight: 1080 }],
+      ]);
+      pc._fireTrack(new MediaStream());
+      await flushPromises();
+
+      // First poll fires one interval later.
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      expect(onStats).toHaveBeenCalledWith({ fps: 15, width: 1920, height: 1080 });
+    });
+
+    it('does not report stats when there is no inbound video report', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onStats = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(), onStats,
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', { type: 'inbound-rtp', kind: 'audio', framesPerSecond: 50 }],
+        ['cp', { type: 'candidate-pair', nominated: true }],
+      ]);
+      pc._fireTrack(new MediaStream());
+      await flushPromises();
+
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      expect(onStats).not.toHaveBeenCalled();
+    });
+
+    it('stops polling getStats after stop()', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onStats = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(), onStats,
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', { type: 'inbound-rtp', kind: 'video', framesPerSecond: 15, frameWidth: 1920, frameHeight: 1080 }],
+      ]);
+      pc._fireTrack(new MediaStream());
+      await flushPromises();
+
+      client.stop();
+      const callsBefore = pc.getStats.mock.calls.length;
+      vi.advanceTimersByTime(5_000);
+      await flushPromises();
+
+      expect(pc.getStats.mock.calls.length).toBe(callsBefore);
     });
   });
 });

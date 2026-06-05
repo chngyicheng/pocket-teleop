@@ -284,10 +284,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           </span>
         </div>
 
-        {/* UP, BAT, SIG placeholder readouts */}
-        <Readout label="UP" value="03:24:18" color={p.accent} />
-        <Readout label="BAT" value="78%" color={p.accent} />
-        <Readout label="SIG" value="-58dBm" color={p.accent} />
+        {/* UP, BAT, SIG placeholder readouts (—) */}
+        <Readout label="UP" value="—" color={p.accent} />
+        <Readout label="BAT" value="—" color={p.accent} />
+        <Readout label="SIG" value="—" color={p.accent} />
 
         {/* LAT readout pill */}
         <Readout
@@ -376,9 +376,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       >
         <SidePanel title="STREAM">
           <DataRow k="src" v="WebRTC" />
+          {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
           <DataRow k="codec" v="H.264" />
-          <DataRow k="fps" v="30.1" />
-          <DataRow k="res" v="1280×720" />
+          <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
+          <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
           <div
             style={{
               fontSize: 10,

@@ -78,7 +78,9 @@ All line numbers are against `web-client/src/` at commit `d4d19a9`.
 
 ---
 
-## BUG 5 — Several frontend telemetry fields are hardcoded / fake 🟡
+## BUG 5 — Several frontend telemetry fields are hardcoded / fake ✅ FIXED
+
+> **Fixed on `feat/control-safety-fixes`.** `fps`/`res` are now real: `WhepClient` polls `RTCPeerConnection.getStats()` every 1 s once the track is live, reads the inbound-rtp video report's `framesPerSecond`/`frameWidth`/`frameHeight`, and emits them via a new `onStats` callback; `useWhepStream` exposes them as `stats: VideoStats | null`, and the tablet STREAM panel renders `stats.fps.toFixed(1)` / `${width}×${height}`, falling back to `—` until the first sample (so the old fake `30.1` / wrong `1280×720` are gone — live stream now reports its true 15 fps / 1920×1080). The fake `UP` / `BAT` / `SIG` placeholders (tablet top bar + phone telemetry stack) now render `—` instead of invented values, since there is no real uptime/battery/signal telemetry source yet (battery has a backlog plan). `src`/`codec` stay static (`WebRTC` / `H.264`) — true pipeline values, now commented as static-but-accurate. `LAT` was already real. Deviations recorded in `memory/agent-guides/deviations.md`. Tests: whep_client +3 (getStats polling), useWhepStream +2 (stats update/clear), MissionTablet +1 (fps/res from stats + `—` fallbacks), MissionControl +1 (BAT/SIG `—`). Webclient 300 pass.
 
 The video FPS (and more) are not real. Audit of literal display values:
 

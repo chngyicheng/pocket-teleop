@@ -38,6 +38,7 @@ function createFakeStream(overrides?: Partial<WhepStream>): WhepStream {
     stream: null,
     state: 'live',
     error: null,
+    stats: null,
     ...overrides,
   };
 }
@@ -354,5 +355,33 @@ describe('MissionControl', () => {
     for (const z of screen.getAllByTestId('joystick-zone')) {
       expect((z.parentElement as HTMLElement).style.pointerEvents).toBe('auto');
     }
+  });
+
+  it('BAT and SIG telemetry readouts display "—" (placeholder) in phone view', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-portrait"
+      />
+    );
+
+    // Find the BAT label span, then check its sibling value span
+    const allSpans = screen.getAllByText(/BAT|SIG/);
+    const batLabelSpan = allSpans.find((el) => el.textContent === 'BAT');
+    expect(batLabelSpan).toBeTruthy();
+    const batValueSpan = batLabelSpan?.nextElementSibling as HTMLElement | undefined;
+    expect(batValueSpan?.textContent).toBe('—');
+
+    // Find the SIG label span, then check its sibling value span
+    const sigLabelSpan = allSpans.find((el) => el.textContent === 'SIG');
+    expect(sigLabelSpan).toBeTruthy();
+    const sigValueSpan = sigLabelSpan?.nextElementSibling as HTMLElement | undefined;
+    expect(sigValueSpan?.textContent).toBe('—');
   });
 });
