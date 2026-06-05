@@ -334,14 +334,14 @@ describe('SettingsDrawer', () => {
     expect(fg === '#e6e9ef' || fg === 'rgb(230, 233, 239)').toBe(true);
   });
 
-  it('has z-index <= 9', () => {
+  it('has z-index above the collapsible rail tabs (z15)', () => {
     const { container } = render(
       <SettingsDrawer open={true} onClose={() => {}} />
     );
     const drawer = container.querySelector('[role="dialog"]');
     const style = (drawer as HTMLElement)?.style;
     const zIndex = parseInt(style?.zIndex || '0');
-    expect(zIndex).toBeLessThanOrEqual(9);
+    expect(zIndex).toBeGreaterThan(15);
   });
 
   it('transitions smoothly on open/close', () => {

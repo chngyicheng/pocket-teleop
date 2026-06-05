@@ -3,7 +3,9 @@
  *
  * Layout: 320px fixed width, anchored to the LEFT edge below `topOffset` px so
  * the top bar / E-STOP stay visible above it. Mission palette (#14171e surface,
- * #f0a92a amber accent, JetBrains Mono headings), z-index ≤ 9.
+ * #f0a92a amber accent, JetBrains Mono headings). Drawer sits above the
+ * collapsible rail tabs (z15); panel z17 / backdrop z16. E-STOP stays uncovered
+ * because the drawer is offset below the top bar (top: topOffset), not by z-index.
  * Transition: translateX(0) open, translateX(-100%) closed, 0.2s ease.
  * A backdrop scrim (rendered only when open) closes the drawer on outside tap.
  *
@@ -175,7 +177,7 @@ export default function SettingsDrawer({
             right: 0,
             bottom: 0,
             backgroundColor: 'rgba(0,0,0,0.45)',
-            zIndex: 8,
+            zIndex: 16,
           }}
         />
       )}
@@ -193,7 +195,7 @@ export default function SettingsDrawer({
           color: P.text,
           fontFamily: SANS,
           borderRight: `1px solid ${P.border}`,
-          zIndex: 9,
+          zIndex: 17,
           transform: open ? 'translateX(0)' : 'translateX(-100%)',
           transition: 'transform 0.2s ease',
           overflow: 'hidden',

@@ -78,6 +78,7 @@ Tests column = webclient / auth / video-bridge / C++ (— where not yet present)
 | Adversarial backlog cleared — 6 hardening fixes: protocol odom `Number.isFinite` guard, MissionControl LAT readout (neg/NaN/Inf → `— ms`), Space-key E-STOP ignored while editable field focused, TeleopClient `maxMissedPongs` zombie-link detector (onClose + reconnect), auth change-password rejects new==current (400), **/ws upgrade now session-authenticated** (`makeWsUpgradeHandler` runs express-session, fail-closed); pong-timeout test rewritten to standard `vi.mock(connection)` harness | 372 / 51 / 19 / 44 | — |
 | Reconnecting counter wired live — top-bar chip showed hardcoded placeholder `⟳ Reconnecting… (3)`; now reads `bridge.retryCount` (counts up per attempt) in MissionControl + MissionTablet (`connText`); static `CONNECTION_LABELS.reconnecting` placeholder number dropped | 373 / 51 / 19 / 44 | — |
 | Header robot identity de-faked — top-bar showed hardcoded `bot-07` / `ns/robot1`; now `robotLabel = robotName \|\| robotType` (falls back to robot model), renders nothing when both empty; namespace span only shown when non-empty (MissionControl + MissionTablet) | 375 / 51 / 19 / 44 | — |
+| Settings drawer z-index fix — drawer panel z17 / backdrop z16 now above CollapsibleRail toggle tab (z15); previously z9/z8 let rail tab paint over the drawer | 375 / 51 / 19 / 44 | — |
 
 ### Known deviations (still relevant)
 
