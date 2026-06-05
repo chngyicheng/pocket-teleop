@@ -103,7 +103,7 @@ export interface ConnectionLabels {
 
 export const CONNECTION_LABELS: ConnectionLabels = {
   live: { text: '● Connected — diff_drive', color: '#22c55e' },
-  reconnecting: { text: '⟳ Reconnecting… (3)', color: '#f59e0b' },
+  reconnecting: { text: '⟳ Reconnecting…', color: '#f59e0b' },
   disconnected: { text: '○ Disconnected · 12s ago', color: '#ef4444' },
 };
 

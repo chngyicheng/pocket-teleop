@@ -155,13 +155,18 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       ? `${bridge.latencyMs} ms`
       : '— ms';
 
-  // Connection state label
+  // Connection state label. While reconnecting, show the live attempt counter
+  // (bridge.retryCount, counts up 1→2→3…) instead of the placeholder text.
   const connLabel = CONNECTION_LABELS[bridge.connectionState];
+  const connText =
+    bridge.connectionState === 'reconnecting'
+      ? `⟳ Reconnecting… (${bridge.retryCount})`
+      : connLabel.text;
   const stateShort =
     bridge.connectionState === 'live'
       ? '● Live'
       : bridge.connectionState === 'reconnecting'
-        ? '⟳ Retry'
+        ? `⟳ Retry ${bridge.retryCount}`
         : '○ Down';
 
   return (
@@ -262,7 +267,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             whiteSpace: 'nowrap',
           }}
         >
-          {isLandscape ? connLabel.text : stateShort}
+          {isLandscape ? connText : stateShort}
         </div>
 
         {/* E-STOP button — engaged state shows RESET affordance */}

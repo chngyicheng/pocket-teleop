@@ -66,6 +66,20 @@ describe('MissionControl', () => {
 
     // Connection state chip (live = green)
     expect(screen.getByText(/Connected — diff_drive/i)).toBeTruthy();
+  });
+
+  it('phone-landscape reconnecting chip shows the live retry-attempt counter', () => {
+    const bridge = createFakeBridge({ connectionState: 'reconnecting', retryCount: 2 });
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />,
+    );
+    // Not the hardcoded placeholder "(3)" — the real attempt number from bridge.
+    expect(screen.getByText(/Reconnecting… \(2\)/)).toBeTruthy();
 
     // E-STOP button
     const stopButton = screen.getByRole('button', { name: /STOP/i });

@@ -173,8 +173,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // Derive odometry data from bridge.odom
   const odomPos = bridge.odom ?? { x: 0, y: 0, heading: 0 };
 
-  // Connection state label
+  // Connection state label. While reconnecting, show the live attempt counter
+  // (bridge.retryCount, counts up 1→2→3…) instead of the placeholder text.
   const connLabel = CONNECTION_LABELS[bridge.connectionState];
+  const connText =
+    bridge.connectionState === 'reconnecting'
+      ? `⟳ Reconnecting… (${bridge.retryCount})`
+      : connLabel.text;
 
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
@@ -314,7 +319,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             whiteSpace: 'nowrap',
           }}
         >
-          {connLabel.text}
+          {connText}
         </div>
 
         {/* E-STOP button — engaged state shows RESET affordance */}
