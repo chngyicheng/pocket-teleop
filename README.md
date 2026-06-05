@@ -160,6 +160,24 @@ After adding the rule, the mobile browser can send STUN packets directly to UDP 
 
 **Note:** Port 8080 (auth-server signaling) operates over TCP and typically already has an allow rule. Port 8891 is separate and carries WebRTC media; it is not proxied through the auth-server and must have its own firewall rule.
 
+### Slow first load / blank screen after login
+
+The control UI now paints an instant dark **loading splash** (branded, with a spinner) on HTML parse, so a slow load shows the splash rather than a white screen. The app is served **gzip-compressed** (the JS bundle is ~190 KB raw → ~58 KB on the wire) with **immutable caching** for hashed assets, so repeat loads skip the bundle download entirely. The video stream is **deferred** until after the control UI is interactive, so it never blocks first paint.
+
+If loads still feel slow, measure where the time goes — the client POSTs first-paint/load timing to the auth-server on every page load:
+
+```bash
+docker logs pocket-teleop-auth-server-1 | grep perf | tail -1
+# [perf] <iso> {"readyMs":1937,"responseEndMs":1889,"bundleKB":57,"bundleTransferMs":0, ...}
+```
+
+- `responseEndMs` — HTML document fully received.
+- `bundleKB` — JS bundle wire size (should be ~57; if ~186, gzip is not reaching the client).
+- `bundleTransferMs` — bundle network time (`0` means served from cache).
+- `readyMs` — first paint after React mounts (≈ "controls visible").
+
+If `readyMs` is high but `bundleTransferMs` is `0` and `bundleKB` is ~57, the remaining time is the HTML round-trip — that is **link latency** (slow / variable Wi-Fi AP, mobile-radio wake-up), not the app. Improve the robot's Wi-Fi link or AP placement.
+
 ### Web UI stuck connecting — `[ETIMEDOUT]` in auth-server logs
 
 The auth-server runs in host network mode and connects to the teleop-server at `localhost:9091` by default. If the teleop-server is reachable at a different address (e.g. running outside Docker on a different machine), override it in `.env`:
