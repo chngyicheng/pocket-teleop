@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTeleopBridge, type TeleopBridge } from '../src/hooks/useTeleopBridge.js';
 import type { TeleopClientOptions } from '../src/teleop_client.js';
@@ -303,5 +303,89 @@ describe('useTeleopBridge', () => {
     unmount();
 
     expect(disconnectSpy.called).toBe(true);
+  });
+
+  it('initializes gamepadTwist and inputSource with defaults', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.gamepadTwist).toEqual({ lx: 0, ly: 0, az: 0 });
+    expect(result.current.inputSource).toBe('idle');
+  });
+
+  it('onGamepadActivity + onTwist updates gamepadTwist and inputSource', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.opts.onGamepadActivity?.();
+      fakeClient.opts.onTwist?.(0.5, 0, 0.3);
+    });
+
+    expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
+    expect(result.current.inputSource).toBe('gamepad');
+  });
+
+  it('sendTwist (touch) sets inputSource to touch and does NOT overwrite gamepadTwist', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.opts.onGamepadActivity?.();
+      fakeClient.opts.onTwist?.(0.5, 0, 0.3);
+    });
+
+    expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
+    expect(result.current.inputSource).toBe('gamepad');
+
+    act(() => {
+      result.current.sendTwist(0.2, 0, 0);
+    });
+
+    expect(result.current.inputSource).toBe('touch');
+    expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
+  });
+
+  it('inputSource reverts to idle after IDLE_MS with no activity', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // Enable fake timers
+    vi.useFakeTimers();
+
+    try {
+      act(() => {
+        fakeClient.opts.onGamepadActivity?.();
+        fakeClient.opts.onTwist?.(0.5, 0, 0.3);
+      });
+
+      expect(result.current.inputSource).toBe('gamepad');
+
+      // Advance time past IDLE_MS (400 ms) + interval check (~150 ms) = 600 ms
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+
+      expect(result.current.inputSource).toBe('idle');
+      expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
