@@ -9,6 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TeleopClient } from '../src/teleop_client.js';
+import { shapeAxis } from '../src/input_shaping.js';
 
 // ---------------------------------------------------------------------------
 // Connection mock — captures the send spy so tests can inspect outbound msgs.
@@ -79,7 +80,7 @@ describe('TeleopClient continuous publish (BUG 1)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // TEST 1 — republish while held
+  // TEST 1 — republish while held (with shaping applied)
   // -------------------------------------------------------------------------
   it('republishes the same twist continuously while a non-zero command is held', () => {
     // One explicit send sets the repeat state
@@ -89,11 +90,13 @@ describe('TeleopClient continuous publish (BUG 1)', () => {
     // Advance 200 ms → 4 ticks at 50 ms each
     vi.advanceTimersByTime(200);
 
-    // Expect at least 3 twist sends, all carrying linear_x 0.5
+    // Expect at least 3 twist sends, all carrying shaped linear_x
+    const shaped = shapeAxis(0.5);
+    expect(shaped).toBeGreaterThan(0); // shape(0.5) yields non-zero cubic output
     const sends = twistSends();
     expect(sends.length).toBeGreaterThanOrEqual(3);
     for (const s of sends) {
-      expect(s.linear_x).toBe(0.5);
+      expect(s.linear_x).toBeCloseTo(shaped, 5);
     }
   });
 
@@ -143,5 +146,27 @@ describe('TeleopClient continuous publish (BUG 1)', () => {
     vi.advanceTimersByTime(1000);
 
     expect(twistSendCount()).toBe(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // TEST 4 — deadzone suppresses creep (no republish)
+  // -------------------------------------------------------------------------
+  it('suppresses republish when input is below deadzone', () => {
+    // Send a value below deadzone (0.05 < 0.1); shapeAxis(0.05) returns 0
+    client.sendTwist(0.05, 0, 0);
+    capturedSend.mockClear(); // clear the immediate send
+
+    // Advance 200 ms — publisher should send zero-burst (from stop-repeats)
+    // because shapeAxis(0.05) === 0, so the repeat state is null and zeroFramesLeft
+    // is set to STOP_REPEATS.
+    vi.advanceTimersByTime(600); // enough to cover stop-burst window
+
+    const sends = twistSends();
+    // All sends must be zeros (from the stop-burst, not from creep-republish)
+    for (const s of sends) {
+      expect(s.linear_x).toBe(0);
+      expect(s.linear_y).toBe(0);
+      expect(s.angular_z).toBe(0);
+    }
   });
 });
