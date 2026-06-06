@@ -119,6 +119,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
   const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
 
+  // HUD velocity: show the gamepad twist when the pad is the active source,
+  // else the touch-joystick state. Published cmd_vel = normalized (shaped) × max.
+  const dispLx = gamepadActive ? bridge.gamepadTwist.lx : lx;
+  const dispLy = gamepadActive ? bridge.gamepadTwist.ly : ly;
+  const dispAz = gamepadActive ? bridge.gamepadTwist.az : az;
+  const pubLinear = Math.hypot(dispLx, dispLy) * bridge.maxLinear;
+  const pubAngular = dispAz * bridge.maxAngular;
+  const pubText = `${pubLinear.toFixed(2)} m/s · ${pubAngular.toFixed(2)} rad/s`;
+
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y); // y-axis inverted → forward+
@@ -370,9 +379,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               <div>
                 <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
                 <VelBars
-                  lx={lx}
-                  ly={ly}
-                  az={az}
+                  lx={dispLx}
+                  ly={dispLy}
+                  az={dispAz}
                   color={p.accent}
                   trackColor="rgba(255,255,255,0.08)"
                   font={monoFont}
@@ -401,6 +410,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                     step={0.1}
                     onChange={bridge.setMaxAngular}
                   />
+                </div>
+                <div style={{ marginTop: 6, fontFamily: monoFont, fontSize: 10, color: p.accent2, fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: p.muted, opacity: 0.6, letterSpacing: '0.08em' }}>PUB </span>{pubText}
                 </div>
               </div>
 
@@ -602,9 +614,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           <div>
             <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
             <VelBars
-              lx={lx}
-              ly={ly}
-              az={az}
+              lx={dispLx}
+              ly={dispLy}
+              az={dispAz}
               color={p.accent}
               trackColor="rgba(255,255,255,0.08)"
               font={monoFont}
@@ -633,6 +645,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 step={0.1}
                 onChange={bridge.setMaxAngular}
               />
+            </div>
+            <div style={{ marginTop: 6, fontFamily: monoFont, fontSize: 10, color: p.accent2, fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ color: p.muted, opacity: 0.6, letterSpacing: '0.08em' }}>PUB </span>{pubText}
             </div>
           </div>
         </div>

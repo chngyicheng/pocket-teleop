@@ -40,13 +40,13 @@ export default function SpeedStepper({
   const increaseDisabled = value >= max;
 
   const btnStyle = (disabled: boolean): React.CSSProperties => ({
-    width: 22,
-    height: 22,
-    lineHeight: '20px',
+    width: 20,
+    height: 20,
+    lineHeight: '18px',
     textAlign: 'center',
     padding: 0,
     fontFamily: MONO,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 700,
     color: disabled ? MUTED : accent,
     background: SURFACE,
@@ -58,61 +58,69 @@ export default function SpeedStepper({
     touchAction: 'manipulation',
   });
 
+  // Single line: "LABEL  −  X.X unit  +". Fixed-width label + value field so the
+  // +/- columns line up between LINEAR and ANGULAR even as the number changes.
+  // zIndex lifts just the control row above the joystick hold-zones (z5).
   return (
-    <div style={{ fontFamily: MONO, fontSize: 10 }}>
-      {/* Row label (LINEAR / ANGULAR) */}
-      <div
+    <div
+      style={{
+        position: 'relative',
+        zIndex: 6,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        fontFamily: MONO,
+        fontSize: 10,
+      }}
+    >
+      <span
         style={{
+          width: 44,
+          flex: '0 0 auto',
           color: MUTED,
-          opacity: 0.7,
-          letterSpacing: '0.08em',
-          marginBottom: 3,
+          opacity: 0.75,
+          letterSpacing: '0.05em',
         }}
       >
         {label}
-      </div>
-      {/* Control row — identical layout for every stepper so LINEAR/ANGULAR align.
-          paddingRight leaves clearance for the rail's drawer toggle tab. */}
-      <div
+      </span>
+      <button
+        type="button"
+        aria-label={`decrease ${label}`}
+        onClick={handleDecrease}
+        disabled={decreaseDisabled}
+        style={btnStyle(decreaseDisabled)}
+      >
+        −
+      </button>
+      {/* Reserve width for the widest reading ("x.x rad/s") so both rows align. */}
+      <span
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          paddingRight: 20,
+          width: 54,
+          flex: '0 0 auto',
+          display: 'inline-flex',
+          justifyContent: 'center',
+          alignItems: 'baseline',
+          gap: 3,
         }}
       >
-        <button
-          type="button"
-          aria-label={`decrease ${label}`}
-          onClick={handleDecrease}
-          disabled={decreaseDisabled}
-          style={btnStyle(decreaseDisabled)}
-        >
-          −
-        </button>
         <span
           data-testid="speed-value"
-          style={{
-            color: accent,
-            fontWeight: 600,
-            fontVariantNumeric: 'tabular-nums',
-            minWidth: 28,
-            textAlign: 'right',
-          }}
+          style={{ color: accent, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
         >
           {value.toFixed(1)}
         </span>
-        <span style={{ color: MUTED, opacity: 0.6, flex: 1 }}>{unit}</span>
-        <button
-          type="button"
-          aria-label={`increase ${label}`}
-          onClick={handleIncrease}
-          disabled={increaseDisabled}
-          style={btnStyle(increaseDisabled)}
-        >
-          +
-        </button>
-      </div>
+        <span style={{ color: MUTED, opacity: 0.6 }}>{unit}</span>
+      </span>
+      <button
+        type="button"
+        aria-label={`increase ${label}`}
+        onClick={handleIncrease}
+        disabled={increaseDisabled}
+        style={btnStyle(increaseDisabled)}
+      >
+        +
+      </button>
     </div>
   );
 }
