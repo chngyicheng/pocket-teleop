@@ -2,6 +2,7 @@ import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage } from './protocol.js';
+import { shapeAxis } from './input_shaping.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
 const PUBLISH_INTERVAL_MS = 50;
@@ -164,15 +165,20 @@ export class TeleopClient {
       return;
     }
 
+    // Shape all three axes: deadzone + cubic curve for fine control
+    const shapedLx = shapeAxis(lx);
+    const shapedLy = shapeAxis(ly);
+    const shapedAz = shapeAxis(az);
+
     // Immediate one-shot send (existing behaviour, kept for responsiveness)
-    this.connection.send(buildTwist(lx, ly, az));
+    this.connection.send(buildTwist(shapedLx, shapedLy, shapedAz));
     this.lastSentAt = Date.now();
-    this.options.onTwist?.(lx, ly, az);
+    this.options.onTwist?.(shapedLx, shapedLy, shapedAz);
 
     // Update continuous-publish state
-    if (lx !== 0 || ly !== 0 || az !== 0) {
+    if (shapedLx !== 0 || shapedLy !== 0 || shapedAz !== 0) {
       // Joystick held: repeat this command on every publisher tick
-      this.repeatTwist = { lx, ly, az };
+      this.repeatTwist = { lx: shapedLx, ly: shapedLy, az: shapedAz };
       this.zeroFramesLeft = 0;
     } else {
       // Joystick released: stop repeating and initiate stop burst
