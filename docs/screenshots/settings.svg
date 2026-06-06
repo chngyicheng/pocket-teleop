@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360" role="img" aria-label="Settings drawer (screenshot placeholder)">
+  <rect x="1" y="1" width="638" height="358" rx="8" fill="#0c0e12" stroke="#2a2f3a" stroke-width="1.5"/>
+  <rect x="380" y="1" width="259" height="358" rx="8" fill="#14171e"/>
+  <line x1="380" y1="1" x2="380" y2="359" stroke="#2a2f3a" stroke-width="1.5"/>
+  <text x="404" y="40" font-family="'JetBrains Mono',ui-monospace,monospace" font-size="12" letter-spacing="2" fill="#f0a92a">SETTINGS</text>
+  <g font-family="'JetBrains Mono',ui-monospace,monospace" font-size="11" fill="#8a92a3">
+    <text x="404" y="78">GAMEPAD</text>
+    <text x="404" y="106">VIDEO</text>
+    <text x="404" y="134">CONNECTION</text>
+    <text x="404" y="162">ACCOUNT</text>
+  </g>
+  <text x="190" y="180" text-anchor="middle" font-family="'JetBrains Mono',ui-monospace,monospace" font-size="14" letter-spacing="2" fill="#4a5160">ADD SCREENSHOT</text>
+  <text x="190" y="202" text-anchor="middle" font-family="'Inter',system-ui,sans-serif" font-size="11" fill="#3a414e">Settings drawer — video source, profiles</text>
+</svg>

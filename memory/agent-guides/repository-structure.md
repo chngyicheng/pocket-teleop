@@ -149,8 +149,9 @@ React UI (`src/`):
 | `views/MissionTablet.tsx` | Tablet grid view — rails + joystick overlays + SVG reticle |
 | `components/shared.tsx` | Pure HUD primitives (see layer diagram); `ConnectionState` type + `CONNECTION_LABELS` |
 | `components/SettingsDrawer.tsx` | Slide-in settings drawer (Gamepad / Video / Connection pages) |
-| `components/CollapsibleRail.tsx` | Slide-out left/right rail bookmark (toggle z15 > joystick z5) |
-| `hooks/useTeleopBridge.ts` | React wrapper over `TeleopClient`; exposes `TeleopBridge` (connectionState, retryCount, latencyMs, odom, eStop/resetEstop, sendTwist) |
+| `components/CollapsibleRail.tsx` | Slide-out left/right rail bookmark (panel z1, toggle z15 > joystick z5) |
+| `components/SpeedStepper.tsx` | Mission-styled `−/+` stepper for the per-axis speed-limit caps (SPEED rail panel) |
+| `hooks/useTeleopBridge.ts` | React wrapper over `TeleopClient`; exposes `TeleopBridge` (connectionState, retryCount, latencyMs, odom, eStop/resetEstop, sendTwist, `gamepadTwist`, `inputSource`, `maxLinear`/`maxAngular` + setters) |
 | `hooks/useWhepStream.ts` | React wrapper over `WhepClient`; lazy start + code-split; `WhepState` + stats |
 | `index.css` | Mission palette + base layout |
 | `perf_beacon.ts` | Navigation/Paint/resource timing → `POST /perf` (auth-server logs it) |
@@ -161,11 +162,12 @@ Transport / logic (`src/`, framework-free):
 |---|---|
 | `protocol.ts` | Message types + serializers: twist, estop/estop_reset/estop_state, ping, odom; inbound parser with `Number.isFinite` guards |
 | `connection.ts` | WebSocket open/close/send; fires callbacks |
-| `teleop_client.ts` | Orchestrates modules; 20 Hz continuous publish + bounded zero-burst; reconnect loop; `maxMissedPongs` zombie-link detector |
-| `gamepad_profiles.ts` / `gamepad_handler.ts` | Built-in profiles + localStorage; Gamepad API polling, profile-aware axes, rising-edge buttons |
+| `teleop_client.ts` | Orchestrates modules; 20 Hz continuous publish + bounded zero-burst; input shaping + `setMaxSpeed` scale at the send choke; cross-source E-STOP toggle; reconnect loop; `maxMissedPongs` zombie-link detector |
+| `input_shaping.ts` | `shapeAxis(v)` — deadzone 0.1 + cubic curve, applied to every twist at the `sendTwist` choke |
+| `gamepad_profiles.ts` / `gamepad_handler.ts` | Built-in profiles + localStorage; **rAF-driven** Gamepad polling (fresh held-stick reads), profile-aware axes, rising-edge buttons + button-exists guard, `estop`→LB |
 | `keyboard_handler.ts` | WASD/arrow → twist; Space = latching E-STOP (ignored while an editable field is focused) |
 | `touch_joystick.ts` | `TouchJoystick` — floating touch joystick, normalised −1..1, jsdom-testable |
-| `settings.ts` | `SettingsRouter` + namespace/video-url localStorage persistence |
+| `settings.ts` | `SettingsRouter` + namespace/video-url localStorage; `loadMaxSpeed`/`saveMaxSpeed` + clamp (lin 0.1–2.0 / ang 0.1–3.0) |
 | `video_source.ts` | RTSP/UDP/SRT/MJPEG validate + `buildMtxSource` + apply (MediaMTX config API) |
 | `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; `getStats`@1Hz fps/res; back-off retry |
 
