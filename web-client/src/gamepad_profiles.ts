@@ -20,8 +20,8 @@ export interface GamepadProfile {
 
 const STANDARD: AxisMapping = {
   lx: { axis: 1, invert: true },
-  ly: { axis: 0, invert: true },
-  az: { axis: 2, invert: true },
+  ly: { axis: 2, invert: true },
+  az: { axis: 0, invert: true },
 };
 
 const BUILT_INS: GamepadProfile[] = [
