@@ -22,10 +22,16 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
+    gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    inputSource: 'idle',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
     estopEngaged: false,
     resetEstop: vi.fn(),
+    maxLinear: 1.0,
+    maxAngular: 1.0,
+    setMaxLinear: vi.fn(),
+    setMaxAngular: vi.fn(),
     ...overrides,
   };
 }
@@ -565,6 +571,51 @@ describe('MissionControl', () => {
     expect((video.style as CSSStyleDeclaration).objectFit).toBe('contain');
   });
 
+  it('gamepad input drives joystick knob and hides hint; idle shows hint', () => {
+    // Test with gamepad active
+    const bridge = createFakeBridge({
+      inputSource: 'gamepad',
+      gamepadTwist: { lx: 0.5, ly: 0, az: 0 },
+    });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const { container } = render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // When gamepad is active, knob should be visible, hint hidden
+    const knobs = container.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs.length).toBeGreaterThanOrEqual(1);
+    const hints = container.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints.length).toBe(0);
+
+    // Rerender with idle input
+    const bridgeIdle = createFakeBridge({
+      inputSource: 'idle',
+      gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    });
+    const { container: container2 } = render(
+      <MissionControl
+        bridge={bridgeIdle}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // When idle, hint should be visible, knob absent
+    const knobs2 = container2.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs2.length).toBe(0);
+    const hints2 = container2.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints2.length).toBeGreaterThanOrEqual(1);
+  });
+
   // Video signal overlay tests (T6 — phone-landscape + phone-portrait)
   describe('VideoSignalOverlay (phone-landscape)', () => {
     it('does not render overlay when state is live', () => {
@@ -761,5 +812,48 @@ describe('MissionControl', () => {
       expect(screen.getByText('DRIVE')).toBeTruthy();
       expect(screen.getByText('STRAFE')).toBeTruthy();
     });
+  });
+
+  it('renders SPEED panel in phone-portrait layout', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-portrait"
+      />
+    );
+
+    expect(screen.getByText('SPEED')).toBeTruthy();
+    // Verify LINEAR and ANGULAR stepper labels
+    expect(screen.getByText('LINEAR')).toBeTruthy();
+    expect(screen.getByText('ANGULAR')).toBeTruthy();
+  });
+
+  it('renders SPEED panel in the phone-landscape STREAM rail (under VELOCITY)', () => {
+    const bridge = createFakeBridge();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // SPEED must be present in the landscape left rail, after VELOCITY.
+    const velocity = screen.getByText('VELOCITY');
+    const speed = screen.getByText('SPEED');
+    expect(speed).toBeTruthy();
+    expect(
+      velocity.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByText('LINEAR')).toBeTruthy();
+    expect(screen.getByText('ANGULAR')).toBeTruthy();
   });
 });

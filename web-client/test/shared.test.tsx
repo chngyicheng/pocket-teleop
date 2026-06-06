@@ -629,4 +629,85 @@ describe('JoystickZone', () => {
     expect(onMove).toHaveBeenCalled();
     expect(onEnd).toHaveBeenCalled();
   });
+
+  it('with externalActive=true, renders knob at externalValue and hides hint', () => {
+    const { container } = render(
+      <JoystickZone
+        side="left"
+        size={240}
+        variant="zone"
+        baseSize={120}
+        knobSize={56}
+        externalActive={true}
+        externalValue={{ x: 0.5, y: 0 }}
+      />
+    );
+    // Knob should be present
+    const knob = container.querySelector('[data-testid="joystick-knob"]');
+    expect(knob).toBeTruthy();
+    // Hint should be absent
+    const hint = container.querySelector('[data-testid="joystick-hint"]');
+    expect(hint).toBeNull();
+  });
+
+  it('knob position tracks externalValue: x=0.5 vs x=-0.5 differ in left style', () => {
+    const size = 240;
+    const baseSize = 120;
+    const knobSize = 56;
+    const baseRadius = baseSize / 2;
+
+    const { container: container1 } = render(
+      <JoystickZone
+        side="left"
+        size={size}
+        variant="zone"
+        baseSize={baseSize}
+        knobSize={knobSize}
+        externalActive={true}
+        externalValue={{ x: 0.5, y: 0 }}
+      />
+    );
+    const knob1 = container1.querySelector('[data-testid="joystick-knob"]') as HTMLElement;
+    expect(knob1).toBeTruthy();
+    const left1Str = (knob1.style.left || '').match(/(\d+(?:\.\d+)?)/)?.[1];
+    const left1 = left1Str ? parseFloat(left1Str) : 0;
+
+    const { container: container2 } = render(
+      <JoystickZone
+        side="left"
+        size={size}
+        variant="zone"
+        baseSize={baseSize}
+        knobSize={knobSize}
+        externalActive={true}
+        externalValue={{ x: -0.5, y: 0 }}
+      />
+    );
+    const knob2 = container2.querySelector('[data-testid="joystick-knob"]') as HTMLElement;
+    expect(knob2).toBeTruthy();
+    const left2Str = (knob2.style.left || '').match(/(\d+(?:\.\d+)?)/)?.[1];
+    const left2 = left2Str ? parseFloat(left2Str) : 0;
+
+    // x=0.5 should render further right than x=-0.5
+    expect(left1).toBeGreaterThan(left2);
+  });
+
+  it('with externalActive=false and variant=zone, shows hint and no knob', () => {
+    const { container } = render(
+      <JoystickZone
+        side="left"
+        size={240}
+        variant="zone"
+        baseSize={120}
+        knobSize={56}
+        externalActive={false}
+      />
+    );
+    // Hint should be present
+    const hint = container.querySelector('[data-testid="joystick-hint"]');
+    expect(hint).toBeTruthy();
+    // Knob should be absent (unless user is actively touching)
+    const knob = container.querySelector('[data-testid="joystick-knob"]');
+    expect(knob).toBeNull();
+  });
 });

@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
+import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -110,6 +111,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const baseSize = isLandscape ? 120 : 110;
   const knobSize = isLandscape ? 52 : 46;
   const variant = 'zone' as const; // hold-zone by default
+
+  // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
+  // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
+  // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
+  const gamepadActive = bridge.inputSource === 'gamepad';
+  const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
+  const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
 
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
@@ -371,6 +379,31 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 />
               </div>
 
+              {/* SPEED controls */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>SPEED</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <SpeedStepper
+                    label="LINEAR"
+                    value={bridge.maxLinear}
+                    unit="m/s"
+                    min={0.1}
+                    max={2.0}
+                    step={0.1}
+                    onChange={bridge.setMaxLinear}
+                  />
+                  <SpeedStepper
+                    label="ANGULAR"
+                    value={bridge.maxAngular}
+                    unit="rad/s"
+                    min={0.1}
+                    max={3.0}
+                    step={0.1}
+                    onChange={bridge.setMaxAngular}
+                  />
+                </div>
+              </div>
+
               {/* LAT/BAT/SIG readouts */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <Readout
@@ -448,6 +481,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               onMove={handleDriveMove}
               onEnd={handleDriveEnd}
               label="DRIVE"
+              externalActive={gamepadActive}
+              externalValue={driveExternal}
             />
 
             {/* STRAFE joystick (right bottom) */}
@@ -466,6 +501,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               onMove={handleStrafeMove}
               onEnd={handleStrafeEnd}
               label="STRAFE"
+              externalActive={gamepadActive}
+              externalValue={strafeExternal}
             />
           </main>
 
@@ -540,7 +577,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         {/* Video signal overlay */}
         <VideoSignalOverlay state={stream.state} />
 
-        {/* Top-left vel bars */}
+        {/* Top-left vel bars + speed controls */}
         <div
           style={{
             position: 'absolute',
@@ -553,16 +590,48 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             padding: '6px 8px',
             borderRadius: 4,
             border: `1px solid ${p.border}40`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
           }}
         >
-          <VelBars
-            lx={lx}
-            ly={ly}
-            az={az}
-            color={p.accent}
-            trackColor="rgba(255,255,255,0.08)"
-            font={monoFont}
-          />
+          {/* VELOCITY bars */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
+            <VelBars
+              lx={lx}
+              ly={ly}
+              az={az}
+              color={p.accent}
+              trackColor="rgba(255,255,255,0.08)"
+              font={monoFont}
+            />
+          </div>
+
+          {/* SPEED controls */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>SPEED</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <SpeedStepper
+                label="LINEAR"
+                value={bridge.maxLinear}
+                unit="m/s"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                onChange={bridge.setMaxLinear}
+              />
+              <SpeedStepper
+                label="ANGULAR"
+                value={bridge.maxAngular}
+                unit="rad/s"
+                min={0.1}
+                max={3.0}
+                step={0.1}
+                onChange={bridge.setMaxAngular}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Top-right telemetry stack */}
@@ -635,6 +704,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           onMove={handleDriveMove}
           onEnd={handleDriveEnd}
           label="DRIVE"
+          externalActive={gamepadActive}
+          externalValue={driveExternal}
         />
 
         {/* STRAFE joystick (right bottom) */}
@@ -653,6 +724,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           onMove={handleStrafeMove}
           onEnd={handleStrafeEnd}
           label="STRAFE"
+          externalActive={gamepadActive}
+          externalValue={strafeExternal}
         />
 
         {/* Mode chip (bottom center) */}

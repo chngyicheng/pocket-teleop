@@ -22,10 +22,16 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
+    gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    inputSource: 'idle',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
     estopEngaged: false,
     resetEstop: vi.fn(),
+    maxLinear: 1.0,
+    maxAngular: 1.0,
+    setMaxLinear: vi.fn(),
+    setMaxAngular: vi.fn(),
     ...overrides,
   };
 }
@@ -645,6 +651,49 @@ describe('MissionTablet', () => {
     });
   });
 
+  it('gamepad input drives joystick knob and hides hint; idle shows hint', () => {
+    // Test with gamepad active
+    const bridge = createFakeBridge({
+      inputSource: 'gamepad',
+      gamepadTwist: { lx: 0.5, ly: 0, az: 0 },
+    });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const { container } = render(
+      <MissionTablet
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+      />
+    );
+
+    // When gamepad is active, knob should be visible, hint hidden
+    const knobs = container.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs.length).toBeGreaterThanOrEqual(1);
+    const hints = container.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints.length).toBe(0);
+
+    // Rerender with idle input
+    const bridgeIdle = createFakeBridge({
+      inputSource: 'idle',
+      gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    });
+    const { container: container2 } = render(
+      <MissionTablet
+        bridge={bridgeIdle}
+        stream={stream}
+        onMenu={onMenu}
+      />
+    );
+
+    // When idle, hint should be visible, knob absent
+    const knobs2 = container2.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs2.length).toBe(0);
+    const hints2 = container2.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints2.length).toBeGreaterThanOrEqual(1);
+  });
+
   // Video signal overlay tests (T6)
   describe('VideoSignalOverlay', () => {
     it('does not render overlay when state is live', () => {
@@ -709,5 +758,30 @@ describe('MissionTablet', () => {
       const zones = screen.getAllByTestId('joystick-zone');
       expect(zones.length).toBe(2);
     });
+  });
+
+  it('renders SPEED panel between VELOCITY and ODOMETRY panels in left rail', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const { container } = render(<MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />);
+
+    // Find the panels by their titles
+    const velocityEl = screen.getByText('VELOCITY');
+    const speedEl = screen.getByText('SPEED');
+    const odometryEl = screen.getByText('ODOMETRY');
+
+    // Verify all three are present
+    expect(velocityEl).toBeTruthy();
+    expect(speedEl).toBeTruthy();
+    expect(odometryEl).toBeTruthy();
+
+    // Verify DOM order: VELOCITY → SPEED → ODOMETRY
+    const velocityPosition = velocityEl.compareDocumentPosition(speedEl);
+    expect(velocityPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // VELOCITY comes before SPEED
+
+    const speedPosition = speedEl.compareDocumentPosition(odometryEl);
+    expect(speedPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // SPEED comes before ODOMETRY
   });
 });

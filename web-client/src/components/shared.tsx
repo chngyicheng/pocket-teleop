@@ -40,6 +40,8 @@ export interface JoystickProps {
   glow?: boolean;
   square?: boolean;
   label?: string | null;
+  externalValue?: { x: number; y: number };
+  externalActive?: boolean;
 }
 
 export interface MiniMapProps {
@@ -135,6 +137,8 @@ export const Joystick: React.FC<JoystickProps> = ({
   glow = false,
   square = false,
   label = null,
+  externalValue,
+  externalActive = false,
 }) => {
   const zoneRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
@@ -216,8 +220,11 @@ export const Joystick: React.FC<JoystickProps> = ({
   };
 
   const baseRadius = baseSize / 2;
-  const showBase = variant === 'classic' || active;
-  const hintVisible = !active && variant !== 'classic';
+  const effectiveActive = active || externalActive === true;
+  const knobDisplay = active ? knob : (externalActive && externalValue ? externalValue : { x: 0, y: 0 });
+  const centerDisplay = active ? center : { x: size / 2, y: size / 2 };
+  const showBase = variant === 'classic' || effectiveActive;
+  const hintVisible = !effectiveActive && variant !== 'classic';
 
   return (
     <div
@@ -241,8 +248,8 @@ export const Joystick: React.FC<JoystickProps> = ({
         <div
           style={{
             position: 'absolute',
-            left: center.x - baseRadius,
-            top: center.y - baseRadius,
+            left: centerDisplay.x - baseRadius,
+            top: centerDisplay.y - baseRadius,
             width: baseSize,
             height: baseSize,
             borderRadius: square ? 8 : '50%',
@@ -259,10 +266,11 @@ export const Joystick: React.FC<JoystickProps> = ({
       {/* Knob */}
       {showBase && (
         <div
+          data-testid="joystick-knob"
           style={{
             position: 'absolute',
-            left: center.x - knobSize / 2 + knob.x * baseRadius,
-            top: center.y - knobSize / 2 + knob.y * baseRadius,
+            left: centerDisplay.x - knobSize / 2 + knobDisplay.x * baseRadius,
+            top: centerDisplay.y - knobSize / 2 + knobDisplay.y * baseRadius,
             width: knobSize,
             height: knobSize,
             borderRadius: square ? 6 : '50%',
@@ -276,8 +284,9 @@ export const Joystick: React.FC<JoystickProps> = ({
       )}
 
       {/* Hint ring + dot (idle state for edge / zone styles) */}
-      {(variant === 'edge' || variant === 'zone') && !active && (
+      {(variant === 'edge' || variant === 'zone') && !effectiveActive && (
         <div
+          data-testid="joystick-hint"
           style={{
             position: 'absolute',
             left: '50%',
@@ -788,6 +797,8 @@ export interface JoystickZoneProps {
   onMove?: (x: number, y: number) => void;
   onEnd?: () => void;
   label?: string;
+  externalValue?: { x: number; y: number };
+  externalActive?: boolean;
 }
 
 export const JoystickZone: React.FC<JoystickZoneProps> = ({
@@ -806,6 +817,8 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
   onMove,
   onEnd,
   label,
+  externalValue,
+  externalActive,
 }) => (
   <div
     style={{
@@ -831,6 +844,8 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
       onMove={onMove}
       onEnd={onEnd}
       label={label}
+      externalValue={externalValue}
+      externalActive={externalActive}
     />
   </div>
 );

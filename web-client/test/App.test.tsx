@@ -62,6 +62,10 @@ class FakeTeleopClient {
     // noop
   }
 
+  setMaxSpeed(_maxLinear: number, _maxAngular: number) {
+    // noop
+  }
+
   /**
    * Test helper: trigger status callback
    */

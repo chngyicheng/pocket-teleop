@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
+import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -184,6 +185,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // Robot identity: prefer the reported name, fall back to the robot model
   // (robotType). When neither is known yet, render nothing (no fake placeholder).
   const robotLabel = bridge.robotName || bridge.robotType;
+
+  // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
+  // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
+  // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
+  const gamepadActive = bridge.inputSource === 'gamepad';
+  const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
+  const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
 
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
@@ -428,6 +436,29 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             />
           </SidePanel>
 
+          <SidePanel title="SPEED">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <SpeedStepper
+                label="LINEAR"
+                value={bridge.maxLinear}
+                unit="m/s"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                onChange={bridge.setMaxLinear}
+              />
+              <SpeedStepper
+                label="ANGULAR"
+                value={bridge.maxAngular}
+                unit="rad/s"
+                min={0.1}
+                max={3.0}
+                step={0.1}
+                onChange={bridge.setMaxAngular}
+              />
+            </div>
+          </SidePanel>
+
           <SidePanel title="ODOMETRY">
             <DataRow k="pos.x" v={odomPos.x.toFixed(2) + ' m'} />
             <DataRow k="pos.y" v={odomPos.y.toFixed(2) + ' m'} />
@@ -610,6 +641,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         label="DRIVE"
         onMove={handleDriveMove}
         onEnd={handleDriveEnd}
+        externalActive={gamepadActive}
+        externalValue={driveExternal}
       />
 
       <JoystickZone
@@ -628,6 +661,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         label="STRAFE"
         onMove={handleStrafeMove}
         onEnd={handleStrafeEnd}
+        externalActive={gamepadActive}
+        externalValue={strafeExternal}
       />
     </div>
   );
