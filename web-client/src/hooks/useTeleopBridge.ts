@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
+import type { ConnectionState } from '../components/shared.js';
 
 export interface TeleopBridge {
   connected: boolean;
-  connectionState: 'live' | 'reconnecting' | 'disconnected';
+  connectionState: ConnectionState;
   retryCount: number;
   latencyMs: number | null;
   odom: { x: number; y: number; heading: number } | null;
@@ -27,7 +28,7 @@ export interface UseTeleopBridgeOpts {
 
 export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [connected, setConnected] = useState(false);
-  const [connectionState, setConnectionState] = useState<'live' | 'reconnecting' | 'disconnected'>('disconnected');
+  const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [retryCount, setRetryCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [odom, setOdom] = useState<{ x: number; y: number; heading: number } | null>(null);

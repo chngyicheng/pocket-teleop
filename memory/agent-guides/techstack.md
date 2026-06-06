@@ -40,15 +40,16 @@
 | Layer | Technology |
 |---|---|
 | Language | TypeScript (strict mode) |
-| Build | `tsc` — no bundler, ES modules |
-| Test runner | Vitest (Node 22, not browser) |
-| Static server | nginx (official Docker image) |
-| Input | Browser Gamepad API |
-| Transport | Browser WebSocket API |
-| Node runtime | Node 22 (node:22-slim) — required for native `globalThis.WebSocket` |
+| UI framework | **React 18** (`react`, `react-dom`) |
+| Build / bundler | **Vite 5** (`@vitejs/plugin-react`) → `dist/`; `build` = `vite build` |
+| Test runner | **Vitest** + jsdom + React Testing Library (`@testing-library/{react,jest-dom,user-event}`) |
+| Static server | nginx (custom `nginx.conf`: `gzip on` + immutable `/assets` cache + SPA fallback) |
+| Input | Browser Gamepad API + touch/pointer + keyboard |
+| Transport | Browser WebSocket API; WebRTC/WHEP for video |
+| Node runtime | Node 22 — required for native `globalThis.WebSocket` |
 
-No framework. No runtime deps. Dev only: `typescript`, `vitest`.
+Runtime deps: `react`, `react-dom` only. Everything else is devDeps (Vite, Vitest, RTL, jsdom, typescript).
 
 ## Key architectural constraint (client)
 
-`Protocol` — no I/O/side effects, pure TS types/serializers. `Connection` — no message format or gamepad knowledge. Only `TeleopClient` wires modules. UI (future) calls `TeleopClient.sendTwist()` directly, never touches lower layers.
+Transport/logic stays **framework-free and React-agnostic**: `Protocol` is pure types/serializers (no I/O), `Connection` knows nothing about message format or gamepad, and only `TeleopClient`/`WhepClient` wire the lower modules. React touches them **only through the `useTeleopBridge` / `useWhepStream` hooks** — views and components never import `TeleopClient` or `WhepClient` directly. This keeps the logic layer unit-testable without a DOM and swappable under the UI.

@@ -19,7 +19,7 @@
 
 import React from 'react';
 
-export interface CollapsibleRailProps {
+interface CollapsibleRailProps {
   side: 'left' | 'right';
   open: boolean;
   onToggle: () => void;

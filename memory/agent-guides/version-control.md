@@ -21,13 +21,19 @@ All three steps must complete before `git commit`.
 ## Commit conventions
 
 - **One commit per completed task**
-- Prefix: `feat:` / `fix:` / `docs:`
+- Prefix: `feat:` / `fix:` / `docs:` / `chore:` / `refactor:` / `test:`
 - Imperative mood: "add X", "fix Y", not "added X" or "fixing Y"
 - One logical change per commit — no bundling unrelated changes
+- **Stage by explicit path, never `git add -A` / `git add .`** — blanket adds sweep untracked junk (e.g. `.claude/worktrees/…` repo copies) into the commit.
 
 ```bash
+git add path/to/file1 path/to/file2   # explicit paths only
 git commit -m "feat: add Docker scaffolding for ROS2 server"
 ```
+
+## Who commits — controller only
+
+**Subagents never run git.** No `git add`, `git commit`, `git push`, `git reset` — ever. A subagent implements, runs tests (Docker), updates the handover table, and **reports a dirty working tree**. The controller then: verifies `git status` (no swept/stray files), reviews the diff, stages the intended files **by explicit path**, and commits. A subagent that ran `git add` once swept 2754 untracked files into a single commit — hence this rule. Subagent prompts must state: "do not stage or commit; leave changes in the working tree and report."
 
 ## Push workflow
 
