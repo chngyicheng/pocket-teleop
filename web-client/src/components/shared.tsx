@@ -799,15 +799,6 @@ export interface JoystickZoneProps {
   label?: string;
   externalValue?: { x: number; y: number };
   externalActive?: boolean;
-  /**
-   * Optional reduced tap-region height. The inner Joystick keeps its full `size`
-   * (so coordinate math is undistorted — getBoundingClientRect is unaffected by
-   * clipping), but the wrapper clips it to `tapHeight` from the bottom up, so the
-   * touch area only spans from the screen bottom to roughly the top of the hint.
-   * Used on short landscape viewports (long phone) where a full square zone would
-   * intrude too far up the screen.
-   */
-  tapHeight?: number;
 }
 
 export const JoystickZone: React.FC<JoystickZoneProps> = ({
@@ -828,7 +819,6 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
   label,
   externalValue,
   externalActive,
-  tapHeight,
 }) => (
   <div
     style={{
@@ -836,17 +826,9 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
       bottom: 0,
       [side]: 0,
       width: size,
-      height: tapHeight ?? size,
+      height: size,
       ...(zIndex !== undefined ? { zIndex } : {}),
       pointerEvents: controlsDisabled ? 'none' : 'auto',
-      ...(tapHeight !== undefined
-        ? {
-            overflow: 'hidden',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: side === 'left' ? 'flex-start' : 'flex-end',
-          }
-        : {}),
     }}
   >
     <Joystick

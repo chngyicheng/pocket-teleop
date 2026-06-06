@@ -144,22 +144,24 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
-  // Short landscape viewport (a long phone in landscape): the corner joystick
-  // zones overlap the side rails, and a full-height zone swallows the rail's
-  // touch-scroll. Clip the joystick tap region to ~bottom→hint-top so the rail
-  // above stays scrollable. Taller tablet-class screens (e.g. Fold unfolded)
-  // have room to scroll and keep the full square zone.
-  const [isShortLandscape, setIsShortLandscape] = useState(false);
+  // A long phone in landscape (very wide aspect) renders this tablet layout but
+  // is short vertically, so the corner joystick zones overlap the side rails and
+  // a full-size zone blocks the rail's touch-scroll. There, use a *smaller*
+  // joystick (nothing clipped — so the stick UI is never sliced) so the rail
+  // above the zone stays scrollable. Tablet-class screens (Fold unfolded, aspect
+  // < 1.7) keep the full zone in BOTH orientations.
+  const [isLongPhoneLandscape, setIsLongPhoneLandscape] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const mq = window.matchMedia('(max-height: 600px)');
-    const update = () => setIsShortLandscape(mq.matches);
+    const mq = window.matchMedia('(min-aspect-ratio: 17/10)');
+    const update = () => setIsLongPhoneLandscape(mq.matches);
     update();
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
   }, []);
-  const joySize = 200;
-  const joyTapHeight = isShortLandscape ? Math.round(joySize / 2 + 30) : undefined;
+  const joySize = isLongPhoneLandscape ? 150 : 200;
+  const joyBase = isLongPhoneLandscape ? 90 : 120;
+  const joyKnob = isLongPhoneLandscape ? 38 : 50;
 
   /**
    * axesRef holds the live (non-stale) current command.
@@ -651,12 +653,11 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="left"
         size={joySize}
-        tapHeight={joyTapHeight}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
-        baseSize={120}
-        knobSize={50}
+        baseSize={joyBase}
+        knobSize={joyKnob}
         baseColor="rgba(240,169,42,0.10)"
         ringColor={p.accent + 'cc'}
         knobColor={p.accent}
@@ -671,13 +672,12 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="right"
         size={joySize}
-        tapHeight={joyTapHeight}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         axes="x"
-        baseSize={120}
-        knobSize={50}
+        baseSize={joyBase}
+        knobSize={joyKnob}
         baseColor="rgba(78,201,214,0.10)"
         ringColor={p.accent2 + 'cc'}
         knobColor={p.accent2}
