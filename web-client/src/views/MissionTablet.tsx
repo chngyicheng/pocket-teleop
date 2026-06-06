@@ -417,22 +417,6 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             color: p.muted,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <DataRow k="src" v="WebRTC" />
-            {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
-            <DataRow k="codec" v="H.264" />
-            <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
-            <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
-            <div
-              style={{
-                fontSize: 10,
-                fontFamily: monoFont,
-              }}
-            >
-              {stream.state === 'live' ? '● Live' : `● ${stream.state}`}
-            </div>
-          </div>
-
           <SidePanel title="VELOCITY">
             <VelBars
               lx={dispLx}
@@ -471,6 +455,19 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             <DataRow k="pos.x" v={odomPos.x.toFixed(2) + ' m'} />
             <DataRow k="pos.y" v={odomPos.y.toFixed(2) + ' m'} />
             <DataRow k="hdg" v={Math.round(((odomPos.heading * 180 / Math.PI) % 360 + 360) % 360) + '°'} />
+          </SidePanel>
+
+          {/* Video information — moved to the bottom so the SPEED +/- sit near the
+              top of the rail, away from the bottom-corner joysticks. */}
+          <SidePanel title="VIDEO">
+            <DataRow k="src" v="WebRTC" />
+            {/* static-but-accurate: WebRTC/H.264 are the true pipeline values */}
+            <DataRow k="codec" v="H.264" />
+            <DataRow k="fps" v={stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'} />
+            <DataRow k="res" v={(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'} />
+            <div style={{ fontSize: 10, fontFamily: monoFont }}>
+              {stream.state === 'live' ? '● Live' : `● ${stream.state}`}
+            </div>
           </SidePanel>
 
           {/* Footer ops info */}
@@ -636,12 +633,12 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       {/* Joystick overlays — bottom-left and bottom-right */}
       <JoystickZone
         side="left"
-        size={280}
+        size={200}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
-        baseSize={140}
-        knobSize={56}
+        baseSize={120}
+        knobSize={50}
         baseColor="rgba(240,169,42,0.10)"
         ringColor={p.accent + 'cc'}
         knobColor={p.accent}
@@ -655,13 +652,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
 
       <JoystickZone
         side="right"
-        size={280}
+        size={200}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         axes="x"
-        baseSize={140}
-        knobSize={56}
+        baseSize={120}
+        knobSize={50}
         baseColor="rgba(78,201,214,0.10)"
         ringColor={p.accent2 + 'cc'}
         knobColor={p.accent2}
