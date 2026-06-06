@@ -22,6 +22,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
+    gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    inputSource: 'idle',
     sendTwist: vi.fn(),
     eStop: vi.fn(),
     estopEngaged: false,
@@ -643,6 +645,49 @@ describe('MissionTablet', () => {
       expect(nameStyle).toContain('min-width: 0');
       expect(nameStyle).toContain('text-overflow: ellipsis');
     });
+  });
+
+  it('gamepad input drives joystick knob and hides hint; idle shows hint', () => {
+    // Test with gamepad active
+    const bridge = createFakeBridge({
+      inputSource: 'gamepad',
+      gamepadTwist: { lx: 0.5, ly: 0, az: 0 },
+    });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const { container } = render(
+      <MissionTablet
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+      />
+    );
+
+    // When gamepad is active, knob should be visible, hint hidden
+    const knobs = container.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs.length).toBeGreaterThanOrEqual(1);
+    const hints = container.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints.length).toBe(0);
+
+    // Rerender with idle input
+    const bridgeIdle = createFakeBridge({
+      inputSource: 'idle',
+      gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    });
+    const { container: container2 } = render(
+      <MissionTablet
+        bridge={bridgeIdle}
+        stream={stream}
+        onMenu={onMenu}
+      />
+    );
+
+    // When idle, hint should be visible, knob absent
+    const knobs2 = container2.querySelectorAll('[data-testid="joystick-knob"]');
+    expect(knobs2.length).toBe(0);
+    const hints2 = container2.querySelectorAll('[data-testid="joystick-hint"]');
+    expect(hints2.length).toBeGreaterThanOrEqual(1);
   });
 
   // Video signal overlay tests (T6)

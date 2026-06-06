@@ -111,6 +111,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const knobSize = isLandscape ? 52 : 46;
   const variant = 'zone' as const; // hold-zone by default
 
+  // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
+  // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
+  // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
+  const gamepadActive = bridge.inputSource === 'gamepad';
+  const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
+  const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
+
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
     setLx(-y); // y-axis inverted → forward+
@@ -448,6 +455,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               onMove={handleDriveMove}
               onEnd={handleDriveEnd}
               label="DRIVE"
+              externalActive={gamepadActive}
+              externalValue={driveExternal}
             />
 
             {/* STRAFE joystick (right bottom) */}
@@ -466,6 +475,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               onMove={handleStrafeMove}
               onEnd={handleStrafeEnd}
               label="STRAFE"
+              externalActive={gamepadActive}
+              externalValue={strafeExternal}
             />
           </main>
 
@@ -635,6 +646,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           onMove={handleDriveMove}
           onEnd={handleDriveEnd}
           label="DRIVE"
+          externalActive={gamepadActive}
+          externalValue={driveExternal}
         />
 
         {/* STRAFE joystick (right bottom) */}
@@ -653,6 +666,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           onMove={handleStrafeMove}
           onEnd={handleStrafeEnd}
           label="STRAFE"
+          externalActive={gamepadActive}
+          externalValue={strafeExternal}
         />
 
         {/* Mode chip (bottom center) */}
