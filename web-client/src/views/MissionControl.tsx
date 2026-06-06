@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
+import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -378,6 +379,31 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 />
               </div>
 
+              {/* SPEED controls */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>SPEED</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <SpeedStepper
+                    label="LINEAR"
+                    value={bridge.maxLinear}
+                    unit="m/s"
+                    min={0.1}
+                    max={2.0}
+                    step={0.1}
+                    onChange={bridge.setMaxLinear}
+                  />
+                  <SpeedStepper
+                    label="ANGULAR"
+                    value={bridge.maxAngular}
+                    unit="rad/s"
+                    min={0.1}
+                    max={3.0}
+                    step={0.1}
+                    onChange={bridge.setMaxAngular}
+                  />
+                </div>
+              </div>
+
               {/* LAT/BAT/SIG readouts */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <Readout
@@ -551,7 +577,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         {/* Video signal overlay */}
         <VideoSignalOverlay state={stream.state} />
 
-        {/* Top-left vel bars */}
+        {/* Top-left vel bars + speed controls */}
         <div
           style={{
             position: 'absolute',
@@ -564,16 +590,48 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             padding: '6px 8px',
             borderRadius: 4,
             border: `1px solid ${p.border}40`,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
           }}
         >
-          <VelBars
-            lx={lx}
-            ly={ly}
-            az={az}
-            color={p.accent}
-            trackColor="rgba(255,255,255,0.08)"
-            font={monoFont}
-          />
+          {/* VELOCITY bars */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
+            <VelBars
+              lx={lx}
+              ly={ly}
+              az={az}
+              color={p.accent}
+              trackColor="rgba(255,255,255,0.08)"
+              font={monoFont}
+            />
+          </div>
+
+          {/* SPEED controls */}
+          <div>
+            <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>SPEED</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <SpeedStepper
+                label="LINEAR"
+                value={bridge.maxLinear}
+                unit="m/s"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                onChange={bridge.setMaxLinear}
+              />
+              <SpeedStepper
+                label="ANGULAR"
+                value={bridge.maxAngular}
+                unit="rad/s"
+                min={0.1}
+                max={3.0}
+                step={0.1}
+                onChange={bridge.setMaxAngular}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Top-right telemetry stack */}

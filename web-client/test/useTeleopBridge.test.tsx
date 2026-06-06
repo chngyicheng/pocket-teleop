@@ -8,6 +8,8 @@ class FakeTeleopClient {
   twists: number[][] = [];
   engageEstopCalls = 0;
   resetEstopCalls = 0;
+  maxLinear = 1.0;
+  maxAngular = 1.0;
   opts: TeleopClientOptions;
 
   constructor(opts: TeleopClientOptions = {}) {
@@ -27,6 +29,11 @@ class FakeTeleopClient {
 
   resetEstop() {
     this.resetEstopCalls += 1;
+  }
+
+  setMaxSpeed(maxLinear: number, maxAngular: number) {
+    this.maxLinear = maxLinear;
+    this.maxAngular = maxAngular;
   }
 
   setGamepadProfile() {}
@@ -387,5 +394,104 @@ describe('useTeleopBridge', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('initializes maxLinear and maxAngular to 1.0 by default', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.maxLinear).toBe(1.0);
+    expect(result.current.maxAngular).toBe(1.0);
+  });
+
+  it('setMaxLinear updates maxLinear state and calls client.setMaxSpeed', () => {
+    const fc = new FakeTeleopClient();
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fc.opts = opts; return fc; },
+      })
+    );
+
+    act(() => {
+      result.current.setMaxLinear(0.5);
+    });
+
+    expect(result.current.maxLinear).toBe(0.5);
+    expect(fc.maxLinear).toBe(0.5);
+    expect(fc.maxAngular).toBe(1.0);
+  });
+
+  it('setMaxAngular updates maxAngular state and calls client.setMaxSpeed', () => {
+    // Clear localStorage before this test to avoid cross-contamination from previous tests
+    try {
+      localStorage.removeItem('pocket-teleop.max-speed');
+    } catch {
+      // localStorage unavailable
+    }
+
+    const fc = new FakeTeleopClient();
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fc.opts = opts; return fc; },
+      })
+    );
+
+    act(() => {
+      result.current.setMaxAngular(2.0);
+    });
+
+    expect(result.current.maxAngular).toBe(2.0);
+    expect(fc.maxAngular).toBe(2.0);
+    expect(fc.maxLinear).toBe(1.0);
+  });
+
+  it('setMaxLinear clamps values to [0.1, 2.0]', () => {
+    const fc = new FakeTeleopClient();
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fc.opts = opts; return fc; },
+      })
+    );
+
+    act(() => {
+      result.current.setMaxLinear(3.0); // exceeds max
+    });
+
+    expect(result.current.maxLinear).toBe(2.0);
+
+    act(() => {
+      result.current.setMaxLinear(0.05); // below min
+    });
+
+    expect(result.current.maxLinear).toBe(0.1);
+  });
+
+  it('setMaxAngular clamps values to [0.1, 3.0]', () => {
+    const fc = new FakeTeleopClient();
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fc.opts = opts; return fc; },
+      })
+    );
+
+    act(() => {
+      result.current.setMaxAngular(4.0); // exceeds max
+    });
+
+    expect(result.current.maxAngular).toBe(3.0);
+
+    act(() => {
+      result.current.setMaxAngular(0.05); // below min
+    });
+
+    expect(result.current.maxAngular).toBe(0.1);
   });
 });

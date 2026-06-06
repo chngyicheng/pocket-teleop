@@ -59,6 +59,10 @@ export class TeleopClient {
   // Zombie-link detection: counts pings sent with no pong reply in between.
   private missedPongs = 0;
 
+  // Speed scaling
+  private maxLinear = 1.0;
+  private maxAngular = 1.0;
+
   // Continuous-publish state
   /** Non-null while a joystick is held; the values to repeat each tick. */
   private repeatTwist: { lx: number; ly: number; az: number } | null = null;
@@ -144,6 +148,15 @@ export class TeleopClient {
     this.gamepadHandler.setEnabled(enabled);
   }
 
+  setMaxSpeed(maxLinear: number, maxAngular: number): void {
+    this.maxLinear = maxLinear;
+    this.maxAngular = maxAngular;
+  }
+
+  private sendScaledTwist(lx: number, ly: number, az: number): void {
+    this.connection.send(buildTwist(lx * this.maxLinear, ly * this.maxLinear, az * this.maxAngular));
+  }
+
   private handleGamepadButton(action: string): void {
     if (action === 'estop') {
       // Cross-source toggle: LB engages if released, resets if already engaged.
@@ -184,12 +197,13 @@ export class TeleopClient {
     const shapedLy = shapeAxis(ly);
     const shapedAz = shapeAxis(az);
 
-    // Immediate one-shot send (existing behaviour, kept for responsiveness)
-    this.connection.send(buildTwist(shapedLx, shapedLy, shapedAz));
+    // Immediate one-shot send with scaling applied
+    this.sendScaledTwist(shapedLx, shapedLy, shapedAz);
     this.lastSentAt = Date.now();
+    // Emit shaped-normalized (un-scaled) values to HUD
     this.options.onTwist?.(shapedLx, shapedLy, shapedAz);
 
-    // Update continuous-publish state
+    // Update continuous-publish state (store shaped-normalized, not pre-scaled)
     if (shapedLx !== 0 || shapedLy !== 0 || shapedAz !== 0) {
       // Joystick held: repeat this command on every publisher tick
       this.repeatTwist = { lx: shapedLx, ly: shapedLy, az: shapedAz };
@@ -301,7 +315,7 @@ export class TeleopClient {
     this.publishId = setInterval(() => {
       if (this.repeatTwist !== null) {
         const { lx, ly, az } = this.repeatTwist;
-        this.connection.send(buildTwist(lx, ly, az));
+        this.sendScaledTwist(lx, ly, az);
         this.lastSentAt = Date.now();
       } else if (this.zeroFramesLeft > 0) {
         this.connection.send(buildTwist(0, 0, 0));

@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
+import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 
@@ -433,6 +434,29 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
               trackColor="rgba(255,255,255,0.08)"
               font={monoFont}
             />
+          </SidePanel>
+
+          <SidePanel title="SPEED">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <SpeedStepper
+                label="LINEAR"
+                value={bridge.maxLinear}
+                unit="m/s"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                onChange={bridge.setMaxLinear}
+              />
+              <SpeedStepper
+                label="ANGULAR"
+                value={bridge.maxAngular}
+                unit="rad/s"
+                min={0.1}
+                max={3.0}
+                step={0.1}
+                onChange={bridge.setMaxAngular}
+              />
+            </div>
           </SidePanel>
 
           <SidePanel title="ODOMETRY">

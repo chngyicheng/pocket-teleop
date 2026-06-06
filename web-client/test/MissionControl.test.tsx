@@ -28,6 +28,10 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     eStop: vi.fn(),
     estopEngaged: false,
     resetEstop: vi.fn(),
+    maxLinear: 1.0,
+    maxAngular: 1.0,
+    setMaxLinear: vi.fn(),
+    setMaxAngular: vi.fn(),
     ...overrides,
   };
 }
@@ -808,5 +812,48 @@ describe('MissionControl', () => {
       expect(screen.getByText('DRIVE')).toBeTruthy();
       expect(screen.getByText('STRAFE')).toBeTruthy();
     });
+  });
+
+  it('renders SPEED panel in phone-portrait layout', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-portrait"
+      />
+    );
+
+    expect(screen.getByText('SPEED')).toBeTruthy();
+    // Verify LINEAR and ANGULAR stepper labels
+    expect(screen.getByText('LINEAR')).toBeTruthy();
+    expect(screen.getByText('ANGULAR')).toBeTruthy();
+  });
+
+  it('renders SPEED panel in the phone-landscape STREAM rail (under VELOCITY)', () => {
+    const bridge = createFakeBridge();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // SPEED must be present in the landscape left rail, after VELOCITY.
+    const velocity = screen.getByText('VELOCITY');
+    const speed = screen.getByText('SPEED');
+    expect(speed).toBeTruthy();
+    expect(
+      velocity.compareDocumentPosition(speed) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(screen.getByText('LINEAR')).toBeTruthy();
+    expect(screen.getByText('ANGULAR')).toBeTruthy();
   });
 });

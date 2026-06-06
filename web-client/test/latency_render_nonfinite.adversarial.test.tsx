@@ -37,6 +37,14 @@ function makeBridge(latencyMs: number | null): TeleopBridge {
     robotNamespace: '/ns',
     eStop: vi.fn(),
     sendTwist: vi.fn(),
+    estopEngaged: false,
+    resetEstop: vi.fn(),
+    gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    inputSource: 'idle',
+    maxLinear: 1.0,
+    maxAngular: 1.0,
+    setMaxLinear: vi.fn(),
+    setMaxAngular: vi.fn(),
   };
 }
 

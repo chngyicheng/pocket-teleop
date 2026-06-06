@@ -28,6 +28,10 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     eStop: vi.fn(),
     estopEngaged: false,
     resetEstop: vi.fn(),
+    maxLinear: 1.0,
+    maxAngular: 1.0,
+    setMaxLinear: vi.fn(),
+    setMaxAngular: vi.fn(),
     ...overrides,
   };
 }
@@ -754,5 +758,30 @@ describe('MissionTablet', () => {
       const zones = screen.getAllByTestId('joystick-zone');
       expect(zones.length).toBe(2);
     });
+  });
+
+  it('renders SPEED panel between VELOCITY and ODOMETRY panels in left rail', () => {
+    const bridge = createFakeBridge();
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    const { container } = render(<MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />);
+
+    // Find the panels by their titles
+    const velocityEl = screen.getByText('VELOCITY');
+    const speedEl = screen.getByText('SPEED');
+    const odometryEl = screen.getByText('ODOMETRY');
+
+    // Verify all three are present
+    expect(velocityEl).toBeTruthy();
+    expect(speedEl).toBeTruthy();
+    expect(odometryEl).toBeTruthy();
+
+    // Verify DOM order: VELOCITY → SPEED → ODOMETRY
+    const velocityPosition = velocityEl.compareDocumentPosition(speedEl);
+    expect(velocityPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // VELOCITY comes before SPEED
+
+    const speedPosition = speedEl.compareDocumentPosition(odometryEl);
+    expect(speedPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // SPEED comes before ODOMETRY
   });
 });

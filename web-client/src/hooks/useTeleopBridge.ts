@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
+import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
 
 export interface TeleopBridge {
   connected: boolean;
@@ -17,6 +18,10 @@ export interface TeleopBridge {
   resetEstop: () => void;
   gamepadTwist: { lx: number; ly: number; az: number };
   inputSource: 'touch' | 'gamepad' | 'idle';
+  maxLinear: number;
+  maxAngular: number;
+  setMaxLinear: (v: number) => void;
+  setMaxAngular: (v: number) => void;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -40,6 +45,10 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [estopEngaged, setEstopEngaged] = useState(false);
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
   const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
+
+  const initialMaxSpeed = loadMaxSpeed();
+  const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
+  const [maxAngular, setMaxAngularState] = useState(initialMaxSpeed.maxAngular);
 
   const clientRef = useRef<TeleopClient | null>(null);
   const lastGamepadActivityRef = useRef(0);
@@ -93,6 +102,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
 
     clientRef.current = client;
     client.connect(opts.url);
+    // Apply persisted speed limits on connect
+    client.setMaxSpeed(maxLinear, maxAngular);
 
     // Set up idle reversion interval
     const idleCheckInterval = setInterval(() => {
@@ -116,6 +127,10 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       clearInterval(idleCheckInterval);
       client.disconnect();
     };
+    // maxLinear/maxAngular are intentionally NOT deps: live changes are pushed to
+    // the client via setMaxLinear/setMaxAngular (clientRef.setMaxSpeed). Including
+    // them here would tear down and reconnect the socket on every speed adjustment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.url, opts.TeleopClientCtor]);
 
   const sendTwist = (lx: number, ly: number, az: number) => {
@@ -138,6 +153,24 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     }
   };
 
+  const setMaxLinear = (v: number) => {
+    const c = clampLinear(v);
+    setMaxLinearState(c);
+    if (clientRef.current) {
+      clientRef.current.setMaxSpeed(c, maxAngular);
+    }
+    saveMaxSpeed({ maxLinear: c, maxAngular });
+  };
+
+  const setMaxAngular = (v: number) => {
+    const c = clampAngular(v);
+    setMaxAngularState(c);
+    if (clientRef.current) {
+      clientRef.current.setMaxSpeed(maxLinear, c);
+    }
+    saveMaxSpeed({ maxLinear, maxAngular: c });
+  };
+
   return {
     connected,
     connectionState,
@@ -153,5 +186,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     resetEstop,
     gamepadTwist,
     inputSource,
+    maxLinear,
+    maxAngular,
+    setMaxLinear,
+    setMaxAngular,
   };
 }
