@@ -102,7 +102,11 @@ const CollapsibleRail: React.FC<CollapsibleRailProps> = ({
           flexDirection: 'column',
           transform: open ? 'translateX(0)' : `translateX(${isLeft ? '-100%' : '100%'})`,
           transition: 'transform 0.2s ease',
-          zIndex: 1,
+          // Above the joystick hold-zones (z5) so rail content (incl. the SPEED
+          // +/- steppers) is tappable where a joystick overlaps; still below the
+          // toggle tab (z15) and Settings drawer (z16/17). Collapsed -> translated
+          // off-screen, so this never blocks the video/joysticks.
+          zIndex: 6,
         }}
       >
         {/* Title label */}
