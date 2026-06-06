@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
@@ -412,40 +412,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             <VideoSignalOverlay state={stream.state} />
 
             {/* Center crosshair reticle */}
-            <div
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 16,
-                height: 16,
-                pointerEvents: 'none',
-              }}
-            >
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: 0,
-                  bottom: 0,
-                  width: 1,
-                  background: p.accent,
-                  opacity: 0.4,
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  background: p.accent,
-                  opacity: 0.4,
-                }}
-              />
-            </div>
+            <Crosshair accent={p.accent} />
 
             {/* Mode chip */}
             <div
@@ -467,59 +434,39 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             </div>
 
             {/* DRIVE joystick (left bottom) */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: zone,
-                height: zone,
-                pointerEvents: controlsDisabled ? 'none' : 'auto',
-              }}
-              data-testid="joystick-zone"
-            >
-              <Joystick
-                variant={variant}
-                size={zone}
-                baseSize={baseSize}
-                knobSize={knobSize}
-                baseColor="rgba(240,169,42,0.08)"
-                ringColor={p.accent + 'aa'}
-                knobColor={p.accent}
-                knobBorder={p.bg}
-                onMove={handleDriveMove}
-                onEnd={handleDriveEnd}
-                label="DRIVE"
-              />
-            </div>
+            <JoystickZone
+              side="left"
+              size={zone}
+              controlsDisabled={controlsDisabled}
+              variant={variant}
+              baseSize={baseSize}
+              knobSize={knobSize}
+              baseColor="rgba(240,169,42,0.08)"
+              ringColor={p.accent + 'aa'}
+              knobColor={p.accent}
+              knobBorder={p.bg}
+              onMove={handleDriveMove}
+              onEnd={handleDriveEnd}
+              label="DRIVE"
+            />
 
             {/* STRAFE joystick (right bottom) */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                right: 0,
-                width: zone,
-                height: zone,
-                pointerEvents: controlsDisabled ? 'none' : 'auto',
-              }}
-              data-testid="joystick-zone"
-            >
-              <Joystick
-                variant={variant}
-                axes="x"
-                size={zone}
-                baseSize={baseSize}
-                knobSize={knobSize}
-                baseColor="rgba(78,201,214,0.08)"
-                ringColor={p.accent2 + 'aa'}
-                knobColor={p.accent2}
-                knobBorder={p.bg}
-                onMove={handleStrafeMove}
-                onEnd={handleStrafeEnd}
-                label="STRAFE"
-              />
-            </div>
+            <JoystickZone
+              side="right"
+              size={zone}
+              controlsDisabled={controlsDisabled}
+              variant={variant}
+              axes="x"
+              baseSize={baseSize}
+              knobSize={knobSize}
+              baseColor="rgba(78,201,214,0.08)"
+              ringColor={p.accent2 + 'aa'}
+              knobColor={p.accent2}
+              knobBorder={p.bg}
+              onMove={handleStrafeMove}
+              onEnd={handleStrafeEnd}
+              label="STRAFE"
+            />
           </main>
 
           {/* Landscape: Right rail (MAP, HEADING) */}
@@ -671,93 +618,42 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
 
         {/* Center crosshair reticle */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 16,
-            height: 16,
-            pointerEvents: 'none',
-          }}
-        >
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: 0,
-              bottom: 0,
-              width: 1,
-              background: p.accent,
-              opacity: 0.4,
-            }}
-          />
-          <div
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: 0,
-              right: 0,
-              height: 1,
-              background: p.accent,
-              opacity: 0.4,
-            }}
-          />
-        </div>
+        <Crosshair accent={p.accent} />
 
         {/* DRIVE joystick (left bottom) */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: zone,
-            height: zone,
-            pointerEvents: controlsDisabled ? 'none' : 'auto',
-          }}
-        >
-          <Joystick
-            variant={variant}
-            size={zone}
-            baseSize={baseSize}
-            knobSize={knobSize}
-            baseColor="rgba(240,169,42,0.08)"
-            ringColor={p.accent + 'aa'}
-            knobColor={p.accent}
-            knobBorder={p.bg}
-            onMove={handleDriveMove}
-            onEnd={handleDriveEnd}
-            label="DRIVE"
-          />
-        </div>
+        <JoystickZone
+          side="left"
+          size={zone}
+          controlsDisabled={controlsDisabled}
+          variant={variant}
+          baseSize={baseSize}
+          knobSize={knobSize}
+          baseColor="rgba(240,169,42,0.08)"
+          ringColor={p.accent + 'aa'}
+          knobColor={p.accent}
+          knobBorder={p.bg}
+          onMove={handleDriveMove}
+          onEnd={handleDriveEnd}
+          label="DRIVE"
+        />
 
         {/* STRAFE joystick (right bottom) */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            right: 0,
-            width: zone,
-            height: zone,
-            pointerEvents: controlsDisabled ? 'none' : 'auto',
-          }}
-        >
-          <Joystick
-            variant={variant}
-            axes="x"
-            size={zone}
-            baseSize={baseSize}
-            knobSize={knobSize}
-            baseColor="rgba(78,201,214,0.08)"
-            ringColor={p.accent2 + 'aa'}
-            knobColor={p.accent2}
-            knobBorder={p.bg}
-            onMove={handleStrafeMove}
-            onEnd={handleStrafeEnd}
-            label="STRAFE"
-          />
-        </div>
+        <JoystickZone
+          side="right"
+          size={zone}
+          controlsDisabled={controlsDisabled}
+          variant={variant}
+          axes="x"
+          baseSize={baseSize}
+          knobSize={knobSize}
+          baseColor="rgba(78,201,214,0.08)"
+          ringColor={p.accent2 + 'aa'}
+          knobColor={p.accent2}
+          knobBorder={p.bg}
+          onMove={handleStrafeMove}
+          onEnd={handleStrafeEnd}
+          label="STRAFE"
+        />
 
         {/* Mode chip (bottom center) */}
         <div

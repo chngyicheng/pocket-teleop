@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Joystick, MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
@@ -595,58 +595,40 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       </CollapsibleRail>
 
       {/* Joystick overlays — bottom-left and bottom-right */}
-      <div
-        style={{
-          position: 'absolute',
-          left: 0,
-          bottom: 0,
-          width: 280,
-          height: 280,
-          zIndex: 5,
-          pointerEvents: controlsDisabled ? 'none' : 'auto',
-        }}
-      >
-        <Joystick
-          variant="zone"
-          size={280}
-          baseSize={140}
-          knobSize={56}
-          baseColor="rgba(240,169,42,0.10)"
-          ringColor={p.accent + 'cc'}
-          knobColor={p.accent}
-          knobBorder={p.bg}
-          label="DRIVE"
-          onMove={handleDriveMove}
-          onEnd={handleDriveEnd}
-        />
-      </div>
+      <JoystickZone
+        side="left"
+        size={280}
+        zIndex={5}
+        controlsDisabled={controlsDisabled}
+        variant="zone"
+        baseSize={140}
+        knobSize={56}
+        baseColor="rgba(240,169,42,0.10)"
+        ringColor={p.accent + 'cc'}
+        knobColor={p.accent}
+        knobBorder={p.bg}
+        label="DRIVE"
+        onMove={handleDriveMove}
+        onEnd={handleDriveEnd}
+      />
 
-      <div
-        style={{
-          position: 'absolute',
-          right: 0,
-          bottom: 0,
-          width: 280,
-          height: 280,
-          zIndex: 5,
-          pointerEvents: controlsDisabled ? 'none' : 'auto',
-        }}
-      >
-        <Joystick
-          variant="zone"
-          axes="x"
-          size={280}
-          baseSize={140}
-          knobSize={56}
-          baseColor="rgba(78,201,214,0.10)"
-          ringColor={p.accent2 + 'cc'}
-          knobColor={p.accent2}
-          knobBorder={p.bg}
-          label="STRAFE"
-          onMove={handleStrafeMove}
-          onEnd={handleStrafeEnd}
-        />
-      </div>
+      <JoystickZone
+        side="right"
+        size={280}
+        zIndex={5}
+        controlsDisabled={controlsDisabled}
+        variant="zone"
+        axes="x"
+        baseSize={140}
+        knobSize={56}
+        baseColor="rgba(78,201,214,0.10)"
+        ringColor={p.accent2 + 'cc'}
+        knobColor={p.accent2}
+        knobBorder={p.bg}
+        label="STRAFE"
+        onMove={handleStrafeMove}
+        onEnd={handleStrafeEnd}
+      />
     </div>
   );
 };
