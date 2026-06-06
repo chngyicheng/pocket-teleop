@@ -26,6 +26,8 @@
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
 - **Secure by default** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade.
 
+> **Work in progress:** the map / odometry mini-map is still under development and may not yet reflect the robot's true position.
+
 ## Screenshots
 
 > Placeholders below — drop real captures into [`docs/screenshots/`](docs/screenshots) and update the paths.
