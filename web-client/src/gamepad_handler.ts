@@ -13,6 +13,9 @@ export interface GamepadHandlerOptions {
 
 export class GamepadHandler {
   private intervalId: ReturnType<typeof setInterval> | null = null;
+  private rafId: number | null = null;
+  private running = false;
+  private lastPollAt = 0;
   private readonly intervalMs: number;
   private readonly onTwist: (lx: number, ly: number, az: number) => void;
   private readonly onButton: ((action: string) => void) | undefined;
@@ -22,19 +25,49 @@ export class GamepadHandler {
   private enabled = true;
 
   constructor(options: GamepadHandlerOptions) {
-    this.intervalMs  = options.intervalMs ?? 200;
+    this.intervalMs  = options.intervalMs ?? 50;
     this.onTwist     = options.onTwist;
     this.onButton    = options.onButton;
     this.onActivity  = options.onActivity;
     this.profile     = options.profile ?? null;
   }
 
+  /**
+   * Polling MUST be driven by requestAnimationFrame: Chrome only refreshes the
+   * snapshots returned by navigator.getGamepads() in sync with the rAF/compositor
+   * loop. Reading from a bare setInterval (off the rAF loop) returns STALE state —
+   * a held, unchanging stick reads neutral, so motion only registers while the
+   * stick is actively moving (the "wiggle to keep it alive" bug). The rAF loop
+   * keeps the buffer fresh; we throttle the actual poll to intervalMs (~20 Hz).
+   * setInterval is kept only as a fallback for environments without rAF.
+   */
   start(): void {
-    if (this.intervalId !== null) return;
-    this.intervalId = setInterval(() => this.poll(), this.intervalMs);
+    if (this.running) return;
+    this.running = true;
+    this.lastPollAt = 0;
+
+    if (typeof requestAnimationFrame === 'function') {
+      const loop = (): void => {
+        if (!this.running) return;
+        const now = Date.now();
+        if (now - this.lastPollAt >= this.intervalMs) {
+          this.lastPollAt = now;
+          this.poll();
+        }
+        this.rafId = requestAnimationFrame(loop);
+      };
+      this.rafId = requestAnimationFrame(loop);
+    } else {
+      this.intervalId = setInterval(() => this.poll(), this.intervalMs);
+    }
   }
 
   stop(): void {
+    this.running = false;
+    if (this.rafId !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.rafId);
+    }
+    this.rafId = null;
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
