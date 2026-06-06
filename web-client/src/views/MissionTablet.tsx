@@ -144,6 +144,23 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
+  // Short landscape viewport (a long phone in landscape): the corner joystick
+  // zones overlap the side rails, and a full-height zone swallows the rail's
+  // touch-scroll. Clip the joystick tap region to ~bottom→hint-top so the rail
+  // above stays scrollable. Taller tablet-class screens (e.g. Fold unfolded)
+  // have room to scroll and keep the full square zone.
+  const [isShortLandscape, setIsShortLandscape] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(max-height: 600px)');
+    const update = () => setIsShortLandscape(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const joySize = 200;
+  const joyTapHeight = isShortLandscape ? Math.round(joySize / 2 + 30) : undefined;
+
   /**
    * axesRef holds the live (non-stale) current command.
    * React useState setters are async — reading lx/ly/az in a closure can
@@ -633,7 +650,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       {/* Joystick overlays — bottom-left and bottom-right */}
       <JoystickZone
         side="left"
-        size={200}
+        size={joySize}
+        tapHeight={joyTapHeight}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
@@ -652,7 +670,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
 
       <JoystickZone
         side="right"
-        size={200}
+        size={joySize}
+        tapHeight={joyTapHeight}
         zIndex={5}
         controlsDisabled={controlsDisabled}
         variant="zone"
