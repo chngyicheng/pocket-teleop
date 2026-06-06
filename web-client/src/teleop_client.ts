@@ -4,13 +4,13 @@ import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage } from './protocol.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
-export const PUBLISH_INTERVAL_MS = 50;
+const PUBLISH_INTERVAL_MS = 50;
 
 /**
  * Number of zero-twist frames sent after a joystick release before the
  * publisher goes silent.  10 × 50 ms = 500 ms of explicit stop.
  */
-export const STOP_REPEATS = 10;
+const STOP_REPEATS = 10;
 
 export interface TeleopClientOptions {
   onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string) => void;
