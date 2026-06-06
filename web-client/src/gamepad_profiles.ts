@@ -29,7 +29,7 @@ const BUILT_INS: GamepadProfile[] = [
     name: 'Xbox',
     idPattern: /xbox|xinput/i,
     mapping: STANDARD,
-    buttons: {},
+    buttons: { estop: 4 },
   },
   {
     name: 'DualShock / DualSense',
@@ -44,13 +44,13 @@ const BUILT_INS: GamepadProfile[] = [
     name: 'GameSir G8+',
     idPattern: /gamesir/i,
     mapping: STANDARD,
-    buttons: {},
+    buttons: { estop: 4 },
   },
   {
     name: 'Generic',
     idPattern: /.*/,
     mapping: STANDARD,
-    buttons: {},
+    buttons: { estop: 4 },
   },
 ];
 

@@ -78,4 +78,152 @@ describe('GamepadHandler.poll — axis remapping', () => {
     // Should still call onTwist even with small values (deadzone is in caller, not handler)
     expect(onTwistSpy).toHaveBeenCalledOnce();
   });
+
+  describe('button rising-edge detection (estop on LB)', () => {
+    it('detects rising edge: profile with estop:4, button goes false→true', () => {
+      const onButtonSpy = vi.fn();
+      const fakeGp = {
+        id: 'Xbox 360 Controller',
+        axes: [0, 0, 0, 0],
+        buttons: [
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: true },   // button 4 (LB) pressed
+        ],
+        connected: true,
+        mapping: 'standard',
+        index: 0,
+        timestamp: 0,
+      };
+
+      vi.stubGlobal('navigator', {
+        getGamepads: () => [fakeGp],
+      });
+
+      const handler = new GamepadHandler({
+        onTwist: vi.fn(),
+        onButton: onButtonSpy,
+        profile: matchProfile('Xbox 360 Controller'),
+        intervalMs: 1000,
+      });
+
+      // First poll: button goes from undefined→true (rising edge)
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledWith('estop');
+    });
+
+    it('no second call on same button press held down', () => {
+      const onButtonSpy = vi.fn();
+      const fakeGp = {
+        id: 'Xbox 360 Controller',
+        axes: [0, 0, 0, 0],
+        buttons: [
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: true },   // button 4 (LB) held
+        ],
+        connected: true,
+        mapping: 'standard',
+        index: 0,
+        timestamp: 0,
+      };
+
+      vi.stubGlobal('navigator', {
+        getGamepads: () => [fakeGp],
+      });
+
+      const handler = new GamepadHandler({
+        onTwist: vi.fn(),
+        onButton: onButtonSpy,
+        profile: matchProfile('Xbox 360 Controller'),
+        intervalMs: 1000,
+      });
+
+      // First poll: rising edge
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledTimes(1);
+
+      // Second poll: button still pressed, no new rising edge
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('rising edge again after button released and re-pressed', () => {
+      const onButtonSpy = vi.fn();
+      const fakeGp = {
+        id: 'Xbox 360 Controller',
+        axes: [0, 0, 0, 0],
+        buttons: [
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: false },
+          { pressed: true },   // initially pressed
+        ],
+        connected: true,
+        mapping: 'standard',
+        index: 0,
+        timestamp: 0,
+      };
+
+      vi.stubGlobal('navigator', {
+        getGamepads: () => [fakeGp],
+      });
+
+      const handler = new GamepadHandler({
+        onTwist: vi.fn(),
+        onButton: onButtonSpy,
+        profile: matchProfile('Xbox 360 Controller'),
+        intervalMs: 1000,
+      });
+
+      // First poll: rising edge
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledTimes(1);
+
+      // Release button
+      fakeGp.buttons[4]!.pressed = false;
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledTimes(1);  // No new call on release
+
+      // Re-press
+      fakeGp.buttons[4]!.pressed = true;
+      (handler as any).poll();
+      expect(onButtonSpy).toHaveBeenCalledTimes(2);  // Rising edge again
+    });
+
+    it('button-exists guard: skips missing button in profile', () => {
+      const onButtonSpy = vi.fn();
+      const fakeGp = {
+        id: 'Xbox 360 Controller',
+        axes: [0, 0, 0, 0],
+        buttons: [],  // no buttons array, shorter than profile expects
+        connected: true,
+        mapping: 'standard',
+        index: 0,
+        timestamp: 0,
+      };
+
+      vi.stubGlobal('navigator', {
+        getGamepads: () => [fakeGp],
+      });
+
+      const handler = new GamepadHandler({
+        onTwist: vi.fn(),
+        onButton: onButtonSpy,
+        profile: matchProfile('Xbox 360 Controller'),
+        intervalMs: 1000,
+      });
+
+      // Poll: profile has estop:4 but gamepad.buttons is empty
+      (handler as any).poll();
+
+      // onButton should NOT be called (guard prevents phantom press)
+      expect(onButtonSpy).not.toHaveBeenCalledWith('estop');
+    });
+  });
 });

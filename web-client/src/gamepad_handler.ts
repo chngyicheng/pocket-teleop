@@ -71,6 +71,10 @@ export class GamepadHandler {
     let hasButtonActivity = false;
     const risingEdgeActions: string[] = [];
     for (const [action, buttonIndex] of Object.entries(this.profile.buttons)) {
+      // Skip buttons that don't exist on this gamepad (prevents phantom presses)
+      if (gp.buttons[buttonIndex] === undefined) {
+        continue;
+      }
       const pressed    = (gp.buttons[buttonIndex]?.pressed) ?? false;
       const wasPressed = this.prevButtons[buttonIndex] ?? false;
       if (pressed && !wasPressed) {

@@ -102,7 +102,7 @@ export class TeleopClient {
     });
     this.gamepadHandler = new GamepadHandler({
       onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az),
-      onButton:   (action) => this.options.onButton?.(action),
+      onButton:   (action) => this.handleGamepadButton(action),
       onActivity: () => this.options.onGamepadActivity?.(),
     });
   }
@@ -142,6 +142,20 @@ export class TeleopClient {
 
   setGamepadEnabled(enabled: boolean): void {
     this.gamepadHandler.setEnabled(enabled);
+  }
+
+  private handleGamepadButton(action: string): void {
+    if (action === 'estop') {
+      // Cross-source toggle: LB engages if released, resets if already engaged.
+      // estopEngaged is the shared latch (also synced by server estop_state), so
+      // touch/UI/Space and gamepad never lock each other out.
+      if (this.estopEngaged) {
+        this.resetEstop();
+      } else {
+        this.engageEstop();
+      }
+    }
+    this.options.onButton?.(action);
   }
 
   engageEstop(): void {
