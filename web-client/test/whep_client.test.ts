@@ -12,39 +12,58 @@ async function flushPromises(): Promise<void> {
 
 class MockRTCPeerConnection {
   static _instances: MockRTCPeerConnection[] = [];
+  /** Initial iceGatheringState for newly-created PCs. Default 'complete' keeps
+   * most tests on the fast path (_waitForIceGathering early-returns, no timer).
+   * The timer-cleanup test sets this to 'gathering' to arm the safety timeout. */
+  static _initialIceGatheringState: RTCIceGatheringState = 'complete';
 
-  iceGatheringState: RTCIceGatheringState = 'complete';
+  iceGatheringState: RTCIceGatheringState;
   connectionState:   RTCPeerConnectionState = 'new';
   localDescription:  RTCSessionDescriptionInit | null = { type: 'offer', sdp: 'mock-offer-sdp' };
 
   ontrack:                ((e: RTCTrackEvent) => void) | null = null;
   onconnectionstatechange: (() => void) | null = null;
 
+  /** Functional event-listener registry so the source's 'icegatheringstatechange'
+   * listener actually fires when _setIceGatheringState() is called. */
+  _listeners: Record<string, Set<() => void>> = {};
+
   addTransceiver      = vi.fn();
   createOffer         = vi.fn().mockResolvedValue({ type: 'offer', sdp: 'mock-offer-sdp' });
   setLocalDescription = vi.fn().mockResolvedValue(undefined);
   setRemoteDescription = vi.fn().mockResolvedValue(undefined);
   close               = vi.fn();
-  addEventListener    = vi.fn();
-  removeEventListener = vi.fn();
+  addEventListener    = vi.fn((type: string, cb: () => void) => {
+    (this._listeners[type] ??= new Set()).add(cb);
+  });
+  removeEventListener = vi.fn((type: string, cb: () => void) => {
+    this._listeners[type]?.delete(cb);
+  });
 
   /** getStats() returns this report Map; tests set it via _statsReport. */
   _statsReport: Map<string, unknown> = new Map();
   getStats = vi.fn(() => Promise.resolve(this._statsReport));
 
   constructor(_config?: RTCConfiguration) {
+    this.iceGatheringState = MockRTCPeerConnection._initialIceGatheringState;
     MockRTCPeerConnection._instances.push(this);
   }
 
   /** Simulate the 'ontrack' callback firing with a mock MediaStream. */
   _fireTrack(stream: MediaStream): void {
-    this.ontrack?.({ streams: [stream] } as RTCTrackEvent);
+    this.ontrack?.({ streams: [stream] } as unknown as RTCTrackEvent);
   }
 
   /** Simulate connection state change. */
   _fireConnectionStateChange(state: RTCPeerConnectionState): void {
     this.connectionState = state;
     this.onconnectionstatechange?.();
+  }
+
+  /** Transition ICE gathering and dispatch 'icegatheringstatechange' to listeners. */
+  _setIceGatheringState(state: RTCIceGatheringState): void {
+    this.iceGatheringState = state;
+    for (const cb of this._listeners['icegatheringstatechange'] ?? []) cb();
   }
 }
 
@@ -79,6 +98,7 @@ const TEST_URL = 'http://robot.local/video/teleop/whep';
 
 beforeEach(() => {
   MockRTCPeerConnection._instances = [];
+  MockRTCPeerConnection._initialIceGatheringState = 'complete';
   mockFetch.mockReset();
   vi.useFakeTimers();
 });
@@ -387,20 +407,23 @@ describe('WhepClient', () => {
   describe('ICE gathering timer cleanup (finding #20)', () => {
     it('clears the safety timeout when ICE gathering completes early', async () => {
       mockFetch.mockResolvedValue(makeOkResponse());
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
 
+      // PC must start mid-gathering so the source arms the 5s safety timer and
+      // registers an 'icegatheringstatechange' listener.
+      MockRTCPeerConnection._initialIceGatheringState = 'gathering';
       const client = new WhepClient(TEST_URL, { onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn() });
       client.start();
       await flushPromises();
 
-      // Simulate ICE gathering completing before the 5s timeout
-      const pc = latestPc();
-      pc.iceGatheringState = 'complete';
-      pc.onconnectionstatechange?.();
+      // The safety timeout is now armed (no other timers run in this code path).
+      const armed = vi.getTimerCount();
+      expect(armed).toBeGreaterThan(0);
 
-      // clearTimeout should have been called
-      expect(clearTimeoutSpy).toHaveBeenCalled();
-      clearTimeoutSpy.mockRestore();
+      // Complete ICE gathering early — dispatches the event the source listens on,
+      // which should clearTimeout the still-pending safety timer.
+      latestPc()._setIceGatheringState('complete');
+
+      expect(vi.getTimerCount()).toBeLessThan(armed);
     });
   });
 
