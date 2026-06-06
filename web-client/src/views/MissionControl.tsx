@@ -107,9 +107,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   }, [bridge]);
 
   // Joystick sizes + variant based on layout
-  const zone = isLandscape ? 230 : 190;
-  const baseSize = isLandscape ? 120 : 110;
-  const knobSize = isLandscape ? 52 : 46;
+  // Common joystick design language across phone (landscape/portrait) + tablet:
+  // shared base/knob sizing; the touch zone narrows slightly in portrait so the
+  // two corner zones don't collide on a narrow screen.
+  const zone = isLandscape ? 200 : 190;
+  const baseSize = 120;
+  const knobSize = 50;
   const variant = 'zone' as const; // hold-zone by default
 
   // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
