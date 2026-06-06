@@ -200,7 +200,6 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const dispAz = gamepadActive ? bridge.gamepadTwist.az : az;
   const pubLinear = Math.hypot(dispLx, dispLy) * bridge.maxLinear;
   const pubAngular = dispAz * bridge.maxAngular;
-  const pubText = `${pubLinear.toFixed(2)} m/s · ${pubAngular.toFixed(2)} rad/s`;
 
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
@@ -466,9 +465,6 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
                 onChange={bridge.setMaxAngular}
               />
             </div>
-            <div style={{ marginTop: 6, fontFamily: monoFont, fontSize: 10, color: p.accent2, fontVariantNumeric: 'tabular-nums' }}>
-              <span style={{ color: p.muted, opacity: 0.6, letterSpacing: '0.08em' }}>PUB </span>{pubText}
-            </div>
           </SidePanel>
 
           <SidePanel title="ODOMETRY">
@@ -570,8 +566,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             gap: 8,
           }}
         >
-          <Readout label="V" value={Math.hypot(lx, ly).toFixed(2) + ' m/s'} color={p.accent} />
-          <Readout label="ω" value={az.toFixed(2) + ' rad/s'} color={p.accent} />
+          <Readout label="V" value={pubLinear.toFixed(2) + ' m/s'} color={p.accent} />
+          <Readout label="ω" value={pubAngular.toFixed(2) + ' rad/s'} color={p.accent} />
         </div>
       </main>
 
