@@ -130,6 +130,7 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 | **Collapsible rails + video auto-fit plan (2026-06-05)** | `docs/superpowers/plans/2026-06-05-collapsible-rails-video-fit.md` |
 | **Post-merge bugfixes plan (2026-06-05, ✅ built — merged `7bb948f`)** | `docs/superpowers/plans/2026-06-05-post-merge-bugfixes.md` |
 | **Video lazy-load + NO SIGNAL + gzip first-paint (2026-06-05, ✅ done — merged to `main`)** | `docs/superpowers/plans/2026-06-05-video-lazy-load.md` |
+| **Gamepad controls improvements (2026-06-06, ⬜ planned — 5 fixes: input-shaping/deadzone+curve, hint ground-truth, axis remap, configurable max-speed, E-STOP cross-source toggle on LB)** | `docs/superpowers/plans/2026-06-06-gamepad-controls-improvements.md` |
 | **Feature backlog (from 2026-05-06)** | See "Feature plan pool" below |
 
 ### Feature plan pool (waiting on user to pick priority)
