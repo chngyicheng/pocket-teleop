@@ -355,26 +355,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             muted={p.muted}
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
-              {/* STREAM data */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: monoFont, fontSize: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ opacity: 0.6 }}>src</span>
-                  <span style={{ color: p.text, fontWeight: 500 }}>WebRTC</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ opacity: 0.6 }}>codec</span>
-                  <span style={{ color: p.text, fontWeight: 500 }}>H.264</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ opacity: 0.6 }}>fps</span>
-                  <span style={{ color: p.text, fontWeight: 500 }}>{stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ opacity: 0.6 }}>res</span>
-                  <span style={{ color: p.text, fontWeight: 500 }}>{(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'}</span>
-                </div>
-              </div>
-
               {/* VELOCITY bars */}
               <div>
                 <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VELOCITY</div>
@@ -425,6 +405,29 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 />
                 <Readout label="BAT" value="—" color={p.accent} />
                 <Readout label="SIG" value="—" color={p.accent} />
+              </div>
+
+              {/* VIDEO info — at the bottom so SPEED sits near the top, away from joysticks */}
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase', color: p.muted, marginBottom: 6, fontFamily: monoFont }}>VIDEO</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: monoFont, fontSize: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ opacity: 0.6 }}>src</span>
+                    <span style={{ color: p.text, fontWeight: 500 }}>WebRTC</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ opacity: 0.6 }}>codec</span>
+                    <span style={{ color: p.text, fontWeight: 500 }}>H.264</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ opacity: 0.6 }}>fps</span>
+                    <span style={{ color: p.text, fontWeight: 500 }}>{stream.stats?.fps != null ? stream.stats.fps.toFixed(1) : '—'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ opacity: 0.6 }}>res</span>
+                    <span style={{ color: p.text, fontWeight: 500 }}>{(stream.stats?.width != null && stream.stats?.height != null) ? `${stream.stats.width}×${stream.stats.height}` : '—'}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </CollapsibleRail>
@@ -605,9 +608,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
-            // Above the joystick zones (z5) so the SPEED +/- buttons stay tappable,
-            // but below the rail toggle tabs (z15) and Settings drawer (z16/17).
-            zIndex: 10,
           }}
         >
           {/* VELOCITY bars */}
