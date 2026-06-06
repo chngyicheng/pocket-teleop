@@ -79,6 +79,7 @@ Tests column = webclient / auth / video-bridge / C++ (— where not yet present)
 | Reconnecting counter wired live — top-bar chip showed hardcoded placeholder `⟳ Reconnecting… (3)`; now reads `bridge.retryCount` (counts up per attempt) in MissionControl + MissionTablet (`connText`); static `CONNECTION_LABELS.reconnecting` placeholder number dropped | 373 / 51 / 19 / 44 | — |
 | Header robot identity de-faked — top-bar showed hardcoded `bot-07` / `ns/robot1`; now `robotLabel = robotName \|\| robotType` (falls back to robot model), renders nothing when both empty; namespace span only shown when non-empty (MissionControl + MissionTablet) | 375 / 51 / 19 / 44 | — |
 | Settings drawer z-index fix — drawer panel z17 / backdrop z16 now above CollapsibleRail toggle tab (z15); previously z9/z8 let rail tab paint over the drawer | 375 / 51 / 19 / 44 | — |
+| Dedup HUD primitives — `fallow` flagged MissionControl/MissionTablet clone groups; extracted `Crosshair` (16×16 line cross) + `JoystickZone` (positioned bottom-corner Joystick wrapper) into `shared.tsx`. MissionControl drops 2 inline crosshairs + 4 inline joystick wrappers (landscape + portrait branches), MissionTablet drops 2; behavior-preserving, inner Joystick keeps `data-testid="joystick-zone"`. Tablet's SVG reticle left as-is (different design). +7 shared tests | 382 / 51 / 19 / 44 | — |
 
 ### Known deviations (still relevant)
 

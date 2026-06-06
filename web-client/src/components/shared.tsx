@@ -721,3 +721,116 @@ export const VideoSignalOverlay: React.FC<VideoSignalOverlayProps> = ({ state })
     </div>
   );
 };
+
+// ─── Crosshair ─────────────────────────────────────────────────────────────────
+// Center reticle: two 1px lines forming a faint cross. Pure presentational.
+// Shared by MissionControl's landscape + portrait branches.
+
+export interface CrosshairProps {
+  accent: string;
+}
+
+export const Crosshair: React.FC<CrosshairProps> = ({ accent }) => (
+  <div
+    style={{
+      position: 'absolute',
+      left: '50%',
+      top: '50%',
+      transform: 'translate(-50%, -50%)',
+      width: 16,
+      height: 16,
+      pointerEvents: 'none',
+    }}
+  >
+    <div
+      style={{
+        position: 'absolute',
+        left: '50%',
+        top: 0,
+        bottom: 0,
+        width: 1,
+        background: accent,
+        opacity: 0.4,
+      }}
+    />
+    <div
+      style={{
+        position: 'absolute',
+        top: '50%',
+        left: 0,
+        right: 0,
+        height: 1,
+        background: accent,
+        opacity: 0.4,
+      }}
+    />
+  </div>
+);
+
+// ─── JoystickZone ──────────────────────────────────────────────────────────────
+// Absolutely-positioned bottom-corner wrapper hosting a Joystick. Centralizes the
+// DRIVE/STRAFE zone layout repeated across MissionControl (2 branches) + MissionTablet.
+// The inner Joystick still emits its own data-testid="joystick-zone".
+
+export interface JoystickZoneProps {
+  side: 'left' | 'right';
+  size: number;
+  zIndex?: number;
+  controlsDisabled?: boolean;
+  variant?: JoystickVariant;
+  axes?: JoystickAxes;
+  baseSize?: number;
+  knobSize?: number;
+  baseColor?: string;
+  ringColor?: string;
+  knobColor?: string;
+  knobBorder?: string;
+  onMove?: (x: number, y: number) => void;
+  onEnd?: () => void;
+  label?: string;
+}
+
+export const JoystickZone: React.FC<JoystickZoneProps> = ({
+  side,
+  size,
+  zIndex,
+  controlsDisabled = false,
+  variant,
+  axes,
+  baseSize,
+  knobSize,
+  baseColor,
+  ringColor,
+  knobColor,
+  knobBorder,
+  onMove,
+  onEnd,
+  label,
+}) => (
+  <div
+    style={{
+      position: 'absolute',
+      bottom: 0,
+      [side]: 0,
+      width: size,
+      height: size,
+      ...(zIndex !== undefined ? { zIndex } : {}),
+      pointerEvents: controlsDisabled ? 'none' : 'auto',
+    }}
+  >
+    <Joystick
+      variant={variant}
+      axes={axes}
+      size={size}
+      baseSize={baseSize}
+      knobSize={knobSize}
+      baseColor={baseColor}
+      ringColor={ringColor}
+      knobColor={knobColor}
+      knobBorder={knobBorder}
+      onMove={onMove}
+      onEnd={onEnd}
+      label={label}
+    />
+  </div>
+);

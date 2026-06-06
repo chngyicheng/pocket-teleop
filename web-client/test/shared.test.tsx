@@ -9,6 +9,8 @@ import {
   VelBars,
   Readout,
   CONNECTION_LABELS,
+  Crosshair,
+  JoystickZone,
 } from '../src/components/shared';
 
 // ─── Joystick Tests ──────────────────────────────────────────────────────────
@@ -563,5 +565,68 @@ describe('CONNECTION_LABELS', () => {
     expect(CONNECTION_LABELS.live.text).toContain('●');
     expect(CONNECTION_LABELS.reconnecting.text).toContain('⟳');
     expect(CONNECTION_LABELS.disconnected.text).toContain('○');
+  });
+});
+
+// ─── Crosshair Tests ──────────────────────────────────────────────────────────
+
+describe('Crosshair', () => {
+  it('renders two lines tinted with the accent color', () => {
+    const { container } = render(<Crosshair accent="#f0a92a" />);
+    const root = container.firstElementChild as HTMLElement;
+    const lines = root.children;
+    expect(lines.length).toBe(2);
+    for (const line of lines) {
+      expect((line as HTMLElement).style.background).toBe('rgb(240, 169, 42)');
+    }
+  });
+
+  it('is non-interactive (pointerEvents none)', () => {
+    const { container } = render(<Crosshair accent="#fff" />);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.pointerEvents).toBe('none');
+  });
+});
+
+// ─── JoystickZone Tests ───────────────────────────────────────────────────────
+
+describe('JoystickZone', () => {
+  it('positions on the given side and sizes the wrapper', () => {
+    const { container } = render(
+      <JoystickZone side="right" size={280} baseSize={140} knobSize={56} label="STRAFE" />
+    );
+    const wrapper = container.firstElementChild as HTMLElement;
+    expect(wrapper.style.right).toBe('0px');
+    expect(wrapper.style.left).toBe('');
+    expect(wrapper.style.width).toBe('280px');
+    expect(wrapper.style.height).toBe('280px');
+  });
+
+  it('applies zIndex only when provided', () => {
+    const withZ = render(<JoystickZone side="left" size={100} zIndex={5} />);
+    expect((withZ.container.firstElementChild as HTMLElement).style.zIndex).toBe('5');
+    const noZ = render(<JoystickZone side="left" size={100} />);
+    expect((noZ.container.firstElementChild as HTMLElement).style.zIndex).toBe('');
+  });
+
+  it('disables pointer events when controlsDisabled', () => {
+    const off = render(<JoystickZone side="left" size={100} controlsDisabled />);
+    expect((off.container.firstElementChild as HTMLElement).style.pointerEvents).toBe('none');
+    const on = render(<JoystickZone side="left" size={100} controlsDisabled={false} />);
+    expect((on.container.firstElementChild as HTMLElement).style.pointerEvents).toBe('auto');
+  });
+
+  it('hosts an interactive Joystick that emits onMove/onEnd', () => {
+    const onMove = vi.fn();
+    const onEnd = vi.fn();
+    render(
+      <JoystickZone side="left" size={200} baseSize={120} knobSize={56} onMove={onMove} onEnd={onEnd} />
+    );
+    const zone = screen.getByTestId('joystick-zone');
+    fireEvent.pointerDown(zone, { clientX: 100, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(zone, { clientX: 140, clientY: 100, pointerId: 1 });
+    fireEvent.pointerUp(zone, { clientX: 140, clientY: 100, pointerId: 1 });
+    expect(onMove).toHaveBeenCalled();
+    expect(onEnd).toHaveBeenCalled();
   });
 });
