@@ -9,6 +9,7 @@ export interface GamepadHandlerOptions {
   profile?: GamepadProfile;
   onButton?: (action: string) => void;
   onActivity?: () => void;
+  onConnectionChange?: (connected: boolean, id: string | null) => void;
 }
 
 export class GamepadHandler {
@@ -20,15 +21,19 @@ export class GamepadHandler {
   private readonly onTwist: (lx: number, ly: number, az: number) => void;
   private readonly onButton: ((action: string) => void) | undefined;
   private readonly onActivity: (() => void) | undefined;
+  private readonly onConnectionChange: ((connected: boolean, id: string | null) => void) | undefined;
   private profile: GamepadProfile | null;
   private prevButtons: boolean[] = [];
   private enabled = true;
+  private connectedId: string | null = null;
+  private listeners: Map<string, (e: Event) => void> = new Map();
 
   constructor(options: GamepadHandlerOptions) {
     this.intervalMs  = options.intervalMs ?? 50;
     this.onTwist     = options.onTwist;
     this.onButton    = options.onButton;
     this.onActivity  = options.onActivity;
+    this.onConnectionChange = options.onConnectionChange;
     this.profile     = options.profile ?? null;
   }
 
@@ -48,17 +53,30 @@ export class GamepadHandler {
 
     if (typeof requestAnimationFrame === 'function') {
       const loop = (): void => {
-        if (!this.running) return;
-        const now = Date.now();
-        if (now - this.lastPollAt >= this.intervalMs) {
-          this.lastPollAt = now;
-          this.poll();
+        try {
+          if (!this.running) return;
+          const now = Date.now();
+          if (now - this.lastPollAt >= this.intervalMs) {
+            this.lastPollAt = now;
+            this.poll();
+          }
+        } catch (e) {
+          console.error('GamepadHandler.poll() error:', e);
+        } finally {
+          if (this.running) {
+            this.rafId = requestAnimationFrame(loop);
+          }
         }
-        this.rafId = requestAnimationFrame(loop);
       };
       this.rafId = requestAnimationFrame(loop);
     } else {
-      this.intervalId = setInterval(() => this.poll(), this.intervalMs);
+      this.intervalId = setInterval(() => {
+        try {
+          this.poll();
+        } catch (e) {
+          console.error('GamepadHandler.poll() error:', e);
+        }
+      }, this.intervalMs);
     }
   }
 
@@ -82,16 +100,107 @@ export class GamepadHandler {
     this.profile = profile;
   }
 
+  /**
+   * Attach to window gamepadconnected/gamepaddisconnected events for automatic
+   * profile detection and loop lifecycle. SSR-safe; no-op if window is undefined.
+   * Idempotent: multiple calls do not re-register listeners.
+   */
+  attach(): void {
+    if (typeof window === 'undefined') return;
+
+    // Idempotent guard: if already attached, do not re-register listeners
+    if (this.listeners.size > 0) return;
+
+    const onConnected = (e: Event) => {
+      const event = e as GamepadEvent;
+      if (event.gamepad) {
+        // Always match profile if null (may be called before first poll)
+        if (this.profile === null) {
+          this.profile = matchProfile(event.gamepad.id);
+          console.log(`Gamepad detected: ${event.gamepad.id} → profile: ${this.profile.name}`);
+        }
+        // Update connection state; avoid redundant fire if already set to this id
+        if (this.connectedId !== event.gamepad.id) {
+          this.connectedId = event.gamepad.id;
+          this.onConnectionChange?.(true, this.connectedId);
+        }
+      }
+      if (!this.running) {
+        this.start();
+      }
+    };
+
+    const onDisconnected = (e: Event) => {
+      const event = e as GamepadEvent;
+      if (event.gamepad?.index === 0) {
+        this.prevButtons = [];  // Clear state on disconnect
+        this.connectedId = null;
+        this.onConnectionChange?.(false, null);
+      }
+    };
+
+    // Store listeners for cleanup
+    this.listeners.set('gamepadconnected', onConnected);
+    this.listeners.set('gamepaddisconnected', onDisconnected);
+
+    window.addEventListener('gamepadconnected', onConnected);
+    window.addEventListener('gamepaddisconnected', onDisconnected);
+  }
+
+  /**
+   * Detach from window events and stop the poll loop.
+   */
+  detach(): void {
+    if (typeof window === 'undefined') return;
+
+    const onConnected = this.listeners.get('gamepadconnected');
+    const onDisconnected = this.listeners.get('gamepaddisconnected');
+
+    if (onConnected) {
+      window.removeEventListener('gamepadconnected', onConnected);
+    }
+    if (onDisconnected) {
+      window.removeEventListener('gamepaddisconnected', onDisconnected);
+    }
+
+    this.listeners.clear();
+    this.stop();
+  }
+
+  /**
+   * Query connection state.
+   */
+  isConnected(): boolean {
+    return this.connectedId !== null;
+  }
+
   private poll(): void {
     if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') return;
 
     const gamepads = navigator.getGamepads();
     const gp = gamepads.find((g) => g !== null) ?? null;
-    if (gp === null) return;
 
-    if (this.profile === null) {
-      this.profile = matchProfile(gp.id);
-      console.log(`Gamepad detected: ${gp.id} → profile: ${this.profile.name}`);
+    // Centrally manage connection state via poll path:
+    // - if gp !== null and connectedId changed, update connection state
+    // - if gp === null and was previously connected, fire disconnect
+    if (gp !== null) {
+      if (this.connectedId !== gp.id) {
+        this.connectedId = gp.id;
+        this.onConnectionChange?.(true, gp.id);
+      }
+      // Lazy-init profile if not set (e.g., gp already attached before event fired)
+      if (this.profile === null) {
+        this.profile = matchProfile(gp.id);
+        console.log(`Gamepad detected: ${gp.id} → profile: ${this.profile.name}`);
+      }
+    } else {
+      // gp === null: device lost
+      if (this.connectedId !== null) {
+        this.connectedId = null;
+        this.onConnectionChange?.(false, null);
+        this.prevButtons = [];  // Clear button state on disconnect
+      }
+      return;
     }
 
     const { lx, ly, az } = this.profile.mapping;
