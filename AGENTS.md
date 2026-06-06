@@ -32,7 +32,7 @@ Details: [version-control.md](memory/agent-guides/version-control.md).
 >
 > **Test baseline:** webclient **382** pass / **11** skipped / auth **51** pass / video-bridge **19** / C++ **44**. Docker only (see [repository-structure.md](memory/agent-guides/repository-structure.md); iterate with a targeted file list) — rebuild with `--build` after editing tests, else `docker compose run` reuses a stale baked image. Adversarial backlog (9 webclient + 2 auth) cleared — see latest **Milestones** row. The two former webclient reds are now fixed: `whep_client` ICE-timer test rewritten (functional mock listener registry + `vi.getTimerCount`), and `integration.test.ts` now `describe.skipIf(!serverReachable)` (probes once, **skips** without a live server instead of hard-failing; run the full `--profile test` stack to exercise it). Remaining pre-existing red — leave red, not a regression: auth `mediamtx_integration.test.ts` (3 tests; needs the `mediamtx-test` companion container — green only via full `--profile test` compose).
 >
-> **Subagent/worktree gotchas:** (1) a Haiku subagent's cwd can pin to the **main repo instead of the worktree** — verify `git status` in BOTH before trusting reports (transfer stray edits with `git diff | git apply`). (2) Docker test runs may leave a **root-owned** `web-client/node_modules`; chown back before removing a worktree: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
+> **Subagent/worktree gotchas:** (0) **Subagents never commit** — see Execution mode. They report a dirty tree; the controller stages by explicit path + commits. A Haiku that ran `git add` once swept the untracked `.claude/worktrees/…` tree (2754 files) into one commit. (1) a Haiku subagent's cwd can pin to the **main repo instead of the worktree** — verify `git status` in BOTH before trusting reports (transfer stray edits with `git diff | git apply`). (2) Docker test runs may leave a **root-owned** `web-client/node_modules`; chown back before removing a worktree: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
 >
 > **Next — operator to pick:** a feature from the **Feature plan pool** below (HTTPS/TLS = top safety gap; battery telemetry retires the `BAT —` placeholder). Or a **service worker** precaching the app shell — the only remaining first-load cost is the HTML round-trip on a variable Wi-Fi link (separate feature; staleness/deploy tradeoffs).
 
@@ -195,10 +195,12 @@ Build commands, test commands, file layout → [repository-structure.md](memory/
 Controller dispatches new subagent per task. Each subagent:
 1. Implements strictly to plan
 2. Runs tests (Docker only — never bare `npm`)
-3. Updates `AGENTS.md` handover table in same commit as code
-4. Commits + reports
+3. Updates `AGENTS.md` handover table alongside the code edits
+4. **Reports** (files changed, test results) — leaves the working tree dirty for the controller
 
-After each subagent finishes, controller runs two review rounds (spec compliance, then code quality) before marking task done and continuing.
+**Subagents MUST NOT commit, stage, or run any `git add`/`git commit`/`git push`/`git reset` — no exceptions.** Only the controller touches git. A subagent that runs `git add -A`/`git add .` will sweep untracked junk (e.g. `.claude/worktrees/…` copies) into the index — this has happened. Subagent prompts must say "do not stage or commit; leave changes in the working tree and report." The controller reviews the diff, stages **only** the intended files by explicit path, and commits.
+
+After each subagent finishes, controller: (a) verifies `git status` (transfer any stray edits, confirm no swept files), (b) runs two review rounds (spec compliance, then code quality), (c) stages intended files by path + commits, before marking the task done.
 
 See `docs/superpowers/plans/` for current implementation plans.
 
@@ -222,7 +224,7 @@ User says `normal` or `stop caveman` → revert this turn. Level holds until cha
 2. **Update all docs** — same commit as code:
    - `AGENTS.md` handover table: mark task ✅ done, promote ⬜ next, update Notes
    - Any guide files that changed (see "Keeping docs current" table in [version-control.md](memory/agent-guides/version-control.md))
-3. **Commit** — one commit per task, code + docs together
+3. **Commit (controller only)** — one commit per task, code + docs together. Subagents never commit; the controller stages intended files by explicit path (never `git add -A`/`.`) and commits.
 4. **Ask to push** — say exactly: `"Committed as <hash>. Ready to push — shall I?"`
 5. **Wait** — no next task until user explicitly confirms push and gives permission
 
