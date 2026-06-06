@@ -15,6 +15,8 @@ export interface TeleopBridge {
   eStop: () => void;
   estopEngaged: boolean;
   resetEstop: () => void;
+  gamepadTwist: { lx: number; ly: number; az: number };
+  inputSource: 'touch' | 'gamepad' | 'idle';
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -36,8 +38,16 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [robotNamespace, setRobotNamespace] = useState('');
   const [robotType, setRobotType] = useState('');
   const [estopEngaged, setEstopEngaged] = useState(false);
+  const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
+  const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
 
   const clientRef = useRef<TeleopClient | null>(null);
+  const lastGamepadActivityRef = useRef(0);
+  const lastTouchActivityRef = useRef(0);
+
+  const ACTIVITY_WINDOW_MS = 300;
+  const IDLE_MS = 400;
+  const IDLE_CHECK_INTERVAL_MS = 150;
 
   useEffect(() => {
     const factory = opts.TeleopClientCtor ?? ((o: TeleopClientOptions) => new TeleopClient(o));
@@ -69,17 +79,48 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onError: () => {
         // Error handling integrated via connection state changes
       },
+      onGamepadActivity: () => {
+        lastGamepadActivityRef.current = Date.now();
+        setInputSource('gamepad');
+      },
+      onTwist: (lx, ly, az) => {
+        const now = Date.now();
+        if (now - lastGamepadActivityRef.current < ACTIVITY_WINDOW_MS) {
+          setGamepadTwist({ lx, ly, az });
+        }
+      },
     });
 
     clientRef.current = client;
     client.connect(opts.url);
 
+    // Set up idle reversion interval
+    const idleCheckInterval = setInterval(() => {
+      const now = Date.now();
+      const gamepadDelta = now - lastGamepadActivityRef.current;
+      const touchDelta = now - lastTouchActivityRef.current;
+
+      let newSource: 'touch' | 'gamepad' | 'idle';
+      if (gamepadDelta < IDLE_MS && gamepadDelta <= touchDelta) {
+        newSource = 'gamepad';
+      } else if (touchDelta < IDLE_MS) {
+        newSource = 'touch';
+      } else {
+        newSource = 'idle';
+      }
+
+      setInputSource((prev) => (prev !== newSource ? newSource : prev));
+    }, IDLE_CHECK_INTERVAL_MS);
+
     return () => {
+      clearInterval(idleCheckInterval);
       client.disconnect();
     };
   }, [opts.url, opts.TeleopClientCtor]);
 
   const sendTwist = (lx: number, ly: number, az: number) => {
+    lastTouchActivityRef.current = Date.now();
+    setInputSource('touch');
     if (clientRef.current) {
       clientRef.current.sendTwist(lx, ly, az);
     }
@@ -110,5 +151,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     eStop,
     estopEngaged,
     resetEstop,
+    gamepadTwist,
+    inputSource,
   };
 }
