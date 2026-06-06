@@ -8,8 +8,16 @@ export interface SpeedStepperProps {
   max: number;
   step: number;
   onChange: (next: number) => void;
+  /** Accent color for the value readout (defaults to Mission amber). */
   accent?: string;
 }
+
+// Mission palette (matches MissionControl / MissionTablet HUD chrome).
+const MONO = '"JetBrains Mono", ui-monospace, monospace';
+const MUTED = '#8a92a3';
+const BORDER = '#2a2f3a';
+const SURFACE = '#1a1e26';
+const AMBER = '#f0a92a';
 
 export default function SpeedStepper({
   label,
@@ -19,71 +27,81 @@ export default function SpeedStepper({
   max,
   step,
   onChange,
-  accent,
+  accent = AMBER,
 }: SpeedStepperProps): JSX.Element {
   const handleDecrease = () => {
-    const next = Math.max(min, Math.round((value - step) * 10) / 10);
-    onChange(next);
+    onChange(Math.max(min, Math.round((value - step) * 10) / 10));
   };
-
   const handleIncrease = () => {
-    const next = Math.min(max, Math.round((value + step) * 10) / 10);
-    onChange(next);
+    onChange(Math.min(max, Math.round((value + step) * 10) / 10));
   };
 
-  const isDecreaseDisabled = value <= min;
-  const isIncreaseDisabled = value >= max;
+  const decreaseDisabled = value <= min;
+  const increaseDisabled = value >= max;
+
+  const btnStyle = (disabled: boolean): React.CSSProperties => ({
+    width: 20,
+    height: 20,
+    lineHeight: '18px',
+    textAlign: 'center',
+    padding: 0,
+    fontFamily: MONO,
+    fontSize: 13,
+    fontWeight: 700,
+    color: disabled ? MUTED : accent,
+    background: SURFACE,
+    border: `1px solid ${disabled ? BORDER : accent + '66'}`,
+    borderRadius: 3,
+    cursor: disabled ? 'default' : 'pointer',
+    opacity: disabled ? 0.4 : 1,
+    flex: '0 0 auto',
+  });
 
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '0.5rem',
-        fontSize: '0.875rem',
-        fontFamily: 'monospace',
+        justifyContent: 'space-between',
+        gap: 6,
+        fontFamily: MONO,
+        fontSize: 10,
       }}
     >
-      <span style={{ flex: '0 0 auto', minWidth: '60px', color: '#9ca3af' }}>
-        {label}
-      </span>
-      <button
-        aria-label={`decrease ${label}`}
-        onClick={handleDecrease}
-        disabled={isDecreaseDisabled}
-        style={{
-          padding: '0.25rem 0.5rem',
-          fontSize: '0.875rem',
-          cursor: isDecreaseDisabled ? 'default' : 'pointer',
-          opacity: isDecreaseDisabled ? 0.5 : 1,
-        }}
-      >
-        −
-      </button>
-      <span
-        data-testid="speed-value"
-        style={{
-          flex: '0 0 auto',
-          minWidth: '50px',
-          textAlign: 'center',
-        }}
-      >
-        {value.toFixed(1)}
-      </span>
-      <span style={{ flex: '0 0 auto' }}>{unit}</span>
-      <button
-        aria-label={`increase ${label}`}
-        onClick={handleIncrease}
-        disabled={isIncreaseDisabled}
-        style={{
-          padding: '0.25rem 0.5rem',
-          fontSize: '0.875rem',
-          cursor: isIncreaseDisabled ? 'default' : 'pointer',
-          opacity: isIncreaseDisabled ? 0.5 : 1,
-        }}
-      >
-        +
-      </button>
+      <span style={{ color: MUTED, opacity: 0.7, letterSpacing: '0.08em' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: '0 0 auto' }}>
+        <button
+          type="button"
+          aria-label={`decrease ${label}`}
+          onClick={handleDecrease}
+          disabled={decreaseDisabled}
+          style={btnStyle(decreaseDisabled)}
+        >
+          −
+        </button>
+        <span
+          data-testid="speed-value"
+          style={{
+            color: accent,
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
+            minWidth: 26,
+            textAlign: 'right',
+          }}
+        >
+          {value.toFixed(1)}
+        </span>
+        <span style={{ color: MUTED, opacity: 0.6, minWidth: 28 }}>{unit}</span>
+        <button
+          type="button"
+          aria-label={`increase ${label}`}
+          onClick={handleIncrease}
+          disabled={increaseDisabled}
+          style={btnStyle(increaseDisabled)}
+        >
+          +
+        </button>
+      </div>
     </div>
   );
 }

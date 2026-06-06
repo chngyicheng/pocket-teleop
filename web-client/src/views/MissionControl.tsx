@@ -593,6 +593,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 12,
+            // Above the joystick zones (z5) so the SPEED +/- buttons stay tappable,
+            // but below the rail toggle tabs (z15) and Settings drawer (z16/17).
+            zIndex: 10,
           }}
         >
           {/* VELOCITY bars */}
