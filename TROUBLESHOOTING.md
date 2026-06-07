@@ -7,6 +7,7 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
 ## Contents
 
 - [Gamepad](#gamepad)
+  - [Gamepad and E-STOP dead on first load (until another page is opened)](#gamepad-and-e-stop-dead-on-first-load-until-another-page-is-opened)
   - [Gamepad not detected in Brave](#gamepad-not-detected-in-brave)
   - [Robot only moves while the stick is wiggled](#robot-only-moves-while-the-stick-is-wiggled)
   - [Controls feel reversed or mapped to the wrong stick](#controls-feel-reversed-or-mapped-to-the-wrong-stick)
@@ -21,6 +22,14 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
 ---
 
 ## Gamepad
+
+### Gamepad and E-STOP dead on first load (until another page is opened)
+
+**Symptom:** on a cold browser the on-screen joysticks don't follow the controller and the LB E-STOP does nothing — but after opening *another* gamepad-enabled page (or an older build) and pressing a button there, returning to the teleop UI makes everything work, reliably, even across unplug/replug.
+
+**Cause:** the Gamepad API only exposes a controller after a `gamepadconnected` event fires (gated behind a user gesture as an anti-fingerprinting measure). The browser's gamepad service is **process-global**, so once any page warms a device it stays visible to every later page — which is why a second page "primed" the UI. The client used to start its gamepad poll loop only while the WebSocket was open and never listened for `gamepadconnected`, so on a cold load the activation moment could be missed entirely.
+
+**Fix:** the client now attaches `gamepadconnected` / `gamepaddisconnected` listeners and runs the detection loop continuously from page load — independent of the socket; only command *transmission* is gated by the connection. The poll loop is also crash-resistant (a single error no longer kills it). When a controller is recognized, a small **🎮 GP** chip appears next to the connection status — if you don't see it, press a button on the controller and (for the first activation) click/tap the page once to grant the user gesture. On **Brave**, also see [Gamepad not detected in Brave](#gamepad-not-detected-in-brave).
 
 ### Gamepad not detected in Brave
 
