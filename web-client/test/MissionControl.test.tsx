@@ -32,6 +32,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     maxAngular: 1.0,
     setMaxLinear: vi.fn(),
     setMaxAngular: vi.fn(),
+    gamepadConnected: false,
     ...overrides,
   };
 }
@@ -855,5 +856,39 @@ describe('MissionControl', () => {
     ).toBeTruthy();
     expect(screen.getByText('LINEAR')).toBeTruthy();
     expect(screen.getByText('ANGULAR')).toBeTruthy();
+  });
+
+  it('renders gamepad indicator when gamepadConnected is true', () => {
+    const bridge = createFakeBridge({ gamepadConnected: true });
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // Gamepad indicator should be visible with "🎮 GP" text
+    expect(screen.getByText('🎮 GP')).toBeTruthy();
+  });
+
+  it('does not render gamepad indicator when gamepadConnected is false', () => {
+    const bridge = createFakeBridge({ gamepadConnected: false });
+    const stream = createFakeStream();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // Gamepad indicator should not be present
+    expect(() => screen.getByText('🎮 GP')).toThrow();
   });
 });

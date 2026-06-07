@@ -25,6 +25,7 @@ export interface TeleopClientOptions {
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
+  onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
@@ -108,6 +109,7 @@ export class TeleopClient {
       onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az),
       onButton:   (action) => this.handleGamepadButton(action),
       onActivity: () => this.options.onGamepadActivity?.(),
+      onConnectionChange: (connected, id) => this.options.onGamepadConnected?.(connected, id),
     });
     // Gamepad detection (attach/start) runs immediately, independent of socket.
     // Detection loop polls for controller activity; actual twist/button transmission

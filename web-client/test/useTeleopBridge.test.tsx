@@ -494,4 +494,27 @@ describe('useTeleopBridge', () => {
 
     expect(result.current.maxAngular).toBe(0.1);
   });
+
+  it('onGamepadConnected triggers setGamepadConnected', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.gamepadConnected).toBe(false);
+
+    act(() => {
+      fakeClient.opts.onGamepadConnected?.(true, 'Wireless Gamepad X');
+    });
+
+    expect(result.current.gamepadConnected).toBe(true);
+
+    act(() => {
+      fakeClient.opts.onGamepadConnected?.(false, null);
+    });
+
+    expect(result.current.gamepadConnected).toBe(false);
+  });
 });

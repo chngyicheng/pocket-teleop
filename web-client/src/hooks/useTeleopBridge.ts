@@ -22,6 +22,7 @@ export interface TeleopBridge {
   maxAngular: number;
   setMaxLinear: (v: number) => void;
   setMaxAngular: (v: number) => void;
+  gamepadConnected: boolean;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -45,6 +46,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [estopEngaged, setEstopEngaged] = useState(false);
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
   const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
+  const [gamepadConnected, setGamepadConnected] = useState(false);
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -91,6 +93,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onGamepadActivity: () => {
         lastGamepadActivityRef.current = Date.now();
         setInputSource('gamepad');
+      },
+      onGamepadConnected: (connected) => {
+        setGamepadConnected(connected);
       },
       onTwist: (lx, ly, az) => {
         const now = Date.now();
@@ -190,5 +195,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     maxAngular,
     setMaxLinear,
     setMaxAngular,
+    gamepadConnected,
   };
 }

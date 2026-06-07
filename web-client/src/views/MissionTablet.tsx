@@ -365,6 +365,24 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           {connText}
         </div>
 
+        {/* Gamepad connected indicator — only show when connected */}
+        {bridge.gamepadConnected && (
+          <div
+            style={{
+              fontFamily: monoFont,
+              fontSize: 10,
+              color: p.text,
+              padding: '4px 8px',
+              border: `1px solid ${p.border}`,
+              borderRadius: 2,
+              whiteSpace: 'nowrap',
+              background: 'rgba(8, 10, 14, 0.7)',
+            }}
+          >
+            🎮 GP
+          </div>
+        )}
+
         {/* E-STOP button — engaged state shows RESET affordance */}
         <button
           onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}

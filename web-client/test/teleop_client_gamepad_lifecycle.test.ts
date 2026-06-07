@@ -176,4 +176,20 @@ describe('teleop_client_gamepad_lifecycle', () => {
     // stop() should NOT be called directly anymore (detach handles it)
     // but detach calls stop internally, so we verify detach was called instead
   });
+
+  it('should pass onGamepadConnected callback to GamepadHandler onConnectionChange', () => {
+    const onGamepadConnected = vi.fn();
+    const client = new TeleopClient({ onGamepadConnected });
+
+    // Verify GamepadHandler was constructed with onConnectionChange
+    expect((mockGamepadHandlerInstance.options as any).onConnectionChange).toBeDefined();
+
+    // Simulate gamepad connection via the handler's onConnectionChange
+    (mockGamepadHandlerInstance.options as any).onConnectionChange(true, 'Wireless Controller X');
+    expect(onGamepadConnected).toHaveBeenCalledWith(true, 'Wireless Controller X');
+
+    // Simulate gamepad disconnection
+    (mockGamepadHandlerInstance.options as any).onConnectionChange(false, null);
+    expect(onGamepadConnected).toHaveBeenCalledWith(false, null);
+  });
 });

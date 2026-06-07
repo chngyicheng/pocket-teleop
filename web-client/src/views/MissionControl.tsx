@@ -293,6 +293,26 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {isLandscape ? connText : stateShort}
         </div>
 
+        {/* Gamepad connected indicator — only show when connected */}
+        {bridge.gamepadConnected && (
+          <div
+            style={{
+              fontFamily: monoFont,
+              fontSize: 10,
+              flex: '0 0 auto',
+              color: p.text,
+              padding: '3px 7px',
+              border: `1px solid ${p.border}`,
+              borderRadius: 2,
+              letterSpacing: '0.05em',
+              whiteSpace: 'nowrap',
+              background: 'rgba(8, 10, 14, 0.7)',
+            }}
+          >
+            🎮 GP
+          </div>
+        )}
+
         {/* E-STOP button — engaged state shows RESET affordance */}
         <button
           onClick={() => estopEngaged ? bridge.resetEstop() : bridge.eStop()}
