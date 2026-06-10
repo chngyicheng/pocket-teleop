@@ -24,6 +24,7 @@ add_executable(teleop_node
   src/teleop_node.cpp
   src/teleop_server.cpp
   src/command_handler.cpp
+  src/map_codec.cpp
 )
 
 target_include_directories(teleop_node PRIVATE
@@ -68,12 +69,20 @@ if(BUILD_TESTING)
     Boost::system
   )
 
+  # test_map_codec — pure functions, no ROS2
+  ament_add_gtest(test_map_codec
+    test/test_map_codec.cpp
+    src/map_codec.cpp
+  )
+  target_include_directories(test_map_codec PRIVATE include/)
+
   # test_teleop_node — full ROS2 integration
   ament_add_gtest(test_teleop_node
     test/test_teleop_node.cpp
     src/teleop_node.cpp
     src/teleop_server.cpp
     src/command_handler.cpp
+    src/map_codec.cpp
   )
   target_include_directories(test_teleop_node PRIVATE
     include/

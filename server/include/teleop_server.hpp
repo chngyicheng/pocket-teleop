@@ -30,7 +30,8 @@ public:
   void stop();
 
   // Send a message to the connected client (no-op if no client).
-  void broadcast(const std::string& message);
+  // Returns true if a client was connected and the send succeeded.
+  bool broadcast(const std::string& message);
 
 private:
   void on_open(ConnectionHdl hdl);

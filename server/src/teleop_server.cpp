@@ -125,14 +125,16 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
   }
 }
 
-void TeleopServer::broadcast(const std::string& message) {
+bool TeleopServer::broadcast(const std::string& message) {
   std::lock_guard<std::mutex> lock(client_mutex_);
-  if (!has_client_) return;
+  if (!has_client_) return false;
   websocketpp::lib::error_code ec;
   ws_server_.send(active_client_, message, websocketpp::frame::opcode::text, ec);
   if (ec) {
     std::cerr << "broadcast error: " << ec.message() << std::endl;
+    return false;
   }
+  return true;
 }
 
 void TeleopServer::watchdog_loop() {

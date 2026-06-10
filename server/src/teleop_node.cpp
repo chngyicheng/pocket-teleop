@@ -50,10 +50,84 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
       publish_odom(msg);
     });
 
+  declare_parameter("map_topic", std::string("/map"));
+  declare_parameter("map_window_m", 24.0);
+  const auto map_topic = get_parameter("map_topic").as_string();
+  const auto map_window_m = get_parameter("map_window_m").as_double();
+
+  // Subscribe to map with transient_local QoS (SLAM publishes once then retains)
+  rclcpp::QoS map_qos = rclcpp::QoS(1).transient_local().reliable();
+  map_sub_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
+    map_topic, map_qos,
+    [this](const nav_msgs::msg::OccupancyGrid::SharedPtr msg) {
+      latest_map_ = msg;
+      map_needs_update_ = true;
+    });
+
+  // Map broadcast timer. Sends when a new map arrived, when the window
+  // center moved past the threshold, or periodically so a client that
+  // connected after the last send still receives the map.
+  map_timer_ = create_wall_timer(
+    MAP_INTERVAL,
+    [this, map_window_m]() {
+      if (!latest_map_) return;
+
+      // Window center: tf2 pose when available (set by later task), else map center
+      double center_x = latest_map_->info.origin.position.x +
+                        latest_map_->info.width * latest_map_->info.resolution / 2.0;
+      double center_y = latest_map_->info.origin.position.y +
+                        latest_map_->info.height * latest_map_->info.resolution / 2.0;
+
+      if (map_window_center_) {
+        center_x = map_window_center_->first;
+        center_y = map_window_center_->second;
+      }
+
+      const auto now = std::chrono::steady_clock::now();
+      const bool center_moved = last_sent_center_ &&
+        std::hypot(center_x - last_sent_center_->first,
+                   center_y - last_sent_center_->second) > MAP_CENTER_MOVE_THRESHOLD_M;
+      const bool rebroadcast_due = now - last_map_sent_ >= MAP_REBROADCAST;
+      if (!map_needs_update_ && !center_moved && !rebroadcast_due) return;
+
+      // Crop and encode
+      auto result = map_codec::crop_window(
+        latest_map_->data,
+        latest_map_->info.width,
+        latest_map_->info.height,
+        latest_map_->info.resolution,
+        latest_map_->info.origin.position.x,
+        latest_map_->info.origin.position.y,
+        center_x, center_y,
+        map_window_m
+      );
+
+      std::string cells_rle = map_codec::encode_rle(result.cells);
+
+      nlohmann::json map_msg = {
+        {"type", "map"},
+        {"resolution", result.resolution},
+        {"width", result.width},
+        {"height", result.height},
+        {"origin_x", result.origin_x},
+        {"origin_y", result.origin_y},
+        {"cells", cells_rle}
+      };
+      // Only mark delivered when a client actually received it — otherwise
+      // keep the dirty flag so the next tick retries (e.g. client still
+      // connecting, or none connected yet).
+      if (server_->broadcast(map_msg.dump())) {
+        map_needs_update_ = false;
+        last_sent_center_ = {center_x, center_y};
+        last_map_sent_ = now;
+      }
+    });
+
   server_thread_ = std::thread([this]() { server_->start(); });
 
   RCLCPP_INFO(get_logger(), "Teleop server listening on port %ld", port);
   RCLCPP_INFO(get_logger(), "Subscribing to odom topic: %s", odom_topic.c_str());
+  RCLCPP_INFO(get_logger(), "Subscribing to map topic: %s (window: %.1f m)", map_topic.c_str(), map_window_m);
   RCLCPP_INFO(get_logger(), "Publishing to topic: %s", topic.c_str());
 }
 

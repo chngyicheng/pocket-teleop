@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration, EnvironmentVariable
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
@@ -22,6 +23,9 @@ def generate_launch_description():
                 'robot_type':      LaunchConfiguration('robot_type'),
                 'robot_name':      EnvironmentVariable('ROBOT_NAME',      default_value=''),
                 'robot_namespace': EnvironmentVariable('ROBOT_NAMESPACE', default_value=''),
+                'odom_topic':      EnvironmentVariable('ODOM_TOPIC',      default_value='/odom'),
+                'map_topic':       EnvironmentVariable('MAP_TOPIC',       default_value='/map'),
+                'map_window_m':    ParameterValue(EnvironmentVariable('MAP_WINDOW_M', default_value='24.0'), value_type=float),
             }],
             output='screen',
         ),

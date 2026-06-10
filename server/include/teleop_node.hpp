@@ -2,10 +2,13 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <optional>
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include "teleop_server.hpp"
+#include "map_codec.hpp"
 
 class TeleopNode : public rclcpp::Node {
 public:
@@ -18,8 +21,20 @@ private:
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
+  rclcpp::TimerBase::SharedPtr map_timer_;
   std::unique_ptr<TeleopServer> server_;
   std::thread server_thread_;
   std::chrono::steady_clock::time_point last_odom_sent_{};
   static constexpr std::chrono::milliseconds ODOM_INTERVAL{100}; // 10 Hz
+
+  // Map data and processing
+  nav_msgs::msg::OccupancyGrid::SharedPtr latest_map_;
+  std::optional<std::pair<double, double>> map_window_center_{};   // nullopt = use map center
+  std::optional<std::pair<double, double>> last_sent_center_{};
+  bool map_needs_update_ = false;
+  std::chrono::steady_clock::time_point last_map_sent_{};
+  static constexpr std::chrono::milliseconds MAP_INTERVAL{1000};    // timer tick
+  static constexpr std::chrono::milliseconds MAP_REBROADCAST{5000}; // late-joiner fallback
+  static constexpr double MAP_CENTER_MOVE_THRESHOLD_M{2.0};
 };
