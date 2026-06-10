@@ -10,6 +10,8 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
   - [Gamepad not detected in Brave](#gamepad-not-detected-in-brave)
   - [Robot only moves while the stick is wiggled](#robot-only-moves-while-the-stick-is-wiggled)
   - [Controls feel reversed or mapped to the wrong stick](#controls-feel-reversed-or-mapped-to-the-wrong-stick)
+- [Driving](#driving)
+  - [Robot keeps moving (or spins) after releasing the joystick](#robot-keeps-moving-or-spins-after-releasing-the-joystick)
 - [Minimap](#minimap)
   - [Minimap shows "NO MAP"](#minimap-shows-no-map)
   - [Robot position doesn't match the real world](#robot-position-doesnt-match-the-real-world)
@@ -55,6 +57,33 @@ docker compose -p pocket-teleop exec teleop-server \
 ### Controls feel reversed or mapped to the wrong stick
 
 The default profile maps **forward/back + rotate to the left stick** and **strafe to the right stick**, with axis inversions chosen for a standard controller. If a direction is reversed on your hardware, open DevTools → Console, look for the `Gamepad detected:` log line to confirm the profile, then flip the relevant `invert` flag (or remap the axis) for that profile in `web-client/src/gamepad_profiles.ts`. E-STOP is mapped to the left bumper (button 4); if it mis-fires, verify the button index for your controller.
+
+---
+
+## Driving
+
+### Robot keeps moving (or spins) after releasing the joystick
+
+**Symptom:** releasing the touch joystick latches the last command — the robot keeps driving or spinning until the UI reconnects or E-STOP.
+
+**Cause:** almost always **another publisher on `/cmd_vel`**, not the teleop stack. On release the web client streams zero twists (verifiable below), but simulators and real bases execute the *last message received* — Gazebo's diff-drive plugin has no cmd_vel timeout — so any other node that speaks after the zeros re-latches motion. Common culprits:
+
+- a leftover `teleop_keyboard` / `teleop_twist_keyboard` terminal (publishes once per keypress; one turn command latches forever)
+- **nav2**: `controller_server` drives toward an active goal, and `behavior_server`'s spin recovery rotates the robot in place — cancel the goal in RViz or stop the nav stack while teleoperating
+
+**Diagnosis:**
+
+```bash
+# Who is publishing velocity commands?
+ros2 topic info /cmd_vel --verbose | grep "Node name"
+
+# Watch the wire while you release the stick — the teleop zeros are visible:
+ros2 topic echo /cmd_vel --csv
+```
+
+More than one node name = found it. Close the extra publisher or cancel the nav goal.
+
+**Long-term fix for teleop + nav coexistence:** run a `twist_mux` — teleop and nav2 each publish on their own topic with priorities and per-source timeouts; the mux output feeds the base. Teleop wins while you're touching the controls, nav resumes afterwards, and a silent source times out to zero instead of latching. Also enable your real base driver's cmd_vel timeout where available — the robot should fail safe even if the network drops mid-drive.
 
 ---
 
