@@ -10,12 +10,12 @@
   <img alt="ROS2 Humble" src="https://img.shields.io/badge/ROS2-Humble-22314E?logo=ros&logoColor=white">
   <img alt="React 18 + Vite 5" src="https://img.shields.io/badge/web-React%2018%20%2B%20Vite%205-4ec9d6">
   <img alt="Docker Compose" src="https://img.shields.io/badge/run-Docker%20Compose-2496ED?logo=docker&logoColor=white">
-  <img alt="tests" src="https://img.shields.io/badge/tests-451%20web%20%2F%2051%20auth%20%2F%2019%20video%20%2F%2044%20C%2B%2B-22c55e">
+  <img alt="tests" src="https://img.shields.io/badge/tests-556%20web%20%2F%2051%20auth%20%2F%2019%20video%20%2F%2069%20C%2B%2B-22c55e">
 </p>
 
 ---
 
-**pocket-teleop** bridges a phone browser to a ROS2 robot. A login-gated WebSocket carries velocity commands to `/cmd_vel`, low-latency WebRTC carries video back, and a safety watchdog stops the robot the moment the link drops. Everything robot-side runs in Docker — the host only needs Docker and Docker Compose.
+**pocket-teleop** bridges a phone browser to a ROS2 robot. A login-gated WebSocket carries velocity commands to `/cmd_vel`, WebRTC carries video back, and a 500 ms server watchdog publishes a zero velocity if the command link goes silent. Everything robot-side runs in Docker — the host only needs Docker and Docker Compose.
 
 ## Highlights
 
@@ -24,8 +24,8 @@
 - **Adjustable speed limits** — per-axis linear/angular caps, set live from the UI and persisted.
 - **Latching E-STOP** — from the on-screen button, the spacebar, or the gamepad left bumper; one shared latch across every source.
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
-- **Robot-localized minimap** — real-time SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view; falls back to odometry when SLAM is unavailable.
-- **Secure by default** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade.
+- **Robot-localized minimap** — SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view with pinch-to-zoom; falls back to odometry when SLAM is unavailable.
+- **Access control** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade. Plain HTTP: intended for trusted LANs (TLS not yet implemented).
 
 ## Screenshots
 
@@ -122,7 +122,7 @@ All optional; set in `.env` before starting:
 | `ROBOT_TYPE` | `diff_drive` | `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
 | `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
-| `TELEOP_SERVER_URL` | `http://localhost:9091` | Override if the teleop-server runs elsewhere |
+| `TELEOP_SERVER_URL` | _auto-detected_ | auth-server finds the Docker bridge gateway at startup; override only if that detection is wrong |
 
 ### Supported robots
 
