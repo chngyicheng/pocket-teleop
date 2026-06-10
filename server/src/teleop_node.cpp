@@ -50,6 +50,28 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
       publish_odom(msg);
     });
 
+  // TF2 setup for pose
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
+  tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
+
+  declare_parameter("map_frame", std::string("map"));
+  declare_parameter("odom_frame", std::string("odom"));
+  declare_parameter("base_frame", std::string("base_link"));
+
+  pose_timer_ = create_wall_timer(
+    POSE_INTERVAL,
+    [this]() { broadcast_pose(); });
+
+  // Scan subscription
+  declare_parameter("scan_topic", std::string("/scan"));
+  const auto scan_topic = get_parameter("scan_topic").as_string();
+
+  scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>(
+    scan_topic, rclcpp::SensorDataQoS(),
+    [this](const sensor_msgs::msg::LaserScan::SharedPtr msg) {
+      on_scan(msg);
+    });
+
   declare_parameter("map_topic", std::string("/map"));
   declare_parameter("map_window_m", 24.0);
   const auto map_topic = get_parameter("map_topic").as_string();
@@ -128,6 +150,7 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   RCLCPP_INFO(get_logger(), "Teleop server listening on port %ld", port);
   RCLCPP_INFO(get_logger(), "Subscribing to odom topic: %s", odom_topic.c_str());
   RCLCPP_INFO(get_logger(), "Subscribing to map topic: %s (window: %.1f m)", map_topic.c_str(), map_window_m);
+  RCLCPP_INFO(get_logger(), "Subscribing to scan topic: %s", scan_topic.c_str());
   RCLCPP_INFO(get_logger(), "Publishing to topic: %s", topic.c_str());
 }
 
@@ -163,4 +186,100 @@ void TeleopNode::publish_twist(double lx, double ly, double az) {
   msg.linear.y  = ly;
   msg.angular.z = az;
   publisher_->publish(msg);
+}
+
+void TeleopNode::broadcast_pose() {
+  const auto map_frame = get_parameter("map_frame").as_string();
+  const auto odom_frame = get_parameter("odom_frame").as_string();
+  const auto base_frame = get_parameter("base_frame").as_string();
+
+  try {
+    // Try map → base_link
+    auto transform = tf_buffer_->lookupTransform(map_frame, base_frame, tf2::TimePointZero);
+    const auto& pos = transform.transform.translation;
+    const auto& q = transform.transform.rotation;
+
+    double yaw = std::atan2(
+      2.0 * (q.w * q.z + q.x * q.y),
+      1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+
+    nlohmann::json pose_msg = {
+      {"type", "pose"},
+      {"frame", "map"},
+      {"x", pos.x},
+      {"y", pos.y},
+      {"heading", yaw}
+    };
+
+    server_->broadcast(pose_msg.dump());
+    map_window_center_ = {pos.x, pos.y};
+
+  } catch (const tf2::TransformException& ex) {
+    try {
+      // Fallback to odom → base_link
+      auto transform = tf_buffer_->lookupTransform(odom_frame, base_frame, tf2::TimePointZero);
+      const auto& pos = transform.transform.translation;
+      const auto& q = transform.transform.rotation;
+
+      double yaw = std::atan2(
+        2.0 * (q.w * q.z + q.x * q.y),
+        1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+
+      nlohmann::json pose_msg = {
+        {"type", "pose"},
+        {"frame", "odom"},
+        {"x", pos.x},
+        {"y", pos.y},
+        {"heading", yaw}
+      };
+
+      server_->broadcast(pose_msg.dump());
+
+    } catch (const tf2::TransformException& ex2) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 10000,
+        "Could not get transform: %s", ex2.what());
+    }
+  }
+}
+
+void TeleopNode::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr& msg) {
+  const auto now = std::chrono::steady_clock::now();
+  if (now - last_scan_sent_ < SCAN_INTERVAL) return;
+  last_scan_sent_ = now;
+
+  const auto base_frame = get_parameter("base_frame").as_string();
+  double angle_min = msg->angle_min;
+
+  // Try to get frame transform if frame_id != base_frame
+  if (!msg->header.frame_id.empty() && msg->header.frame_id != base_frame) {
+    try {
+      auto transform = tf_buffer_->lookupTransform(base_frame, msg->header.frame_id, tf2::TimePointZero);
+      const auto& q = transform.transform.rotation;
+      double yaw = std::atan2(
+        2.0 * (q.w * q.z + q.x * q.y),
+        1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+      angle_min += yaw;
+    } catch (const tf2::TransformException&) {
+      // Use original angle_min
+    }
+  }
+
+  auto decimated = map_codec::decimate_scan(
+    msg->ranges,
+    angle_min,
+    msg->angle_increment,
+    msg->range_min,
+    msg->range_max,
+    120
+  );
+
+  nlohmann::json scan_msg = {
+    {"type", "scan"},
+    {"angle_min", decimated.angle_min},
+    {"angle_increment", decimated.angle_increment},
+    {"range_max", msg->range_max},
+    {"ranges", decimated.ranges}
+  };
+
+  server_->broadcast(scan_msg.dump());
 }

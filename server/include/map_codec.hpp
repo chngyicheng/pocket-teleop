@@ -7,6 +7,15 @@
 namespace map_codec {
 
 /**
+ * Decimated laser scan result
+ */
+struct DecimatedScan {
+  double angle_min;            // radians, adjusted for frame transform
+  double angle_increment;      // radians, scaled by decimation step
+  std::vector<double> ranges;  // distances in meters (2 decimal places)
+};
+
+/**
  * Trinary classification of occupancy:
  *   v < 0        → 'u' (unknown)
  *   0 <= v < 50  → 'f' (free)
@@ -54,6 +63,28 @@ CropResult crop_window(
   double origin_x, double origin_y,
   double center_x, double center_y,
   double window_m
+);
+
+/**
+ * Decimate a laser scan to at most max_points by step sampling.
+ *
+ * Filters invalid values (NaN, inf, out of range) to 0.0 and rounds to 2 decimals.
+ *
+ * @param ranges           Input range data (floats from LaserScan)
+ * @param angle_min        Minimum angle (radians)
+ * @param angle_increment  Angle step between consecutive ranges (radians)
+ * @param range_min        Minimum valid range (meters)
+ * @param range_max        Maximum valid range (meters)
+ * @param max_points       Target output size; decimation step = ceil(n / max_points)
+ * @return DecimatedScan with scaled angle_increment and filtered/rounded ranges
+ */
+DecimatedScan decimate_scan(
+  const std::vector<float>& ranges,
+  double angle_min,
+  double angle_increment,
+  double range_min,
+  double range_max,
+  int max_points
 );
 
 } // namespace map_codec

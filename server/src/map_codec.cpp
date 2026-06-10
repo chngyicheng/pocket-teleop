@@ -91,4 +91,43 @@ CropResult crop_window(
   return result;
 }
 
+DecimatedScan decimate_scan(
+  const std::vector<float>& ranges,
+  double angle_min,
+  double angle_increment,
+  double range_min,
+  double range_max,
+  int max_points
+) {
+  DecimatedScan result{};
+  result.angle_min = angle_min;
+
+  if (ranges.empty()) {
+    result.angle_increment = angle_increment;
+    return result;
+  }
+
+  int n = static_cast<int>(ranges.size());
+  int step = std::max(1, static_cast<int>(std::ceil(static_cast<double>(n) / max_points)));
+
+  result.angle_increment = angle_increment * step;
+
+  result.ranges.reserve((n + step - 1) / step);
+  for (int i = 0; i < n; i += step) {
+    float val = ranges[i];
+    double out = 0.0;
+
+    // Check validity: not NaN, not inf, in range [range_min, range_max]
+    if (std::isfinite(val) && val >= range_min && val <= range_max) {
+      out = val;
+    }
+
+    // Round to 2 decimal places
+    out = std::round(out * 100.0) / 100.0;
+    result.ranges.push_back(out);
+  }
+
+  return result;
+}
+
 } // namespace map_codec

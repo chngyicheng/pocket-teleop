@@ -7,6 +7,9 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include "teleop_server.hpp"
 #include "map_codec.hpp"
 
@@ -18,6 +21,8 @@ public:
 private:
   void publish_twist(double lx, double ly, double az);
   void publish_odom(const nav_msgs::msg::Odometry::SharedPtr& msg);
+  void broadcast_pose();
+  void on_scan(const sensor_msgs::msg::LaserScan::SharedPtr& msg);
 
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
@@ -37,4 +42,16 @@ private:
   static constexpr std::chrono::milliseconds MAP_INTERVAL{1000};    // timer tick
   static constexpr std::chrono::milliseconds MAP_REBROADCAST{5000}; // late-joiner fallback
   static constexpr double MAP_CENTER_MOVE_THRESHOLD_M{2.0};
+
+  // TF2 for pose
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
+  rclcpp::TimerBase::SharedPtr pose_timer_;
+  static constexpr std::chrono::milliseconds POSE_INTERVAL{200};   // 5 Hz
+  std::chrono::steady_clock::time_point last_pose_sent_{};
+
+  // Scan data
+  rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
+  std::chrono::steady_clock::time_point last_scan_sent_{};
+  static constexpr std::chrono::milliseconds SCAN_INTERVAL{200};   // 5 Hz
 };

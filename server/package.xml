@@ -12,6 +12,9 @@
   <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
 
   <build_depend>libwebsocketpp-dev</build_depend>
   <build_depend>libboost-system-dev</build_depend>

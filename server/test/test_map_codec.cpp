@@ -2,6 +2,7 @@
 #include "map_codec.hpp"
 #include <vector>
 #include <cmath>
+#include <limits>
 
 using namespace map_codec;
 
@@ -164,4 +165,81 @@ TEST_F(MapCodecTest, CropWindowMixedOccupancy) {
 
   EXPECT_EQ(result.cells[0], 100);
   EXPECT_EQ(result.cells[24], -1);
+}
+
+// decimate_scan tests
+TEST_F(MapCodecTest, DecimateScamUnchangedUnderMaxPoints) {
+  // 120 ranges should not change
+  std::vector<float> ranges(120, 2.0f);
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 120);
+  EXPECT_DOUBLE_EQ(result.angle_min, 0.0);
+  EXPECT_DOUBLE_EQ(result.angle_increment, 0.01);
+}
+
+TEST_F(MapCodecTest, DecimateScam360ToStep3) {
+  // 360 ranges with step ~3 => expect ~120 ranges
+  std::vector<float> ranges(360, 2.0f);
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_LE(result.ranges.size(), 120);
+  EXPECT_GE(result.ranges.size(), 110);  // approximately 120
+  EXPECT_DOUBLE_EQ(result.angle_min, 0.0);
+  // angle_increment should multiply by step
+  EXPECT_GT(result.angle_increment, 0.01);
+}
+
+TEST_F(MapCodecTest, DecimateScamNaNToZero) {
+  // NaN values should become 0.0
+  std::vector<float> ranges = {2.0f, std::numeric_limits<float>::quiet_NaN(), 2.0f};
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 3);
+  EXPECT_DOUBLE_EQ(result.ranges[0], 2.0);
+  EXPECT_DOUBLE_EQ(result.ranges[1], 0.0);
+  EXPECT_DOUBLE_EQ(result.ranges[2], 2.0);
+}
+
+TEST_F(MapCodecTest, DecimateScamInfToZero) {
+  // inf values should become 0.0
+  std::vector<float> ranges = {2.0f, std::numeric_limits<float>::infinity(), 2.0f};
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 3);
+  EXPECT_DOUBLE_EQ(result.ranges[0], 2.0);
+  EXPECT_DOUBLE_EQ(result.ranges[1], 0.0);
+  EXPECT_DOUBLE_EQ(result.ranges[2], 2.0);
+}
+
+TEST_F(MapCodecTest, DecimateScamOutOfRangeToZero) {
+  // Values outside [range_min, range_max] should become 0.0
+  std::vector<float> ranges = {0.05f, 2.0f, 15.0f};  // 0.05 < range_min=0.1, 15 > range_max=10
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 3);
+  EXPECT_DOUBLE_EQ(result.ranges[0], 0.0);  // out of range
+  EXPECT_DOUBLE_EQ(result.ranges[1], 2.0);  // valid
+  EXPECT_DOUBLE_EQ(result.ranges[2], 0.0);  // out of range
+}
+
+TEST_F(MapCodecTest, DecimateScamRound2Decimals) {
+  // Values should round to 2 decimal places
+  std::vector<float> ranges = {2.0f, 2.125f, 2.135f, 2.145f};
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 4);
+  EXPECT_DOUBLE_EQ(result.ranges[0], 2.0);
+  // Use tolerance for floating point comparison after rounding
+  EXPECT_NEAR(result.ranges[1], 2.12, 0.015);
+  EXPECT_NEAR(result.ranges[2], 2.13, 0.015);
+  EXPECT_NEAR(result.ranges[3], 2.14, 0.015);
+}
+
+TEST_F(MapCodecTest, DecimateScamEmpty) {
+  // Empty ranges
+  std::vector<float> ranges;
+  DecimatedScan result = decimate_scan(ranges, 0.0, 0.01, 0.1, 10.0, 120);
+
+  EXPECT_EQ(result.ranges.size(), 0);
 }

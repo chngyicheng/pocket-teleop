@@ -4,6 +4,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <sensor_msgs/msg/laser_scan.hpp>
+#include <tf2_ros/static_transform_broadcaster.h>
 
 #include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/client.hpp>
@@ -156,4 +158,127 @@ TEST_F(TeleopNodeTest, MapBroadcastReachesWsClient) {
     EXPECT_EQ(j["cells"].get<std::string>(), "f50o50");
   }
   EXPECT_TRUE(found) << "no map message received over WebSocket";
+}
+
+TEST_F(TeleopNodeTest, PoseBroadcastReachesWsClient) {
+  // Publish static transform: map -> base_link at (1.5, -0.5, heading=0)
+  auto broadcaster = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node_);
+  geometry_msgs::msg::TransformStamped transform;
+  transform.header.frame_id = "map";
+  transform.child_frame_id = "base_link";
+  transform.transform.translation.x = 1.5;
+  transform.transform.translation.y = -0.5;
+  transform.transform.translation.z = 0.0;
+  // Identity rotation (w=1, x=y=z=0)
+  transform.transform.rotation.w = 1.0;
+  transform.transform.rotation.x = 0.0;
+  transform.transform.rotation.y = 0.0;
+  transform.transform.rotation.z = 0.0;
+  broadcaster->sendTransform(transform);
+
+  std::vector<std::string> texts;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    texts.push_back(msg->get_payload());
+  });
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
+  client.connect(con);
+  std::thread t([&]() {
+    // Ping like a real client for ~2 seconds to span multiple pose broadcasts
+    for (int i = 0; i < 11; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      websocketpp::lib::error_code pec;
+      client.send(con->get_handle(), R"({"type":"ping"})",
+                  websocketpp::frame::opcode::text, pec);
+    }
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  bool found = false;
+  for (const auto& text : texts) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || j.value("type", "") != "pose") continue;
+    found = true;
+    EXPECT_EQ(j["frame"].get<std::string>(), "map");
+    EXPECT_DOUBLE_EQ(j["x"].get<double>(), 1.5);
+    EXPECT_DOUBLE_EQ(j["y"].get<double>(), -0.5);
+    EXPECT_DOUBLE_EQ(j["heading"].get<double>(), 0.0);
+  }
+  EXPECT_TRUE(found) << "no pose message received over WebSocket";
+}
+
+TEST_F(TeleopNodeTest, ScanBroadcastReachesWsClient) {
+  // Note: use the default node_ which subscribes to /scan. This test just
+  // validates that scan messages are correctly decimated and broadcast.
+  // Publish multiple scans to ensure one makes it through the 200ms throttle.
+
+  // Publish a laser scan
+  auto scan_publisher = node_->create_publisher<sensor_msgs::msg::LaserScan>(
+    "/scan", rclcpp::SensorDataQoS());
+
+  std::vector<std::string> texts;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    texts.push_back(msg->get_payload());
+  });
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Publish multiple scans spanning 2+ seconds
+    for (int i = 0; i < 11; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+      sensor_msgs::msg::LaserScan test_scan;
+      test_scan.header.frame_id = "base_link";
+      test_scan.angle_min = 0.0;
+      test_scan.angle_max = 6.28;  // 2*pi
+      test_scan.angle_increment = 0.0175;  // ~360 ranges
+      test_scan.time_increment = 0.0;
+      test_scan.scan_time = 0.0;
+      test_scan.range_min = 0.1;
+      test_scan.range_max = 10.0;
+
+      // Create 360 ranges with a fixed value
+      test_scan.ranges.assign(360, 2.0f);
+      // Insert some NaN and out-of-range values
+      test_scan.ranges[0] = std::numeric_limits<float>::quiet_NaN();
+      test_scan.ranges[180] = 15.0f;  // > range_max
+
+      scan_publisher->publish(test_scan);
+
+      // Also send ping to keep connection alive
+      websocketpp::lib::error_code pec;
+      client.send(con->get_handle(), R"({"type":"ping"})",
+                  websocketpp::frame::opcode::text, pec);
+    }
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  bool found = false;
+  for (const auto& text : texts) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || j.value("type", "") != "scan") continue;
+    found = true;
+    EXPECT_DOUBLE_EQ(j["angle_min"].get<double>(), 0.0);
+    EXPECT_DOUBLE_EQ(j["range_max"].get<double>(), 10.0);
+
+    auto ranges = j["ranges"].get<std::vector<double>>();
+    EXPECT_LE(ranges.size(), 120);  // decimated to <= 120
+    // First should be 0 (was NaN)
+    EXPECT_DOUBLE_EQ(ranges[0], 0.0);
+  }
+  EXPECT_TRUE(found) << "no scan message received over WebSocket";
 }
