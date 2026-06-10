@@ -190,8 +190,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [bridge]);
 
-  // Derive odometry data from bridge.odom
+  // Derive odometry data from bridge.odom, preferring mapPose when available (SLAM)
   const odomPos = bridge.odom ?? { x: 0, y: 0, heading: 0 };
+  const navPose = bridge.mapPose ?? odomPos;
 
   // Connection state label. While reconnecting, show the live attempt counter
   // (bridge.retryCount, counts up 1→2→3…) instead of the placeholder text.
@@ -611,13 +612,16 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           }}
         >
           <MiniMap
-            pos={odomPos}
-            heading={odomPos.heading}
+            pos={navPose}
+            heading={navPose.heading}
             size={200}
             color={p.accent}
             bg={p.bg}
             border={p.border}
             grid={true}
+            mapGrid={bridge.mapGrid}
+            mapPose={bridge.mapPose}
+            scan={bridge.scan}
           />
 
           <SidePanel title="HEADING">

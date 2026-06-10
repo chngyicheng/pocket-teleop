@@ -160,8 +160,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     bridge.sendTwist(axesRef.current.lx, axesRef.current.ly, axesRef.current.az);
   };
 
-  // Derive minimap/compass data from bridge.odom
+  // Derive minimap/compass data from bridge.odom, preferring mapPose when available (SLAM)
   const odomPos = bridge.odom ?? { x: 0, y: 0, heading: 0 };
+  const navPose = bridge.mapPose ?? odomPos;
 
   // Latency readout: only render a number for a real, finite, non-negative
   // value. Negative / NaN / Infinity all fall back to the em-dash placeholder.
@@ -533,12 +534,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 12 }}>
               {/* MAP */}
               <MiniMap
-                pos={odomPos}
-                heading={odomPos.heading}
+                pos={navPose}
+                heading={navPose.heading}
                 size={140}
                 color={p.accent}
                 bg={p.bg}
                 border={p.border}
+                mapGrid={bridge.mapGrid}
+                mapPose={bridge.mapPose}
+                scan={bridge.scan}
               />
 
               {/* HEADING */}
@@ -683,12 +687,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           }}
         >
           <MiniMap
-            pos={odomPos}
-            heading={odomPos.heading}
+            pos={navPose}
+            heading={navPose.heading}
             size={isLandscape ? 110 : 88}
             color={p.accent}
             bg="rgba(8,10,14,0.7)"
             border={p.border}
+            mapGrid={bridge.mapGrid}
+            mapPose={bridge.mapPose}
+            scan={bridge.scan}
           />
           <Compass
             heading={odomPos.heading}

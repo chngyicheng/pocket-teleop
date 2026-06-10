@@ -10,6 +10,9 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
   - [Gamepad not detected in Brave](#gamepad-not-detected-in-brave)
   - [Robot only moves while the stick is wiggled](#robot-only-moves-while-the-stick-is-wiggled)
   - [Controls feel reversed or mapped to the wrong stick](#controls-feel-reversed-or-mapped-to-the-wrong-stick)
+- [Minimap](#minimap)
+  - [Minimap shows "NO MAP"](#minimap-shows-no-map)
+  - [Robot position doesn't match the real world](#robot-position-doesnt-match-the-real-world)
 - [Video](#video)
   - [Video connects but never shows frames (10 s timeout)](#video-connects-but-never-shows-frames-10-s-timeout)
 - [Connection](#connection)
@@ -52,6 +55,70 @@ docker compose -p pocket-teleop exec teleop-server \
 ### Controls feel reversed or mapped to the wrong stick
 
 The default profile maps **forward/back + rotate to the left stick** and **strafe to the right stick**, with axis inversions chosen for a standard controller. If a direction is reversed on your hardware, open DevTools → Console, look for the `Gamepad detected:` log line to confirm the profile, then flip the relevant `invert` flag (or remap the axis) for that profile in `web-client/src/gamepad_profiles.ts`. E-STOP is mapped to the left bumper (button 4); if it mis-fires, verify the button index for your controller.
+
+---
+
+## Minimap
+
+### Minimap shows "NO MAP"
+
+**Symptom:** the minimap panel displays a grid but no occupancy or robot position, even though the robot is moving.
+
+**Diagnosis:**
+
+1. **Check SLAM is running:**
+   ```bash
+   ros2 topic list | grep map
+   ros2 topic echo /map --qos-durability transient_local --qos-reliability reliable --once
+   ```
+   If the `map` topic is not listed or the echo times out, SLAM is not running or not publishing. The minimap will fall back to odometry (grid view only).
+
+2. **Check topic name matches `.env`:**
+   If your SLAM publishes to a different topic (e.g. `/nav2/map`), set it in `.env`:
+   ```bash
+   MAP_TOPIC=/nav2/map
+   ```
+   Then restart the teleop-server:
+   ```bash
+   docker compose up -d teleop-server
+   ```
+
+3. **Check tf2 transform chain:**
+   A running SLAM must publish the `map→odom` transform. Check:
+   ```bash
+   ros2 run tf2_ros tf2_echo map base_link
+   ```
+   If it fails, SLAM is publishing the map topic but not the transform. Consult your SLAM documentation (nav2, cartographer, etc.) to enable the `map→base_link` chain.
+
+4. **Check `ROS_DOMAIN_ID`:**
+   If the teleop-server and SLAM are on different domain IDs (default 0), they won't see each other. Ensure both set the same domain:
+   ```bash
+   # In the teleop docker-compose or robot's ROS2 startup:
+   ROS_DOMAIN_ID=0
+   ```
+
+### Robot position doesn't match the real world
+
+**Symptom:** the minimap shows the occupancy grid and robot, but the robot's displayed position drifts away from the real walls or the orientation is 180° off.
+
+**Cause:** tf2 frame convention or SLAM localization issue (not specific to pocket-teleop).
+
+**Diagnosis:**
+
+1. Check the displayed frame IDs match your robot:
+   ```bash
+   ros2 run tf2_ros tf2_echo map base_link
+   # Look at the frame header and verify they are correct
+   ```
+
+2. If you're using a non-standard frame setup, override the defaults in `.env`:
+   ```bash
+   MAP_FRAME=map
+   ODOM_FRAME=odom
+   BASE_FRAME=base_link
+   ```
+
+3. If position drifts over time, SLAM may need tuning (loop closure, motion model, sensor parameters) — this is independent of pocket-teleop. Use RViz on a desktop to visualize the full transform chain and odometry / scan quality.
 
 ---
 

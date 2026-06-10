@@ -19,6 +19,9 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     retryCount: 0,
     latencyMs: 42,
     odom: { x: 0, y: 0, heading: 0 },
+    mapGrid: null,
+    mapPose: null,
+    scan: null,
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
@@ -855,5 +858,85 @@ describe('MissionControl', () => {
     ).toBeTruthy();
     expect(screen.getByText('LINEAR')).toBeTruthy();
     expect(screen.getByText('ANGULAR')).toBeTruthy();
+  });
+
+  it('phone-landscape minimap uses mapPose when available (SLAM)', () => {
+    const mapPose = { frame: 'map' as const, x: 1.5, y: -0.5, heading: 0.78 };
+    const mapGrid = {
+      cells: new Uint8Array(4),
+      width: 2,
+      height: 2,
+      resolution: 0.05,
+      originX: 0,
+      originY: 0,
+    };
+    const bridge = createFakeBridge({
+      odom: { x: 10, y: 20, heading: 0 },
+      mapPose,
+      mapGrid,
+    });
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // The minimap canvas should exist (rendered with mapPose + mapGrid)
+    const canvas = screen.getByTestId('minimap-canvas');
+    expect(canvas).toBeTruthy();
+  });
+
+  it('phone-portrait minimap uses mapPose when available (SLAM)', () => {
+    const mapPose = { frame: 'map' as const, x: 2.0, y: 3.0, heading: 1.57 };
+    const mapGrid = {
+      cells: new Uint8Array(4),
+      width: 2,
+      height: 2,
+      resolution: 0.05,
+      originX: 0,
+      originY: 0,
+    };
+    const bridge = createFakeBridge({
+      odom: { x: 0, y: 0, heading: 0 },
+      mapPose,
+      mapGrid,
+    });
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-portrait"
+      />
+    );
+
+    // The minimap canvas should exist (rendered with mapPose + mapGrid)
+    const canvas = screen.getByTestId('minimap-canvas');
+    expect(canvas).toBeTruthy();
+  });
+
+  it('phone-landscape minimap falls back to odom when mapPose is null', () => {
+    const bridge = createFakeBridge({
+      odom: { x: 5, y: 10, heading: 0.5 },
+      mapPose: null,
+      mapGrid: null,
+    });
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={createFakeStream()}
+        onMenu={vi.fn()}
+        layout="phone-landscape"
+      />
+    );
+
+    // Minimap grid should be shown when mapGrid is null
+    expect(screen.getByTestId('minimap-grid')).toBeTruthy();
   });
 });

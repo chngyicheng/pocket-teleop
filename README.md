@@ -24,9 +24,8 @@
 - **Adjustable speed limits** — per-axis linear/angular caps, set live from the UI and persisted.
 - **Latching E-STOP** — from the on-screen button, the spacebar, or the gamepad left bumper; one shared latch across every source.
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
+- **Robot-localized minimap** — real-time SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view; falls back to odometry when SLAM is unavailable.
 - **Secure by default** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade.
-
-> **Work in progress:** the map / odometry mini-map is still under development and may not yet reflect the robot's true position.
 
 ## Screenshots
 
@@ -131,6 +130,22 @@ All optional; set in `.env` before starting:
 |---|---|
 | Differential drive | `linear_x`, `angular_z` |
 | Holonomic / omnidirectional | `linear_x`, `linear_y`, `angular_z` |
+
+### Robot localization (SLAM + odometry)
+
+Minimap rendering requires odometry; SLAM is optional:
+
+| Variable | Default | Description |
+|---|---|---|
+| `ODOM_TOPIC` | `/odom` | Odometry source; always used as fallback |
+| `MAP_TOPIC` | `/map` | SLAM occupancy grid topic |
+| `SCAN_TOPIC` | `/scan` | 2D lidar scan for the obstacle overlay |
+| `MAP_FRAME` | `map` | Frame ID for SLAM origin |
+| `ODOM_FRAME` | `odom` | Frame ID for odometry origin |
+| `BASE_FRAME` | `base_link` | Robot base frame for pose/scan transforms |
+| `MAP_WINDOW_M` | `24.0` | Side length of the transmitted map crop window, centered on the robot (24.0 → 24×24 m) |
+
+When SLAM publishes the map and the `map→base_link` transform, the UI shows the SLAM-localized pose (with lidar overlay when a scan is available). If SLAM is unavailable or silent, the minimap falls back to odometry (`odom→base_link`).
 
 ## Video streaming
 
