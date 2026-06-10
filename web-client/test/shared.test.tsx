@@ -295,6 +295,121 @@ describe('MiniMap', () => {
     // Just verify it doesn't crash
     expect(true).toBe(true);
   });
+
+  // ─── MiniMap with map canvas ─────────────────────────────────────────────────
+  it('does not render canvas when mapGrid is null', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={null}
+        mapPose={null}
+      />
+    );
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]');
+    expect(canvas).toBeFalsy();
+    const grid = container.querySelector('[data-testid="minimap-grid"]');
+    expect(grid).toBeTruthy(); // grid still present
+  });
+
+  it('does not render canvas when mapPose is null', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={null}
+      />
+    );
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]');
+    expect(canvas).toBeFalsy();
+  });
+
+  it('renders canvas when mapGrid and mapPose are present', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]');
+    expect(canvas).toBeTruthy();
+  });
+
+  it('shows label MAP when frame is map', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+    const label = container.querySelector('[data-testid="minimap-label"]');
+    expect(label?.textContent).toBe('MAP');
+  });
+
+  it('shows label ODOM when frame is odom', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'odom' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+    const label = container.querySelector('[data-testid="minimap-label"]');
+    expect(label?.textContent).toBe('ODOM');
+  });
+
+  it('shows label NO MAP when no map or pose', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={null}
+        mapPose={null}
+      />
+    );
+    const label = container.querySelector('[data-testid="minimap-label"]');
+    expect(label?.textContent).toBe('NO MAP');
+  });
+
+  it('does not throw when scan is provided', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const scan = {
+      angleMin: 0,
+      angleIncrement: Math.PI / 2,
+      rangeMax: 10,
+      ranges: [1, 1, 0, 2],
+    };
+    expect(() => {
+      render(
+        <MiniMap
+          pos={{ x: 0, y: 0 }}
+          heading={0}
+          mapGrid={mapGrid}
+          mapPose={mapPose}
+          scan={scan}
+        />
+      );
+    }).not.toThrow();
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────

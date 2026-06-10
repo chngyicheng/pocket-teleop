@@ -1,0 +1,167 @@
+/**
+ * map_render.ts — Pure functions to render SLAM map + lidar scan on canvas.
+ * No React, no state—functions only. Canvas context setup in shared.tsx MiniMap.
+ */
+
+export interface Pose {
+  x: number;
+  y: number;
+  heading: number;
+}
+
+export interface MapMeta {
+  originX: number;
+  originY: number;
+  resolution: number;
+}
+
+export interface Scan {
+  angleMin: number;
+  angleIncrement: number;
+  rangeMax: number;
+  ranges: number[];
+}
+
+export interface ScreenTransform {
+  a: number;
+  b: number;
+  c: number;
+  d: number;
+  e: number;
+  f: number;
+}
+
+/**
+ * Compute the 2D affine transform from map pixel to screen coordinates.
+ *
+ * Conventions:
+ * - ROS map frame: x east, y north, θ counter-clockwise
+ * - Screen: robot at (cx, cy) = (size/2, size/2), front (robot x-axis) always upward
+ *
+ * Derivation:
+ * - Map image pixel (px, py) → world (originX + px·resolution, originY + py·resolution)
+ * - Robot pose (x, y, θ) defines a local frame where robot front is north on screen
+ * - Transform: rotate by θ, scale by s·r (px per m), translate to center
+ *
+ * Returns [a,b,c,d,e,f] for canvas.setTransform(a,b,c,d,e,f), which applies:
+ * x' = a·px + c·py + e
+ * y' = b·px + d·py + f
+ */
+export function mapToScreenTransform(
+  pose: Pose,
+  meta: MapMeta,
+  size: number,
+  metersAcross: number
+): ScreenTransform {
+  const s = size / metersAcross; // pixels per meter
+  const r = meta.resolution; // map resolution (meters per cell)
+  const sr = s * r;
+
+  const θ = pose.heading;
+  const sinθ = Math.sin(θ);
+  const cosθ = Math.cos(θ);
+
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const dx0 = meta.originX - pose.x;
+  const dy0 = meta.originY - pose.y;
+
+  return {
+    a: sr * sinθ,
+    b: -sr * cosθ,
+    c: -sr * cosθ,
+    d: -sr * sinθ,
+    e: cx - s * (-sinθ * dx0 + cosθ * dy0),
+    f: cy - s * (cosθ * dx0 + sinθ * dy0),
+  };
+}
+
+/**
+ * Convert lidar scan rays to screen coordinates.
+ * Scan is in base_link frame. Skip invalid ranges (≤0).
+ *
+ * Each ray: i-th angle = angleMin + i·angleIncrement
+ * base_link: x forward, y left
+ * Conversion: bx = r·cos(φ), by = r·sin(φ)
+ * Screen: x' = cx - by·s, y' = cy - bx·s (robot front is upward)
+ */
+export function scanToScreenPoints(
+  scan: Scan,
+  size: number,
+  metersAcross: number
+): Array<{ x: number; y: number }> {
+  const s = size / metersAcross;
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const points: Array<{ x: number; y: number }> = [];
+
+  for (let i = 0; i < scan.ranges.length; i++) {
+    const r = scan.ranges[i];
+    if (r <= 0) continue; // skip invalid
+
+    const φ = scan.angleMin + i * scan.angleIncrement;
+    const bx = r * Math.cos(φ); // forward
+    const by = r * Math.sin(φ); // left
+
+    const x = cx - by * s;
+    const y = cy - bx * s;
+
+    points.push({ x, y });
+  }
+
+  return points;
+}
+
+/**
+ * Render map cells to 32-bit RGBA.
+ * Palette (Mission colors):
+ * - CELL_UNKNOWN (0) → (0,0,0,0) transparent
+ * - CELL_FREE (1) → (78,201,214,18) accent micro-glow
+ * - CELL_OCCUPIED (2) → (230,240,245,230) bright
+ *
+ * Index = (row * width + col) * 4 (row per data order, not flipped).
+ */
+export function mapToRgba(
+  cells: Uint8Array,
+  width: number,
+  height: number
+): Uint8ClampedArray {
+  const rgba = new Uint8ClampedArray(width * height * 4);
+
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const idx = (row * width + col) * 4;
+      const cell = cells[row * width + col];
+
+      if (cell === 0) {
+        // CELL_UNKNOWN: transparent
+        rgba[idx] = 0;
+        rgba[idx + 1] = 0;
+        rgba[idx + 2] = 0;
+        rgba[idx + 3] = 0;
+      } else if (cell === 1) {
+        // CELL_FREE: accent micro-glow
+        rgba[idx] = 78;
+        rgba[idx + 1] = 201;
+        rgba[idx + 2] = 214;
+        rgba[idx + 3] = 18;
+      } else if (cell === 2) {
+        // CELL_OCCUPIED: bright
+        rgba[idx] = 230;
+        rgba[idx + 1] = 240;
+        rgba[idx + 2] = 245;
+        rgba[idx + 3] = 230;
+      } else {
+        // Unknown cell type: transparent
+        rgba[idx] = 0;
+        rgba[idx + 1] = 0;
+        rgba[idx + 2] = 0;
+        rgba[idx + 3] = 0;
+      }
+    }
+  }
+
+  return rgba;
+}

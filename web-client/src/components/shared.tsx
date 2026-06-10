@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import type { WhepState } from '../whep_client.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba } from '../map_render.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -54,6 +55,10 @@ export interface MiniMapProps {
   grid?: boolean;
   ranges?: boolean;
   trail?: boolean;
+  mapGrid?: { cells: Uint8Array; width: number; height: number; resolution: number; originX: number; originY: number } | null;
+  mapPose?: { frame: 'map' | 'odom'; x: number; y: number; heading: number } | null;
+  scan?: { angleMin: number; angleIncrement: number; rangeMax: number; ranges: number[] } | null;
+  metersAcross?: number;
 }
 
 export interface CompassProps {
@@ -353,8 +358,70 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   grid = true,
   ranges = false,
   trail = true,
+  mapGrid = null,
+  mapPose = null,
+  scan = null,
+  metersAcross = 10,
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Build offscreen canvas when mapGrid changes
+  useEffect(() => {
+    if (!mapGrid) {
+      offscreenRef.current = null;
+      return;
+    }
+
+    try {
+      const offscreen = document.createElement('canvas');
+      offscreen.width = mapGrid.width;
+      offscreen.height = mapGrid.height;
+      const ctx = offscreen.getContext('2d');
+      if (!ctx) return;
+
+      const imgData = new ImageData(mapToRgba(mapGrid.cells, mapGrid.width, mapGrid.height), mapGrid.width, mapGrid.height);
+      ctx.putImageData(imgData, 0, 0);
+      offscreenRef.current = offscreen;
+    } catch (_) {
+      offscreenRef.current = null;
+    }
+  }, [mapGrid]);
+
+  // Render canvas when map/pose/scan change
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !mapGrid || !mapPose) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return; // jsdom has null ctx
+
+    try {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, size, size);
+      ctx.imageSmoothingEnabled = false;
+
+      // Draw map image
+      if (offscreenRef.current) {
+        const t = mapToScreenTransform(mapPose, mapGrid, size, metersAcross);
+        ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
+        ctx.drawImage(offscreenRef.current, 0, 0);
+      }
+
+      // Draw scan overlay
+      if (scan) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        const points = scanToScreenPoints(scan, size, metersAcross);
+        ctx.fillStyle = hexToRgba(color, 0.8);
+        for (const p of points) {
+          ctx.fillRect(p.x - 0.75, p.y - 0.75, 1.5, 1.5);
+        }
+      }
+    } catch (_) {
+      // jsdom errors; do nothing
+    }
+  }, [mapGrid, mapPose, scan, size, metersAcross, color]);
 
   useEffect(() => {
     trailRef.current.push({ x: pos.x, y: pos.y });
@@ -366,6 +433,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     x: size / 2 + (p.x - pos.x) * scale,
     y: size / 2 + (p.y - pos.y) * scale,
   }));
+
+  const labelText = mapGrid && mapPose ? (mapPose.frame === 'map' ? 'MAP' : 'ODOM') : 'NO MAP';
 
   return (
     <div
@@ -379,6 +448,22 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         overflow: 'hidden',
       }}
     >
+      {/* Canvas (map + scan) — only if mapGrid && mapPose */}
+      {mapGrid && mapPose && (
+        <canvas
+          ref={canvasRef}
+          data-testid="minimap-canvas"
+          width={size}
+          height={size}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+
+      {/* Grid (HUD) — always shown if grid=true */}
       {grid && (
         <div
           data-testid="minimap-grid"
@@ -391,6 +476,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             // browsers is identical.
             backgroundImage: `repeating-linear-gradient(to right, transparent 0, transparent 11px, ${hexToRgba(color, 0.133)} 11px, ${hexToRgba(color, 0.133)} 12px), repeating-linear-gradient(to bottom, transparent 0, transparent 11px, ${hexToRgba(color, 0.133)} 11px, ${hexToRgba(color, 0.133)} 12px)`,
             backgroundPosition: `${-pos.x * scale}px ${-pos.y * scale}px`,
+            pointerEvents: 'none',
           }}
         />
       )}
@@ -436,13 +522,31 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       {/* Robot arrow at center */}
       <svg
         viewBox={`0 0 ${size} ${size}`}
-        style={{ position: 'absolute', inset: 0 }}
+        style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       >
         <g transform={`translate(${size / 2} ${size / 2}) rotate(${heading * 180 / Math.PI})`}>
           <polygon points="0,-7 5,5 0,2 -5,5" fill={color} />
           <circle r="2" fill={color} />
         </g>
       </svg>
+
+      {/* Label */}
+      <div
+        data-testid="minimap-label"
+        style={{
+          position: 'absolute',
+          bottom: 2,
+          left: 2,
+          fontSize: 7,
+          letterSpacing: '0.15em',
+          textTransform: 'uppercase',
+          color: hexToRgba(color, 0.6),
+          fontWeight: 600,
+          pointerEvents: 'none',
+        }}
+      >
+        {labelText}
+      </div>
     </div>
   );
 };
