@@ -366,6 +366,10 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ startDist: number; startM: number } | null>(null);
+  const [viewM, setViewM] = useState(metersAcross);
 
   // Build offscreen canvas when mapGrid changes
   useEffect(() => {
@@ -389,6 +393,11 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     }
   }, [mapGrid]);
 
+  // Sync viewM when prop metersAcross changes (map turned off or initialization)
+  useEffect(() => {
+    setViewM(metersAcross);
+  }, [metersAcross]);
+
   // Render canvas when map/pose/scan change
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -402,9 +411,16 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       ctx.clearRect(0, 0, size, size);
       ctx.imageSmoothingEnabled = false;
 
+      // Re-clamp here: a newly arrived (smaller) map can shrink maxM below
+      // the current viewM; the drawing and the data attribute must agree.
+      const m = Math.min(
+        Math.max(viewM, 1.0),
+        Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2,
+      );
+
       // Draw map image
       if (offscreenRef.current) {
-        const t = mapToScreenTransform(mapPose, mapGrid, size, metersAcross);
+        const t = mapToScreenTransform(mapPose, mapGrid, size, m);
         ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
         ctx.drawImage(offscreenRef.current, 0, 0);
       }
@@ -412,7 +428,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       // Draw scan overlay
       if (scan) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        const points = scanToScreenPoints(scan, size, metersAcross);
+        const points = scanToScreenPoints(scan, size, m);
         ctx.fillStyle = hexToRgba(color, 0.8);
         for (const p of points) {
           ctx.fillRect(p.x - 0.75, p.y - 0.75, 1.5, 1.5);
@@ -421,12 +437,78 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     } catch (_) {
       // jsdom errors; do nothing
     }
-  }, [mapGrid, mapPose, scan, size, metersAcross, color]);
+  }, [mapGrid, mapPose, scan, size, viewM, color]);
 
   useEffect(() => {
     trailRef.current.push({ x: pos.x, y: pos.y });
     if (trailRef.current.length > 80) trailRef.current.shift();
   }, [pos.x, pos.y]);
+
+  // Pinch-to-zoom gesture handlers (map mode only)
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!mapGrid || !mapPose) return; // pinch disabled outside map mode
+
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointersRef.current.size === 2) {
+        const pointers = Array.from(pointersRef.current.values());
+        const dx = pointers[1].x - pointers[0].x;
+        const dy = pointers[1].y - pointers[0].y;
+        const startDist = Math.hypot(dx, dy);
+        pinchRef.current = { startDist, startM: viewM };
+      }
+    },
+    [mapGrid, mapPose, viewM]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!mapGrid || !mapPose || !pinchRef.current) return;
+
+      const pointers = pointersRef.current;
+      if (!pointers.has(e.pointerId)) return;
+
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (pointers.size === 2) {
+        const pts = Array.from(pointers.values());
+        const dx = pts[1].x - pts[0].x;
+        const dy = pts[1].y - pts[0].y;
+        const newDist = Math.hypot(dx, dy);
+
+        if (newDist < 8) return; // Avoid division by very small numbers
+
+        const { startDist, startM } = pinchRef.current;
+        const minM = 1.0;
+        const maxM = Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2;
+        const newViewM = startM * (startDist / newDist);
+        const clamped = Math.min(Math.max(newViewM, minM), maxM);
+        setViewM(clamped);
+      }
+    },
+    [mapGrid, mapPose]
+  );
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+  }, []);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+  }, []);
+
+  const handlePointerLeave = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(e.pointerId);
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = null;
+    }
+  }, []);
 
   const scale = 6;
   const mapPoints = trailRef.current.map((p) => ({
@@ -436,8 +518,18 @@ export const MiniMap: React.FC<MiniMapProps> = ({
 
   const labelText = mapGrid && mapPose ? (mapPose.frame === 'map' ? 'MAP' : 'ODOM') : 'NO MAP';
 
+  const clampedViewM = mapGrid && mapPose
+    ? Math.min(Math.max(viewM, 1.0), Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2)
+    : viewM;
+
   return (
     <div
+      ref={containerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
       style={{
         width: size,
         height: size,
@@ -446,6 +538,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         borderRadius: 6,
         position: 'relative',
         overflow: 'hidden',
+        touchAction: mapGrid && mapPose ? 'none' : undefined,
       }}
     >
       {/* Canvas (map + scan) — only if mapGrid && mapPose */}
@@ -453,6 +546,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         <canvas
           ref={canvasRef}
           data-testid="minimap-canvas"
+          data-meters-across={clampedViewM.toFixed(2)}
           width={size}
           height={size}
           style={{

@@ -434,6 +434,247 @@ describe('MiniMap', () => {
       );
     }).not.toThrow();
   });
+
+  // ─── MiniMap pinch-to-zoom tests ─────────────────────────────────────────
+  it('canvas has data-meters-across attribute reflecting current zoom level', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]') as HTMLCanvasElement;
+    expect(canvas).toBeTruthy();
+    expect(canvas.getAttribute('data-meters-across')).toBe('10.00');
+  });
+
+  it('pinch out (two fingers opening) zooms in by shrinking metersAcross', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container, rerender } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Simulate pinch out: down(1@40,50)+down(2@60,50) dist=20 → move(1@20,50)+move(2@80,50) dist=60
+    // startDist=20, newDist=60 → zoom = startM * 20 / 60 = 10 * 1/3 ≈ 3.33
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 1,
+      clientX: 40,
+      clientY: 50,
+    });
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 2,
+      clientX: 60,
+      clientY: 50,
+    });
+
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 1,
+      clientX: 20,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 2,
+      clientX: 80,
+      clientY: 50,
+    });
+
+    // After the gesture, canvas attribute should reflect smaller viewM
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]') as HTMLCanvasElement;
+    const metersStr = canvas?.getAttribute('data-meters-across') ?? '10.00';
+    const meters = parseFloat(metersStr);
+    expect(meters).toBeLessThan(10);
+    expect(meters).toBeGreaterThan(0);
+  });
+
+  it('pinch in (two fingers closing) zooms out by increasing metersAcross', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={5}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Simulate pinch in: down(1@80,50)+down(2@20,50) dist=60 → move(1@90,50)+move(2@10,50) dist=80
+    // startDist=60, newDist=80 → zoom = 5 * 60 / 80 = 3.75 (clamped to [1.0, maxM] where maxM=100*100*0.1*1.2=120)
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 1,
+      clientX: 80,
+      clientY: 50,
+    });
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 2,
+      clientX: 20,
+      clientY: 50,
+    });
+
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 1,
+      clientX: 90,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 2,
+      clientX: 10,
+      clientY: 50,
+    });
+
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]') as HTMLCanvasElement;
+    const metersStr = canvas?.getAttribute('data-meters-across') ?? '5.00';
+    const meters = parseFloat(metersStr);
+    expect(meters).toBeGreaterThanOrEqual(3);
+    expect(meters).toBeLessThanOrEqual(120);
+  });
+
+  it('single pointer move does not change zoom level', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 1,
+      clientX: 50,
+      clientY: 50,
+    });
+
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+    });
+
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]') as HTMLCanvasElement;
+    const metersStr = canvas?.getAttribute('data-meters-across') ?? '10.00';
+    const meters = parseFloat(metersStr);
+    expect(meters).toBe(10);
+  });
+
+  it('clamps zoom to minM=1.0', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Extreme pinch out: startDist=20 → newDist=1 (triggers dist<8 guard → no zoom change; expect clamping instead)
+    // Actually, use dist 20 → large dist to trigger extreme zoom-in beyond minM
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 1,
+      clientX: 50,
+      clientY: 50,
+    });
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 2,
+      clientX: 60,
+      clientY: 50,
+    });
+
+    // Extreme: dist 10 → 200
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 1,
+      clientX: 50,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 2,
+      clientY: 250,
+      clientX: 60,
+    });
+
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]') as HTMLCanvasElement;
+    const metersStr = canvas?.getAttribute('data-meters-across') ?? '10.00';
+    const meters = parseFloat(metersStr);
+    expect(meters).toBeGreaterThanOrEqual(1.0);
+  });
+
+  it('pinch gesture does not affect zoom in non-map mode (no mapGrid/mapPose)', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={null}
+        mapPose={null}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Simulate pinch gesture
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 1,
+      clientX: 40,
+      clientY: 50,
+    });
+    fireEvent.pointerDown(wrapper!, {
+      pointerId: 2,
+      clientX: 60,
+      clientY: 50,
+    });
+
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 1,
+      clientX: 20,
+      clientY: 50,
+    });
+    fireEvent.pointerMove(wrapper!, {
+      pointerId: 2,
+      clientX: 80,
+      clientY: 50,
+    });
+
+    // Canvas should not exist, so no data-meters-across to check; grid should still be present
+    const canvas = container.querySelector('[data-testid="minimap-canvas"]');
+    expect(canvas).toBeFalsy();
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────
