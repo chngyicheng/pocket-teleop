@@ -14,6 +14,7 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
   - [Robot keeps moving (or spins) after releasing the joystick](#robot-keeps-moving-or-spins-after-releasing-the-joystick)
 - [Minimap](#minimap)
   - [Minimap shows "NO MAP"](#minimap-shows-no-map)
+  - [Minimap frozen after restarting the simulator](#minimap-frozen-after-restarting-the-simulator)
   - [Robot position doesn't match the real world](#robot-position-doesnt-match-the-real-world)
 - [Video](#video)
   - [Video connects but never shows frames (10 s timeout)](#video-connects-but-never-shows-frames-10-s-timeout)
@@ -125,6 +126,18 @@ More than one node name = found it. Close the extra publisher or cancel the nav 
    # In the teleop docker-compose or robot's ROS2 startup:
    ROS_DOMAIN_ID=0
    ```
+
+### Minimap frozen after restarting the simulator
+
+**Symptom:** after a Gazebo (or other sim) restart, the lidar overlay still moves but the map sits in one static position — the robot pose never updates.
+
+**Cause:** restarting the sim resets sim time to ~0. The teleop-server's tf2 buffer still holds pre-restart transforms with larger timestamps, so every new transform is rejected as `TF_OLD_DATA` ("ignoring data from the past" in `docker logs teleop-server`) and the pose lookup keeps returning the frozen pre-restart transform. Scans are plain messages (no tf), which is why they keep working.
+
+**Fix:** restart the teleop server to clear its tf buffer after any sim restart:
+
+```bash
+docker compose -p pocket-teleop --env-file ./.env restart teleop-server
+```
 
 ### Robot position doesn't match the real world
 
