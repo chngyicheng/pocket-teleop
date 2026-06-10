@@ -26,7 +26,7 @@
 >
 > **Subagent/worktree gotchas:** (0) Subagents never run git — controller stages by explicit path + commits (a blanket `git add` once swept 2754 worktree files). (1) A Haiku's cwd can pin to the **main repo instead of the worktree** — check `git status` in BOTH before trusting reports; it may also "re-create" files that already exist on the branch (one re-invented the RLE codec in a wrong format — canonical impl lives on the branch, transfer only the new wiring). (2) Docker runs may leave root-owned `node_modules` in a worktree; chown back before `git worktree remove`: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
 >
-> **Next — operator to pick:** Feature plan pool below (HTTPS/TLS = top safety gap; battery telemetry retires the `BAT —` placeholder), a service worker for app-shell precaching, or the proposed **robot footprint outline** in the minimap (env length/width, zoom-gated, dashed accent under the arrow).
+> **Next — operator to pick:** Feature plan pool below (HTTPS/TLS = top safety gap; battery telemetry retires the `BAT —` placeholder), the **robot footprint outline + service worker precache** plan (`docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md`), or the **gamepad cold-start detection** fix (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Safety + health pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
 
 ### Milestones done (recent)
 
@@ -55,6 +55,8 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 | Message protocol + data types | [data-schema.md](memory/agent-guides/data-schema.md) |
 | Git workflow + doc-update rules | [version-control.md](memory/agent-guides/version-control.md) |
 | TDD standard, guardrails, task guides | [project-skills.md](memory/agent-guides/project-skills.md) |
+| **Footprint outline + SW precache plan (2026-06-11, ⏳ pending)** | `docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md` |
+| **Gamepad cold-start detection plan (2026-06-07, ⏳ pending)** | `docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md` |
 | **SLAM minimap plan (2026-06-10, ✅ done)** | `docs/superpowers/plans/2026-06-10-slam-minimap.md` |
 | **Gamepad controls plan (2026-06-06, ✅ done)** | `docs/superpowers/plans/2026-06-06-gamepad-controls-improvements.md` |
 | Earlier plans + specs (all shipped) | `docs/superpowers/plans/` + `docs/superpowers/specs/` — dated filenames; feature → plan mapping via [milestones.md](memory/agent-guides/milestones.md) |
