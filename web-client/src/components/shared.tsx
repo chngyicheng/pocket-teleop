@@ -519,12 +519,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         </svg>
       )}
 
-      {/* Robot arrow at center */}
+      {/* Robot arrow at center. In map mode the view is base_link-fixed —
+          the map rotates around the robot, so the arrow stays pointing up.
+          In odom fallback the grid is static, so the arrow shows heading. */}
       <svg
         viewBox={`0 0 ${size} ${size}`}
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       >
-        <g transform={`translate(${size / 2} ${size / 2}) rotate(${heading * 180 / Math.PI})`}>
+        <g transform={`translate(${size / 2} ${size / 2}) rotate(${mapGrid && mapPose ? 0 : heading * 180 / Math.PI})`}>
           <polygon points="0,-7 5,5 0,2 -5,5" fill={color} />
           <circle r="2" fill={color} />
         </g>

@@ -343,6 +343,30 @@ describe('MiniMap', () => {
     expect(canvas).toBeTruthy();
   });
 
+  it('keeps the robot arrow unrotated in map mode (map rotates instead)', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0.78 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0.78}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+    const arrowGroup = container.querySelector('polygon')?.parentElement;
+    expect(arrowGroup?.getAttribute('transform')).toContain('rotate(0)');
+  });
+
+  it('rotates the robot arrow with heading in odom fallback (no map)', () => {
+    const { container } = render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={Math.PI / 2} />
+    );
+    const arrowGroup = container.querySelector('polygon')?.parentElement;
+    expect(arrowGroup?.getAttribute('transform')).toContain('rotate(90)');
+  });
+
   it('shows label MAP when frame is map', () => {
     const cells = new Uint8Array(100);
     const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
