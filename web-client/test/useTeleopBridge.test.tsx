@@ -60,6 +60,30 @@ class FakeTeleopClient {
     this.opts.onEstopState?.(engaged);
   }
 
+  triggerMap(resolution: number, width: number, height: number, origin_x: number, origin_y: number, cells: string) {
+    this.opts.onMap?.({
+      resolution,
+      width,
+      height,
+      origin_x,
+      origin_y,
+      cells,
+    });
+  }
+
+  triggerPose(frame: 'map' | 'odom', x: number, y: number, heading: number) {
+    this.opts.onPose?.(frame, x, y, heading);
+  }
+
+  triggerScan(angle_min: number, angle_increment: number, range_max: number, ranges: number[]) {
+    this.opts.onScan?.({
+      angle_min,
+      angle_increment,
+      range_max,
+      ranges,
+    });
+  }
+
   triggerClose(code: number, reason: string) {
     this.opts.onClose?.(code, reason);
   }
@@ -493,5 +517,198 @@ describe('useTeleopBridge', () => {
     });
 
     expect(result.current.maxAngular).toBe(0.1);
+  });
+
+  it('initializes mapGrid, mapPose, and scan to null', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.mapGrid).toBeNull();
+    expect(result.current.mapPose).toBeNull();
+    expect(result.current.scan).toBeNull();
+  });
+
+  it('onMap decodes RLE and updates mapGrid', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      // "u10" = 10 cells of CELL_UNKNOWN (server token format: letter + run length)
+      fakeClient.triggerMap(0.05, 10, 1, -0.25, -0.0, 'u10');
+    });
+
+    expect(result.current.mapGrid).not.toBeNull();
+    expect(result.current.mapGrid!.cells.length).toBe(10);
+    expect(result.current.mapGrid!.width).toBe(10);
+    expect(result.current.mapGrid!.height).toBe(1);
+    expect(result.current.mapGrid!.resolution).toBe(0.05);
+    expect(result.current.mapGrid!.originX).toBe(-0.25);
+    expect(result.current.mapGrid!.originY).toBe(-0.0);
+    // All cells should be 0 (UNKNOWN)
+    for (let i = 0; i < 10; i++) {
+      expect(result.current.mapGrid!.cells[i]).toBe(0);
+    }
+  });
+
+  it('onMap with malformed RLE keeps previous mapGrid', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // First valid map
+    act(() => {
+      fakeClient.triggerMap(0.05, 10, 1, -0.25, -0.0, 'u10');
+    });
+
+    const firstMapGrid = result.current.mapGrid;
+    expect(firstMapGrid).not.toBeNull();
+
+    // Second map with invalid RLE (run sum 9 != 10 cells)
+    act(() => {
+      fakeClient.triggerMap(0.05, 10, 1, -0.25, -0.0, 'u9');
+    });
+
+    // mapGrid should be unchanged
+    expect(result.current.mapGrid).toBe(firstMapGrid);
+  });
+
+  it('onPose sets mapPose with correct frame', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerPose('map', 1.5, 2.3, 0.785);
+    });
+
+    expect(result.current.mapPose).not.toBeNull();
+    expect(result.current.mapPose!.frame).toBe('map');
+    expect(result.current.mapPose!.x).toBe(1.5);
+    expect(result.current.mapPose!.y).toBe(2.3);
+    expect(result.current.mapPose!.heading).toBe(0.785);
+  });
+
+  it('onPose with odom frame', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerPose('odom', 0.5, -0.1, 1.57);
+    });
+
+    expect(result.current.mapPose).not.toBeNull();
+    expect(result.current.mapPose!.frame).toBe('odom');
+    expect(result.current.mapPose!.x).toBe(0.5);
+    expect(result.current.mapPose!.y).toBe(-0.1);
+    expect(result.current.mapPose!.heading).toBe(1.57);
+  });
+
+  it('onScan sets scan data', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    const ranges = [1.0, 1.5, 2.0, Infinity];
+    act(() => {
+      fakeClient.triggerScan(-1.57, 0.01, 5.0, ranges);
+    });
+
+    expect(result.current.scan).not.toBeNull();
+    expect(result.current.scan!.angleMin).toBe(-1.57);
+    expect(result.current.scan!.angleIncrement).toBe(0.01);
+    expect(result.current.scan!.rangeMax).toBe(5.0);
+    expect(result.current.scan!.ranges).toEqual(ranges);
+  });
+
+  it('multiple onMap updates replace previous mapGrid', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // First map: 10x1 grid, all unknown
+    act(() => {
+      fakeClient.triggerMap(0.05, 10, 1, -0.25, -0.0, 'u10');
+    });
+
+    expect(result.current.mapGrid!.width).toBe(10);
+
+    // Second map: 20x2 = 40 cells — 15 free, 15 occupied, 10 unknown
+    act(() => {
+      fakeClient.triggerMap(0.1, 20, 2, -1.0, -1.0, 'f15o15u10');
+    });
+
+    expect(result.current.mapGrid!.width).toBe(20);
+    expect(result.current.mapGrid!.height).toBe(2);
+    expect(result.current.mapGrid!.resolution).toBe(0.1);
+  });
+
+  it('multiple onPose updates replace previous mapPose', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerPose('map', 1.5, 2.3, 0.785);
+    });
+
+    expect(result.current.mapPose!.x).toBe(1.5);
+
+    act(() => {
+      fakeClient.triggerPose('odom', 5.0, 6.0, 3.14);
+    });
+
+    expect(result.current.mapPose!.frame).toBe('odom');
+    expect(result.current.mapPose!.x).toBe(5.0);
+    expect(result.current.mapPose!.y).toBe(6.0);
+    expect(result.current.mapPose!.heading).toBe(3.14);
+  });
+
+  it('multiple onScan updates replace previous scan', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerScan(-1.57, 0.01, 5.0, [1.0, 1.5, 2.0]);
+    });
+
+    expect(result.current.scan!.ranges.length).toBe(3);
+
+    act(() => {
+      fakeClient.triggerScan(-3.14, 0.02, 10.0, [2.0, 3.0, 4.0, 5.0]);
+    });
+
+    expect(result.current.scan!.angleMin).toBe(-3.14);
+    expect(result.current.scan!.ranges.length).toBe(4);
   });
 });

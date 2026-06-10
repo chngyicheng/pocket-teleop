@@ -1,7 +1,31 @@
 import { useState, useEffect, useRef } from 'react';
 import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
+import { decodeRle } from '../map_codec.js';
 import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
+
+export interface MapGrid {
+  cells: Uint8Array;
+  width: number;
+  height: number;
+  resolution: number;
+  originX: number;
+  originY: number;
+}
+
+export interface MapPose {
+  frame: 'map' | 'odom';
+  x: number;
+  y: number;
+  heading: number;
+}
+
+export interface ScanData {
+  angleMin: number;
+  angleIncrement: number;
+  rangeMax: number;
+  ranges: number[];
+}
 
 export interface TeleopBridge {
   connected: boolean;
@@ -9,6 +33,9 @@ export interface TeleopBridge {
   retryCount: number;
   latencyMs: number | null;
   odom: { x: number; y: number; heading: number } | null;
+  mapGrid: MapGrid | null;
+  mapPose: MapPose | null;
+  scan: ScanData | null;
   robotName: string;
   robotNamespace: string;
   robotType: string;
@@ -39,6 +66,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [retryCount, setRetryCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [odom, setOdom] = useState<{ x: number; y: number; heading: number } | null>(null);
+  const [mapGrid, setMapGrid] = useState<MapGrid | null>(null);
+  const [mapPose, setMapPose] = useState<MapPose | null>(null);
+  const [scan, setScan] = useState<ScanData | null>(null);
   const [robotName, setRobotName] = useState('');
   const [robotNamespace, setRobotNamespace] = useState('');
   const [robotType, setRobotType] = useState('');
@@ -77,6 +107,31 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onOdom: (x, y, heading) => {
         setOdom({ x, y, heading });
+      },
+      onMap: (map) => {
+        const decoded = decodeRle(map.cells, map.width, map.height);
+        if (decoded !== null) {
+          setMapGrid({
+            cells: decoded,
+            width: map.width,
+            height: map.height,
+            resolution: map.resolution,
+            originX: map.origin_x,
+            originY: map.origin_y,
+          });
+        }
+        // If decoding fails, keep previous mapGrid (don't set to null or partial state)
+      },
+      onPose: (frame, x, y, heading) => {
+        setMapPose({ frame, x, y, heading });
+      },
+      onScan: (scanRaw) => {
+        setScan({
+          angleMin: scanRaw.angle_min,
+          angleIncrement: scanRaw.angle_increment,
+          rangeMax: scanRaw.range_max,
+          ranges: scanRaw.ranges,
+        });
       },
       onEstopState: (engaged) => {
         setEstopEngaged(engaged);
@@ -177,6 +232,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     retryCount,
     latencyMs,
     odom,
+    mapGrid,
+    mapPose,
+    scan,
     robotName,
     robotNamespace,
     robotType,

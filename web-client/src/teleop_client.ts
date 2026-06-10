@@ -22,6 +22,9 @@ export interface TeleopClientOptions {
   onPong?: () => void;
   onLatency?: (ms: number) => void;
   onOdom?: (x: number, y: number, heading: number) => void;
+  onPose?: (frame: 'map' | 'odom', x: number, y: number, heading: number) => void;
+  onMap?: (map: { resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }) => void;
+  onScan?: (scan: { angle_min: number; angle_increment: number; range_max: number; ranges: number[] }) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
@@ -234,6 +237,25 @@ export class TeleopClient {
     } else if (msg.type === 'estop_state') {
       this.estopEngaged = msg.engaged;
       this.options.onEstopState?.(msg.engaged);
+    } else if (msg.type === 'map') {
+      this.options.onMap?.({
+        resolution: msg.resolution,
+        width: msg.width,
+        height: msg.height,
+        origin_x: msg.origin_x,
+        origin_y: msg.origin_y,
+        cells: msg.cells,
+      });
+    } else if (msg.type === 'pose') {
+      const frame = msg.frame === 'map' || msg.frame === 'odom' ? msg.frame : 'odom';
+      this.options.onPose?.(frame, msg.x, msg.y, msg.heading);
+    } else if (msg.type === 'scan') {
+      this.options.onScan?.({
+        angle_min: msg.angle_min,
+        angle_increment: msg.angle_increment,
+        range_max: msg.range_max,
+        ranges: msg.ranges,
+      });
     }
   }
 
