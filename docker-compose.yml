@@ -61,6 +61,30 @@ services:
     depends_on:
       - mediamtx
 
+  # TLS frontend — opt-in via `--profile tls`. Host networking so Caddy reaches
+  # auth-server at localhost:8080 and owns 80/443 directly. Cert mode is picked
+  # inside the Caddyfile from TLS_ACME_EMAIL (set = Let's Encrypt, empty =
+  # internal self-signed CA). The localhost fallback for TLS_DOMAIN keeps
+  # `compose config` green for plain-HTTP users; real TLS deployments must set
+  # it in .env.
+  caddy:
+    image: caddy:2
+    profiles: ["tls"]
+    network_mode: "host"
+    environment:
+      - "TLS_DOMAIN=${TLS_DOMAIN:-localhost}"
+      # Caddyfile `tls` directive arg: an ACME email enables Let's Encrypt;
+      # "internal" (the fallback when TLS_ACME_EMAIL is empty) self-signs.
+      - "TLS_CERT_MODE=${TLS_ACME_EMAIL:-internal}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Persist certs + ACME account — losing them risks Let's Encrypt rate limits.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - auth-server
+    restart: unless-stopped
+
   auth-server:
     build:
       context: ./auth-server
@@ -75,6 +99,7 @@ services:
       - "TELEOP_ADMIN_PASSWORD=${TELEOP_ADMIN_PASSWORD:?Error: TELEOP_ADMIN_PASSWORD must be set}"
       - "SESSION_SECRET=${SESSION_SECRET:?Error: SESSION_SECRET must be set}"
       - PORT=8080
+      - "BIND_HOST=${BIND_HOST:-0.0.0.0}"
       - TELEOP_SERVER_URL=http://localhost:9091
       - WEBCLIENT_URL=http://localhost:18080
       - MEDIAMTX_URL=http://localhost:8889
@@ -149,3 +174,5 @@ services:
 
 volumes:
   auth-data:
+  caddy-data:
+  caddy-config:
