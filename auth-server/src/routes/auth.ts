@@ -12,7 +12,7 @@ const VIEWS_DIR = path.join(__dirname, '../../views');
 // The actual string value does not matter; it is used only to consume bcrypt.compare time.
 const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 
-export function authRouter(credPath: string): Router {
+export function authRouter(credPath: string, idleTimeoutMs: number = 30 * 60 * 1000): Router {
   const router = Router();
   const { ipLimiter, userLimiter, recordFailure } = makeLoginLimiters();
 
@@ -38,6 +38,7 @@ export function authRouter(credPath: string): Router {
         return res.redirect('/auth/login?error=1');
       }
       req.session.userId = username;
+      req.session.lastActivity = Date.now();
       req.session.mustChangePassword = creds.mustChangePassword;
       if (creds.mustChangePassword) {
         return res.redirect('/auth/change-password');
@@ -100,6 +101,19 @@ export function authRouter(credPath: string): Router {
   router.get('/me', (req: Request, res: Response) => {
     if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
     return res.json({ username: req.session.userId });
+  });
+
+  router.get('/session-status', (req: Request, res: Response) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const lastActivity = req.session.lastActivity ?? Date.now();
+    const remainingMs = Math.max(0, idleTimeoutMs - (Date.now() - lastActivity));
+    return res.json({ remainingMs });
+  });
+
+  router.post('/heartbeat', (req: Request, res: Response) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+    req.session.lastActivity = Date.now();
+    return res.sendStatus(204);
   });
 
   router.post('/change-username', async (req: Request, res: Response, next: NextFunction) => {
