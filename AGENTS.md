@@ -14,7 +14,7 @@
 
 ## Handover state — continue from here
 
-> **Current state (2026-06-11):** **Security sweep: HTTPS/TLS + login rate limit shipped.** Rate limit: failed logins counted per IP (10/min) and per username (5/min), 429 + Retry-After page when exceeded, success consumes no quota, in-memory per app instance (hand-rolled, not express-rate-limit — see deviations). HTTPS/TLS (opt-in) — `docker compose --profile tls` adds a host-network Caddy terminating TLS on 443/80, reverse-proxying everything to auth-server:8080 (WS upgrade included). One cert knob: `TLS_ACME_EMAIL` set = Let's Encrypt, empty = `tls internal` self-signed (defaulting done compose-side as `TLS_CERT_MODE` because Caddy's `{$VAR:default}` ignores empty-but-set vars). auth-server: `trust proxy` + cookie `secure:'auto'` (Secure flag follows X-Forwarded-Proto; plain-HTTP LAN unchanged) + `BIND_HOST` to pin 8080 to loopback behind Caddy. **Live-verify open:** self-signed phone root-CA flow + real ACME — see deviations. Minimap hardware-verify also still open: screen-direction conventions. `v1.0.0` tag still gated on operator hardware checks.
+> **Current state (2026-06-11):** **Security sweep: HTTPS/TLS + login rate limit + session idle timeout shipped.** Idle timeout: sessions die after 30 min without activity (cookie maxAge also 30 min, rolling). Activity = any authenticated HTTP request **except** `GET /auth/session-status` (the status poll must not keep sessions alive); the client sends a throttled `POST /auth/heartbeat` (≥60 s apart) on real operator input (pointer/key/gamepad — WS traffic itself is NOT activity, the 200 ms keepalive ping would defeat the timeout, see deviations). Banner at < 5 min remaining (bottom toast, "Stay logged in"); 401 on poll → login redirect. Live WS: upgrade rejected when already expired; established connections re-checked against the session store every 60 s and killed with a hand-built close frame 4001 → client logs out instead of retrying. `idleTimeoutMs` injectable via `AppOptions` (default 30 min, not an env var yet). Older context: rate limit (per-IP 10/min, per-user 5/min, hand-rolled — deviations) + opt-in TLS via `--profile tls` Caddy (`TLS_ACME_EMAIL` set = ACME, empty = self-signed; auth-server `trust proxy` + `secure:'auto'` + `BIND_HOST`). **Live-verify open:** TLS self-signed phone root-CA flow + real ACME; minimap screen-direction conventions. `v1.0.0` tag still gated on operator hardware checks.
 >
 > **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` from repo root (`-p` pin keeps the `auth-data` volume; `down -v` resets creds). **Restart `teleop-server` after any sim restart** — tf2 rejects post-restart transforms as TF_OLD_DATA (see TROUBLESHOOTING).
 >
@@ -22,11 +22,11 @@
 >
 > **Product decisions — do NOT re-ask:** E-STOP stays tappable on top while the drawer is open. E-STOP label is `■ STOP` (engaged → `■ RESET`).
 >
-> **Test baseline:** webclient **556** pass / **11** skipped / auth **56** / video-bridge **20** / C++ **69**. Docker only; `--build` required after edits or `compose run` reuses a stale image. Iterate with a targeted vitest file list. Known reds that are not regressions: auth `mediamtx_integration.test.ts` (3) needs the full `--profile test` stack; `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **570** pass / **11** skipped / auth **64** / video-bridge **20** / C++ **69**. Docker only; `--build` required after edits or `compose run` reuses a stale image. Iterate with a targeted vitest file list. Known reds that are not regressions: auth `mediamtx_integration.test.ts` (3) needs the full `--profile test` stack; `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) Subagents never run git — controller stages by explicit path + commits (a blanket `git add` once swept 2754 worktree files). (1) A Haiku's cwd can pin to the **main repo instead of the worktree** — check `git status` in BOTH before trusting reports; it may also "re-create" files that already exist on the branch (one re-invented the RLE codec in a wrong format — canonical impl lives on the branch, transfer only the new wiring). (2) Docker runs may leave root-owned `node_modules` in a worktree; chown back before `git worktree remove`: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
 >
-> **Next — security/health sweep in progress (operator order, 2026-06-11):** session idle timeout → speed limit slider → geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality (HTTPS/TLS + login rate limit done). Then: **footprint outline + SW precache** plan (`docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md`) and **gamepad cold-start detection** (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
+> **Next — security/health sweep in progress (operator order, 2026-06-11):** speed limit slider (likely already covered by the SPEED stepper — verify against plan, close if so) → geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality (HTTPS/TLS + login rate limit + session idle timeout done). Then: **footprint outline + SW precache** plan (`docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md`) and **gamepad cold-start detection** (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
 
 ### Milestones done (recent)
 
@@ -34,8 +34,8 @@ Full history: [milestones.md](memory/agent-guides/milestones.md). Tests column =
 
 | Milestone | Tests (web/auth/vb/cpp) | Tag |
 |---|---|---|
-| HTTPS/TLS opt-in — 3 chain-branch tasks (Haiku + trophy TDD; controller reworked the Caddyfile): auth-server `trust proxy` + cookie `secure:'auto'` (2 new vitest lock Secure follows X-Forwarded-Proto) + `BIND_HOST`; `--profile tls` host-network Caddy (reverse_proxy localhost:8080, caddy-data/config volumes for ACME persistence), cert mode via compose-side `TLS_CERT_MODE=${TLS_ACME_EMAIL:-internal}`; README "Enabling HTTPS" (3 modes + phone root-CA steps), data-schema env tables, live-verify deviation. Plus stale video-bridge suite repaired: 5 tests asserted the pre-d4d19a9 RTSP pipeline — now assert flvmux/rtmpsink (+RTMP doc corrections) | 556 / 52 / 20 / 69 | `feat/tls-*` |
 | Login rate limit — 1 task (Haiku + trophy TDD; controller de-duplicated): failed `/auth/login` counted per IP (10/min) + per username (5/min, X-Forwarded-For-aware via trust proxy); 429 + Retry-After + hint page; success consumes no quota; hand-rolled failure tracker (302-redirect failures defeat express-rate-limit status accounting — deviation row); 4 new vitest (11th same-IP fail blocked, 6th same-user cross-IP fail blocked, success exempt, Retry-After present) | 556 / 56 / 20 / 69 | `feat/rate-limit` |
+| Session idle timeout — 3 chain-branch tasks (Haiku + trophy TDD; controller added upgrade-time idle reject + sustained-activity heartbeat interval, de-placeholdered a test): auth-server 30-min idle destroy (`lastActivity` middleware; status poll excluded from activity), `GET /auth/session-status` + `POST /auth/heartbeat`, cookie maxAge 30 min rolling, WS upgrade 401 when expired + per-connection store re-check every 60 s killing with hand-built 4001 close frame (8 new vitest); web `useSessionStatus` poll/banner/input-heartbeat + `SessionBanner` bottom toast (9 new vitest); teleop_client treats 4001 as terminal — no retry, bridge redirects to login (5 new vitest). Plan's "WS message = activity" dropped — client pings every 200 ms, would never idle (deviation row) | 570 / 64 / 20 / 69 | `feat/idle-timeout-*` |
 
 ### Known deviations (still relevant)
 
@@ -57,6 +57,7 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 | TDD standard, guardrails, task guides | [project-skills.md](memory/agent-guides/project-skills.md) |
 | **HTTPS/TLS plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-https-tls-implementation.md` |
 | **Login rate limit plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-login-rate-limit-implementation.md` |
+| **Session idle timeout plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-session-timeout-implementation.md` |
 | **Footprint outline + SW precache plan (2026-06-11, ⏳ pending)** | `docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md` |
 | **Gamepad cold-start detection plan (2026-06-07, ⏳ pending)** | `docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md` |
 | **SLAM minimap plan (2026-06-10, ✅ done)** | `docs/superpowers/plans/2026-06-10-slam-minimap.md` |
@@ -67,7 +68,6 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 ### Feature plan pool (waiting on user to pick priority)
 
 **Safety + control**
-- Session idle timeout: `docs/superpowers/plans/2026-05-06-session-timeout-implementation.md`
 - Speed limit slider: `docs/superpowers/plans/2026-05-06-speed-limit-slider-implementation.md`
 - Geofence: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
 - Disconnect behavior: `docs/superpowers/plans/2026-05-06-disconnect-behavior-implementation.md`
