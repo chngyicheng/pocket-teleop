@@ -711,4 +711,45 @@ describe('useTeleopBridge', () => {
     expect(result.current.scan!.angleMin).toBe(-3.14);
     expect(result.current.scan!.ranges.length).toBe(4);
   });
+
+  it('onClose with code 4001 (session expired) triggers logout', () => {
+    const originalWindowLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: {
+        ...originalWindowLocation,
+        replace: vi.fn(),
+      },
+      writable: true,
+    });
+
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // Set connected state first
+    act(() => {
+      fakeClient.triggerStatus(true, 'diff', 'r1', '/ns');
+    });
+
+    expect(result.current.connected).toBe(true);
+
+    // Trigger session expired close
+    act(() => {
+      fakeClient.triggerClose(4001, 'session expired');
+    });
+
+    // Should have redirected to login
+    expect(window.location.replace).toHaveBeenCalledWith('/auth/login');
+    expect(result.current.connectionState).toBe('disconnected');
+    expect(result.current.connected).toBe(false);
+
+    // Restore location
+    Object.defineProperty(window, 'location', {
+      value: originalWindowLocation,
+      writable: true,
+    });
+  });
 });

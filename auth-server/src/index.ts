@@ -32,4 +32,12 @@ const server = app.listen(PORT, BIND_HOST, () => {
   console.log(`auth-server listening on ${BIND_HOST}:${PORT}`);
 });
 
-server.on('upgrade', makeWsUpgradeHandler(TELEOP_URL, app.get('sessionMiddleware')));
+server.on(
+  'upgrade',
+  makeWsUpgradeHandler(
+    TELEOP_URL,
+    app.get('sessionMiddleware'),
+    app.get('sessionStore'),
+    app.get('idleTimeoutMs'),
+  ),
+);

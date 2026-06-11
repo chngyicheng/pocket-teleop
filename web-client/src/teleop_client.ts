@@ -92,6 +92,12 @@ export class TeleopClient {
           this.options.onClose?.(code, reason);
           return;
         }
+        // Session expired (4001): operator's session timed out. Logout without retry.
+        // The operator must re-authenticate; a reconnect would fail 401 anyway.
+        if (code === 4001) {
+          this.options.onClose?.(code, reason);
+          return;
+        }
         if (!this.retryPending) {
           this.retryPending = true;
           this.scheduleRetry();

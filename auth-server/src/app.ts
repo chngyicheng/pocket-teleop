@@ -11,6 +11,7 @@ declare module 'express-session' {
   interface SessionData {
     userId?: string;
     mustChangePassword?: boolean;
+    lastActivity?: number;
   }
 }
 
@@ -21,6 +22,7 @@ export interface AppOptions {
   webClientUrl?: string;
   mediaMtxUrl?: string;
   mediaMtxApiUrl?: string;
+  idleTimeoutMs?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,6 +42,8 @@ export function createApp(options: AppOptions): express.Application {
   const mediaMtxApiUrl = options.mediaMtxApiUrl
     ?? process.env['MEDIAMTX_API_URL']
     ?? 'http://localhost:9997';
+
+  const idleTimeoutMs = options.idleTimeoutMs ?? (30 * 60 * 1000);
 
   fs.mkdirSync(options.sessionsPath, { recursive: true });
 
@@ -65,15 +69,41 @@ export function createApp(options: AppOptions): express.Application {
       httpOnly: true,
       sameSite: 'lax',
       secure: 'auto',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 60 * 1000,
     },
     rolling: true,
   });
   app.use(sessionMiddleware);
   // Exposed so the WebSocket upgrade handler can authenticate /ws the same way.
   app.set('sessionMiddleware', sessionMiddleware);
+  // Expose store and timeout for WebSocket idle timeout checks
+  app.set('sessionStore', store);
+  app.set('idleTimeoutMs', idleTimeoutMs);
 
   app.get('/health', (_req, res) => res.sendStatus(200));
+
+  // Idle timeout check: destroy session if lastActivity exceeded
+  app.use((req, res, next) => {
+    if (req.session && req.session.userId && req.session.lastActivity) {
+      const elapsed = Date.now() - req.session.lastActivity;
+      if (elapsed > idleTimeoutMs) {
+        req.session.destroy((err) => {
+          if (err) console.error('Session destroy error:', err);
+          next();
+        });
+        return;
+      }
+    }
+    next();
+  });
+
+  // Activity tracking: update lastActivity for authenticated requests (excluding session-status)
+  app.use((req, res, next) => {
+    if (req.session && req.session.userId && req.path !== '/auth/session-status') {
+      req.session.lastActivity = Date.now();
+    }
+    next();
+  });
 
   // Unauthenticated static fonts route — must be before auth-redirect middleware
   app.use('/auth-static', express.static(path.join(__dirname, '../public')));
@@ -91,11 +121,11 @@ export function createApp(options: AppOptions): express.Application {
   // Global body parsers consume the request stream before the proxy can pipe it,
   // causing the proxy request to hang (http-proxy pipes the drained stream, which
   // never ends, so the connection stalls).
-  app.use('/auth', express.urlencoded({ extended: false }), express.json(), authRouter(options.credPath));
+  app.use('/auth', express.urlencoded({ extended: false }), express.json(), authRouter(options.credPath, idleTimeoutMs));
 
   // Unauthenticated: redirect to login
   app.use((req, res, next) => {
-    if (!req.session.userId) return res.redirect('/auth/login');
+    if (!req.session || !req.session.userId) return res.redirect('/auth/login');
     // Prevent browser from caching authenticated pages so back-button forces re-auth check
     res.setHeader('Cache-Control', 'no-store');
     next();
@@ -103,7 +133,7 @@ export function createApp(options: AppOptions): express.Application {
 
   // Authenticated but must change password: redirect to change-password
   app.use((req, res, next) => {
-    if (req.session.mustChangePassword && !req.path.startsWith('/auth')) {
+    if (req.session && req.session.mustChangePassword && !req.path.startsWith('/auth')) {
       return res.redirect('/auth/change-password');
     }
     next();

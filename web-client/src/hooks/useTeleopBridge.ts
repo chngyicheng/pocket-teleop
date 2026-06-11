@@ -136,9 +136,14 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onEstopState: (engaged) => {
         setEstopEngaged(engaged);
       },
-      onClose: () => {
+      onClose: (code, reason) => {
         setConnectionState('disconnected');
         setConnected(false);
+        // Session expired (4001): operator's session timed out — redirect to login
+        if (code === 4001) {
+          location.replace('/auth/login');
+          return;
+        }
       },
       onError: () => {
         // Error handling integrated via connection state changes
