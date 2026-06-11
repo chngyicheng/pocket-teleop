@@ -102,6 +102,43 @@ docker compose down && docker compose up --build   # restart after a code pull
 docker compose down -v               # reset everything, incl. credentials
 ```
 
+## Enabling HTTPS (TLS)
+
+By default the stack serves plain HTTP on port 8080 — fine for a trusted LAN,
+not for anything routable. An opt-in Caddy frontend terminates TLS on 443/80
+and proxies everything (UI, WebSocket, video signaling) to auth-server:
+
+```bash
+# .env: set TLS_DOMAIN, optionally TLS_ACME_EMAIL, and BIND_HOST=127.0.0.1
+docker compose -p pocket-teleop --env-file ./.env --profile tls up --build -d
+```
+
+| Mode | .env | Notes |
+|---|---|---|
+| Plain HTTP (default) | no `--profile tls` | Unchanged behavior; LAN-only deployments |
+| Self-signed | `TLS_DOMAIN=<LAN IP or hostname>`, `TLS_ACME_EMAIL` empty | Caddy's internal CA signs the cert; each phone must trust the root CA once (below) |
+| Let's Encrypt | `TLS_DOMAIN=<public domain>`, `TLS_ACME_EMAIL=<you@example.com>` | Domain must resolve publicly and ports 80/443 must be reachable from the internet |
+
+With TLS enabled, also set `BIND_HOST=127.0.0.1` in `.env` so auth-server's
+plain-HTTP port 8080 is reachable only via Caddy, and allow 443 through the
+firewall (`sudo ufw allow 443/tcp`). The session cookie picks up the `Secure`
+flag automatically on HTTPS requests. WebRTC video is already DTLS-encrypted
+in both modes; only signaling moves under TLS.
+
+**Trusting the self-signed root CA on a phone** — export it from the Caddy
+container:
+
+```bash
+docker compose -p pocket-teleop cp caddy:/data/caddy/pki/authorities/local/root.crt .
+```
+
+Then install `root.crt` on the device: **iOS** — AirDrop/download the file,
+install the profile (Settings → General → VPN & Device Management), then
+enable it under Settings → General → About → Certificate Trust Settings.
+**Android** — Settings → Security → More security settings → Install from
+device storage → CA certificate. Until the CA is trusted, the browser blocks
+the WebSocket upgrade, so the UI loads but nothing connects.
+
 ## Controls
 
 | Source | Drive | Notes |

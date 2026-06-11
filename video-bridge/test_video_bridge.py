@@ -43,26 +43,27 @@ def test_compressed_pipeline_encodes_h264():
     assert 'tune=zerolatency' in p
 
 
-def test_compressed_pipeline_packages_rtp():
-    assert 'rtph264pay' in _compressed_pipeline()
+def test_compressed_pipeline_muxes_flv():
+    # RTMP push carries H.264 in an FLV container, not RTP
+    assert 'flvmux' in _compressed_pipeline()
 
 
-def test_compressed_pipeline_pushes_to_rtsp():
+def test_compressed_pipeline_pushes_to_rtmp():
     p = _compressed_pipeline()
-    assert 'rtspclientsink' in p
-    assert 'rtsp://localhost:8554/teleop' in p
+    assert 'rtmpsink' in p
+    assert 'rtmp://127.0.0.1:1935/teleop' in p
 
 
-def test_compressed_pipeline_default_rtsp_url():
-    # Default URL is used when MEDIAMTX_RTSP is unset — already verified by
-    # test_compressed_pipeline_pushes_to_rtsp; this test makes the intent explicit.
-    assert 'rtsp://localhost:8554/teleop' in _compressed_pipeline()
+def test_compressed_pipeline_default_rtmp_url():
+    # Default URL is used when MEDIAMTX_RTMP is unset — already verified by
+    # test_compressed_pipeline_pushes_to_rtmp; this test makes the intent explicit.
+    assert 'rtmp://127.0.0.1:1935/teleop' in _compressed_pipeline()
 
 
-def test_compressed_pipeline_custom_rtsp_url(monkeypatch):
+def test_compressed_pipeline_custom_rtmp_url(monkeypatch):
     import video_bridge as vb
-    monkeypatch.setattr(vb, 'MEDIAMTX_RTSP', 'rtsp://192.168.1.50:8554/cam')
-    assert 'rtsp://192.168.1.50:8554/cam' in vb._compressed_pipeline()
+    monkeypatch.setattr(vb, 'MEDIAMTX_RTMP', 'rtmp://192.168.1.50:1935/cam')
+    assert 'rtmp://192.168.1.50:1935/cam' in vb._compressed_pipeline()
 
 
 # ── _raw_pipeline ─────────────────────────────────────────────────────────────
@@ -88,10 +89,10 @@ def test_raw_pipeline_encodes_h264():
     assert 'tune=zerolatency' in p
 
 
-def test_raw_pipeline_pushes_to_rtsp():
+def test_raw_pipeline_pushes_to_rtmp():
     p = _raw_pipeline(640, 480, 'BGR')
-    assert 'rtspclientsink' in p
-    assert 'rtsp://localhost:8554/teleop' in p
+    assert 'rtmpsink' in p
+    assert 'rtmp://127.0.0.1:1935/teleop' in p
 
 
 def test_raw_pipeline_converts_to_i420():

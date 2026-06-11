@@ -214,11 +214,11 @@ ROS2 topic (CompressedImage or Image)
     │ rclpy subscriber
     ▼
 video-bridge container (host network)
-GStreamer: appsrc → jpegdec/videoconvert → x264enc → rtph264pay → rtspclientsink
-    │ RTSP push → localhost:8554
+GStreamer: appsrc → jpegdec/videoconvert → x264enc → h264parse → flvmux → rtmpsink
+    │ RTMP push → localhost:1935
     ▼
 mediamtx container (host network)
-• receives RTSP from video-bridge (or pulls from RTSP source directly)
+• receives RTMP from video-bridge (or pulls from an RTSP source directly)
 • serves WHEP at localhost:8889/teleop/whep
 • WebRTC UDP ICE at *:8891
     │ HTTP (SDP exchange)     │ UDP (media)
@@ -234,10 +234,10 @@ WhepClient: RTCPeerConnection + POST /video/teleop/whep → <video> element
 
 | File | What it does |
 |---|---|
-| `video-bridge/video_bridge.py` | Python rclpy node — subscribes ROS2 image topic, feeds GStreamer pipeline, pushes RTSP to MediaMTX; sleeps if `VIDEO_TOPIC` unset |
+| `video-bridge/video_bridge.py` | Python rclpy node — subscribes ROS2 image topic, feeds GStreamer pipeline, pushes RTMP to MediaMTX; sleeps if `VIDEO_TOPIC` unset |
 | `video-bridge/Dockerfile.video_bridge` | ROS2 Humble + GStreamer + python3-gst-1.0; multi-stage: `base`, `runtime`, `test` |
 | `video-bridge/test_video_bridge.py` | 19 pytest tests for pipeline-string functions and format map |
-| `mediamtx.yml` | MediaMTX config — RTSP at 8554, WHEP at 8889, UDP ICE at 8891, path `teleop` |
+| `mediamtx.yml` | MediaMTX config — RTMP at 1935, RTSP at 8554, WHEP at 8889, UDP ICE at 8891, path `teleop` |
 | `web-client/src/whep_client.ts` | `WhepClient` class — vanilla WHEP gather-then-offer, `getStats`@1Hz, exponential back-off retry |
 | `web-client/test/whep_client.test.ts` | vitest tests with a mock `RTCPeerConnection` (functional listener registry for `icegatheringstatechange`) + fetch |
 
@@ -259,7 +259,8 @@ docker compose -p pocket-teleop run --rm --no-deps --build video-bridge-test
 
 | Port | Protocol | Used for |
 |---|---|---|
-| 8554 | TCP | MediaMTX RTSP ingest (video-bridge → mediamtx) — internal only |
+| 1935 | TCP | MediaMTX RTMP ingest (video-bridge → mediamtx) — internal only |
+| 8554 | TCP | MediaMTX RTSP ingest (external RTSP sources) — internal only |
 | 8889 | HTTP | MediaMTX WHEP + config API — proxied via auth-server at `/video` |
 | 8891 | UDP | WebRTC ICE media — direct browser ↔ robot; requires `sudo ufw allow 8891/udp` |
 

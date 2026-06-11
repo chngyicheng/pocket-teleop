@@ -1,0 +1,16 @@
+# TLS frontend for pocket-teleop. Only used with: docker compose --profile tls
+# (without the profile the stack serves plain HTTP on 8080 as before).
+#
+# TLS_DOMAIN: public domain name or LAN IP the operator browses to.
+# TLS_CERT_MODE is derived by docker-compose from TLS_ACME_EMAIL:
+#   - email set: Let's Encrypt ACME (needs a public domain + ports 80/443
+#                reachable from the internet)
+#   - empty:     resolves to "internal" — Caddy self-signed CA. Works on any
+#                LAN, but client devices must trust the Caddy root CA
+#                (see README "Enable HTTPS")
+{$TLS_DOMAIN} {
+	tls {$TLS_CERT_MODE}
+	# auth-server fronts everything (web client, /ws, /video, /perf) on 8080.
+	# reverse_proxy handles the WebSocket upgrade automatically.
+	reverse_proxy localhost:8080
+}
