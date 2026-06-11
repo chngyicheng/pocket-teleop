@@ -100,6 +100,16 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | Variable | Required | Description |
 |---|---|---|
 | `MEDIAMTX_URL` | No (default: `http://localhost:8889`) | MediaMTX HTTP API + WHEP endpoint URL; proxied at `/video` |
+| `BIND_HOST` | No (default: `0.0.0.0`) | Listen address for port 8080; set `127.0.0.1` behind the TLS frontend so plain HTTP is loopback-only |
+
+### caddy (TLS frontend — only with `--profile tls`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `TLS_DOMAIN` | Yes (when profile active) | Public domain or LAN IP the operator browses to; compose falls back to `localhost` so plain-HTTP users aren't forced to set it |
+| `TLS_ACME_EMAIL` | No (empty = self-signed) | Set = Let's Encrypt ACME with this account email; empty = Caddy internal CA (`tls internal`), clients must trust the root CA |
+
+Session cookie `secure` is `'auto'` (express-session): `Secure` flag follows `req.secure`, which the `trust proxy` setting derives from Caddy's `X-Forwarded-Proto`. Plain-HTTP LAN deployments keep a non-Secure cookie and work unchanged.
 
 ### video-bridge
 
@@ -107,4 +117,4 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 |---|---|---|
 | `VIDEO_TOPIC` | No (empty = disabled) | Full ROS2 topic path, e.g. `/camera/image_raw/compressed`; empty = node sleeps |
 | `VIDEO_TOPIC_TYPE` | No (default: `compressed`) | `compressed` for `sensor_msgs/CompressedImage`; `raw` for `sensor_msgs/Image` |
-| `MEDIAMTX_RTSP` | No (default: `rtsp://localhost:8554/teleop`) | RTSP push URL inside MediaMTX |
+| `MEDIAMTX_RTMP` | No (default: `rtmp://127.0.0.1:1935/teleop`) | RTMP push URL into MediaMTX |

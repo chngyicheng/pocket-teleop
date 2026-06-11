@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-video_bridge — ROS2 → GStreamer → RTSP → MediaMTX
+video_bridge — ROS2 → GStreamer → RTMP → MediaMTX
 
 Environment variables
 ---------------------
 VIDEO_TOPIC       Full topic path, e.g. /camera/image_raw/compressed.
                   If empty the node sleeps without subscribing.
 VIDEO_TOPIC_TYPE  'compressed' (default) or 'raw'.
-MEDIAMTX_RTMP     RTMP push URL (default: rtmp://localhost:1935/teleop).
+MEDIAMTX_RTMP     RTMP push URL (default: rtmp://127.0.0.1:1935/teleop).
 """
 import os
 import sys
