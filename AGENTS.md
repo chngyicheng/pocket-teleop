@@ -26,7 +26,7 @@
 >
 > **Subagent/worktree gotchas:** (0) Subagents never run git — controller stages by explicit path + commits (a blanket `git add` once swept 2754 worktree files). (1) A Haiku's cwd can pin to the **main repo instead of the worktree** — check `git status` in BOTH before trusting reports; it may also "re-create" files that already exist on the branch (one re-invented the RLE codec in a wrong format — canonical impl lives on the branch, transfer only the new wiring). (2) Docker runs may leave root-owned `node_modules` in a worktree; chown back before `git worktree remove`: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
 >
-> **Next — security/health sweep in progress (operator order, 2026-06-11):** speed limit slider (likely already covered by the SPEED stepper — verify against plan, close if so) → geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality (HTTPS/TLS + login rate limit + session idle timeout done). Then: **footprint outline + SW precache** plan (`docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md`) and **gamepad cold-start detection** (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
+> **Next — security/health sweep in progress (operator order, 2026-06-11):** geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality (HTTPS/TLS + login rate limit + session idle timeout done; speed limit slider closed 2026-06-12 without code — already covered by the SPEED stepper from the gamepad plan 務四: absolute per-axis caps at the send choke, left-rail UI, persisted, e-stop exempt). Then: **footprint outline + SW precache** plan (`docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md`) and **gamepad cold-start detection** (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
 
 ### Milestones done (recent)
 
@@ -58,6 +58,7 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 | **HTTPS/TLS plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-https-tls-implementation.md` |
 | **Login rate limit plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-login-rate-limit-implementation.md` |
 | **Session idle timeout plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-session-timeout-implementation.md` |
+| **Speed limit slider plan (2026-05-06, ✅ closed 2026-06-12 — superseded by the SPEED stepper, gamepad plan 務四)** | `docs/superpowers/plans/2026-05-06-speed-limit-slider-implementation.md` |
 | **Footprint outline + SW precache plan (2026-06-11, ⏳ pending)** | `docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md` |
 | **Gamepad cold-start detection plan (2026-06-07, ⏳ pending)** | `docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md` |
 | **SLAM minimap plan (2026-06-10, ✅ done)** | `docs/superpowers/plans/2026-06-10-slam-minimap.md` |
@@ -68,7 +69,6 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 ### Feature plan pool (waiting on user to pick priority)
 
 **Safety + control**
-- Speed limit slider: `docs/superpowers/plans/2026-05-06-speed-limit-slider-implementation.md`
 - Geofence: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
 - Disconnect behavior: `docs/superpowers/plans/2026-05-06-disconnect-behavior-implementation.md`
 
