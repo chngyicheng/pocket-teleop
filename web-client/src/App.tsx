@@ -13,9 +13,11 @@
 import React, { useState, useEffect } from 'react';
 import { useTeleopBridge, type TeleopClientFactory } from './hooks/useTeleopBridge.js';
 import { useWhepStream, type WhepClientFactory } from './hooks/useWhepStream.js';
+import { useSessionStatus } from './hooks/useSessionStatus.js';
 import { MissionControl, type MissionLayout } from './views/MissionControl.js';
 import { MissionTablet } from './views/MissionTablet.js';
 import SettingsDrawer from './components/SettingsDrawer.js';
+import SessionBanner from './components/SessionBanner.js';
 
 export interface AppProps {
   // Optional factories for test injection. Production uses real classes.
@@ -68,6 +70,11 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
     WhepClientCtor,
   });
 
+  // Session status hook — heartbeat on user activity
+  const session = useSessionStatus({
+    active: bridge.inputSource !== 'idle',
+  });
+
   // Burger toggles the drawer (tap again to close).
   const toggleDrawer = () => setDrawerOpen((o) => !o);
 
@@ -97,6 +104,11 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         topOffset={headerHeight}
+      />
+      <SessionBanner
+        remainingMs={session.remainingMs}
+        show={session.showWarning}
+        onKeepAlive={session.keepAlive}
       />
     </>
   );
