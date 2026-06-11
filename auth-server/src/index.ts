@@ -16,6 +16,7 @@ if (!adminUser || !adminPassword || !sessionSecret) {
 const CRED_PATH     = '/data/credentials.json';
 const SESSIONS_PATH = '/data/sessions';
 const PORT          = parseInt(process.env['PORT'] ?? '3000', 10);
+const BIND_HOST     = process.env['BIND_HOST'] ?? '0.0.0.0';
 const TELEOP_URL    = process.env['TELEOP_SERVER_URL'] ?? 'http://localhost:9091';
 
 await initCredentials(adminUser, adminPassword, CRED_PATH);
@@ -27,8 +28,8 @@ const app = createApp({
   sessionSecret,
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`auth-server listening on port ${PORT}`);
+const server = app.listen(PORT, BIND_HOST, () => {
+  console.log(`auth-server listening on ${BIND_HOST}:${PORT}`);
 });
 
 server.on('upgrade', makeWsUpgradeHandler(TELEOP_URL, app.get('sessionMiddleware')));

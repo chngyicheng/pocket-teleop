@@ -51,6 +51,11 @@ export function createApp(options: AppOptions): express.Application {
 
   const app = express();
 
+  // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For, etc.) for TLS termination.
+  // When Caddy or similar reverse proxy terminates TLS and forwards HTTP to us, we need
+  // to recognize HTTPS from X-Forwarded-Proto for secure cookies.
+  app.set('trust proxy', 1);
+
   const sessionMiddleware = session({
     store,
     secret: options.sessionSecret,
@@ -59,7 +64,7 @@ export function createApp(options: AppOptions): express.Application {
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env['NODE_ENV'] === 'production',
+      secure: 'auto',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     },
     rolling: true,
