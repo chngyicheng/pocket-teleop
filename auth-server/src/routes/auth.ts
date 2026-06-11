@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { readCredentials, saveCredentials, verifyPassword, hashPassword } from '../credentials.js';
+import { makeLoginLimiters } from '../rate_limit.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VIEWS_DIR = path.join(__dirname, '../../views');
@@ -13,15 +14,17 @@ const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
 
 export function authRouter(credPath: string): Router {
   const router = Router();
+  const { ipLimiter, userLimiter, recordFailure } = makeLoginLimiters();
 
   router.get('/login', (_req, res) => {
     res.sendFile(path.join(VIEWS_DIR, 'login.html'));
   });
 
-  router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/login', ipLimiter, userLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { username, password } = req.body as { username?: string; password?: string };
       if (!username || !password) {
+        recordFailure(req);
         return res.redirect('/auth/login?error=1');
       }
       const creds = await readCredentials(credPath);
@@ -31,6 +34,7 @@ export function authRouter(credPath: string): Router {
       const passwordValid = await verifyPassword(password, hashToCompare);
       const valid = usernameMatch && passwordValid;
       if (!valid) {
+        recordFailure(req);
         return res.redirect('/auth/login?error=1');
       }
       req.session.userId = username;

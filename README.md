@@ -25,7 +25,7 @@
 - **Latching E-STOP** — from the on-screen button, the spacebar, or the gamepad left bumper; one shared latch across every source.
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
 - **Robot-localized minimap** — SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view with pinch-to-zoom; falls back to odometry when SLAM is unavailable.
-- **Access control** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade. Plain HTTP: intended for trusted LANs (TLS not yet implemented).
+- **Access control** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade, failed-login rate limiting (10/min per IP, 5/min per username → 429 + Retry-After). Plain HTTP by default for trusted LANs; opt-in HTTPS via `--profile tls` (see [Enabling HTTPS](#enabling-https-tls)).
 
 ## Screenshots
 
