@@ -3,6 +3,7 @@ import {
   mapToScreenTransform,
   scanToScreenPoints,
   mapToRgba,
+  footprintScreenRect,
 } from '../src/map_render';
 
 describe('mapToScreenTransform', () => {
@@ -137,6 +138,60 @@ describe('scanToScreenPoints', () => {
     expect(points[1].y).toBeCloseTo(50, 5);
     expect(points[2].x).toBeCloseTo(70, 5);
     expect(points[2].y).toBeCloseTo(50, 5);
+  });
+});
+
+describe('footprintScreenRect', () => {
+  it('lengthM=0.281 widthM=0.306 pxPerM=50: heightPx≈14 widthPx≈15.3 (gate open)', () => {
+    const result = footprintScreenRect(0.281, 0.306, 50);
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.heightPx).toBeCloseTo(14.05, 1);
+      expect(result.widthPx).toBeCloseTo(15.3, 1);
+    }
+  });
+
+  it('lengthM=0.281 widthM=0.306 pxPerM=6 (odom default): gate closed (<14px)', () => {
+    const result = footprintScreenRect(0.281, 0.306, 6);
+    expect(result).toBeNull(); // max(1.686, 1.836) = 1.836 < 14
+  });
+
+  it('lengthM=0 widthM=0.306 pxPerM=50: null (zero length)', () => {
+    const result = footprintScreenRect(0, 0.306, 50);
+    expect(result).toBeNull();
+  });
+
+  it('lengthM=0.281 widthM=-0.1 pxPerM=50: null (negative width)', () => {
+    const result = footprintScreenRect(0.281, -0.1, 50);
+    expect(result).toBeNull();
+  });
+
+  it('lengthM=0.281 widthM=0.306 pxPerM=0: null (zero pxPerM)', () => {
+    const result = footprintScreenRect(0.281, 0.306, 0);
+    expect(result).toBeNull();
+  });
+
+  it('lengthM=3 widthM=2 pxPerM=10: heightPx=30 widthPx=20 (gate open)', () => {
+    const result = footprintScreenRect(3, 2, 10);
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.heightPx).toBe(30);
+      expect(result.widthPx).toBe(20);
+    }
+  });
+
+  it('lengthM=1 widthM=1 pxPerM=14: heightPx=14 widthPx=14 (gate edge case)', () => {
+    const result = footprintScreenRect(1, 1, 14);
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.heightPx).toBe(14);
+      expect(result.widthPx).toBe(14);
+    }
+  });
+
+  it('lengthM=1 widthM=1 pxPerM=13.9: null (gate closed, 13.9 < 14)', () => {
+    const result = footprintScreenRect(1, 1, 13.9);
+    expect(result).toBeNull();
   });
 });
 

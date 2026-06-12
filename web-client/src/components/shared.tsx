@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import type { WhepState } from '../whep_client.js';
-import { mapToScreenTransform, scanToScreenPoints, mapToRgba } from '../map_render.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect } from '../map_render.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -59,6 +59,8 @@ export interface MiniMapProps {
   mapPose?: { frame: 'map' | 'odom'; x: number; y: number; heading: number } | null;
   scan?: { angleMin: number; angleIncrement: number; rangeMax: number; ranges: number[] } | null;
   metersAcross?: number;
+  robotLength?: number;
+  robotWidth?: number;
 }
 
 export interface CompassProps {
@@ -362,6 +364,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   mapPose = null,
   scan = null,
   metersAcross = 10,
+  robotLength = 0,
+  robotWidth = 0,
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -522,6 +526,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     ? Math.min(Math.max(viewM, 1.0), Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2)
     : viewM;
 
+  // Compute pxPerM based on map mode or odom fallback
+  const pxPerM = mapGrid && mapPose ? size / clampedViewM : scale;
+
+  // Compute footprint dimensions
+  const footprint = footprintScreenRect(robotLength, robotWidth, pxPerM);
+  const footprintRotation = mapGrid && mapPose ? 0 : heading * 180 / Math.PI;
+
   return (
     <div
       ref={containerRef}
@@ -610,6 +621,30 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+        </svg>
+      )}
+
+      {/* Robot footprint outline (dashed rectangle) — rendered before arrow so arrow is on top */}
+      {footprint && (
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          data-testid="minimap-footprint"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        >
+          <g transform={`translate(${size / 2} ${size / 2}) rotate(${footprintRotation})`}>
+            <rect
+              x={-footprint.widthPx / 2}
+              y={-footprint.heightPx / 2}
+              width={footprint.widthPx}
+              height={footprint.heightPx}
+              fill="none"
+              stroke={color}
+              strokeOpacity="0.5"
+              strokeWidth="1"
+              strokeDasharray="3 2"
+              rx="1"
+            />
+          </g>
         </svg>
       )}
 

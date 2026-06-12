@@ -115,6 +115,40 @@ export function scanToScreenPoints(
 }
 
 /**
+ * Compute screen dimensions (px) of the robot footprint rectangle.
+ *
+ * Conventions:
+ * - ROS: length = x-axis (forward), width = y-axis (left/right)
+ * - Screen: length is vertical (heightPx), width is horizontal (widthPx)
+ * - Zoom gate: if max(widthPx, heightPx) < minPx, return null to avoid noise at far zoom
+ *
+ * @param lengthM Robot length in meters (forward extent)
+ * @param widthM Robot width in meters (left-right extent)
+ * @param pxPerM Pixels per meter (scale factor from map/odom context)
+ * @param minPx Minimum visible dimension in pixels (default 14); if exceeded, render
+ * @returns { widthPx: number; heightPx: number } or null if invalid/gated
+ */
+export function footprintScreenRect(
+  lengthM: number,
+  widthM: number,
+  pxPerM: number,
+  minPx = 14
+): { widthPx: number; heightPx: number } | null {
+  if (lengthM <= 0 || widthM <= 0 || pxPerM <= 0) {
+    return null;
+  }
+
+  const heightPx = lengthM * pxPerM;
+  const widthPx = widthM * pxPerM;
+
+  if (Math.max(widthPx, heightPx) < minPx) {
+    return null;
+  }
+
+  return { widthPx, heightPx };
+}
+
+/**
  * Render map cells to 32-bit RGBA.
  * Palette (Mission colors):
  * - CELL_UNKNOWN (0) → (0,0,0,0) transparent

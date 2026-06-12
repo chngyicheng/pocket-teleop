@@ -675,6 +675,123 @@ describe('MiniMap', () => {
     const canvas = container.querySelector('[data-testid="minimap-canvas"]');
     expect(canvas).toBeFalsy();
   });
+
+  // ─── MiniMap footprint tests ─────────────────────────────────────────────
+  it('does not render footprint when robotLength=0 (not configured)', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        robotLength={0}
+        robotWidth={0.306}
+      />
+    );
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeFalsy();
+  });
+
+  it('renders footprint when configured with sufficient zoom (map mode)', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        size={92}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        robotLength={3}
+        robotWidth={2}
+        metersAcross={10}
+      />
+    );
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeTruthy();
+  });
+
+  it('does not render footprint in odom mode when dimensions gate closed', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        size={92}
+        robotLength={0.281}
+        robotWidth={0.306}
+      />
+    );
+    // odom mode: pxPerM = 6 (scale constant)
+    // max(0.281 * 6, 0.306 * 6) = max(1.686, 1.836) = 1.836 < 14 → gate closed
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeFalsy();
+  });
+
+  it('footprint rotates with heading in odom mode (no map)', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={Math.PI / 2}
+        size={92}
+        robotLength={3}
+        robotWidth={2}
+      />
+    );
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeTruthy();
+    const gTransform = footprint?.querySelector('g')?.getAttribute('transform');
+    expect(gTransform).toContain('rotate(90)');
+  });
+
+  it('footprint does not rotate in map mode (stays unrotated)', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0.78 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0.78}
+        size={92}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        robotLength={3}
+        robotWidth={2}
+        metersAcross={10}
+      />
+    );
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeTruthy();
+    const gTransform = footprint?.querySelector('g')?.getAttribute('transform');
+    expect(gTransform).toContain('rotate(0)');
+  });
+
+  it('footprint centered on robot position at size/2', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        size={100}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        robotLength={4}
+        robotWidth={2}
+        metersAcross={10}
+      />
+    );
+    const footprint = container.querySelector('[data-testid="minimap-footprint"]');
+    expect(footprint).toBeTruthy();
+    const gElem = footprint?.querySelector('g');
+    const gTransform = gElem?.getAttribute('transform');
+    // translate(size/2, size/2) = translate(50 50) - SVG omits commas in JS-generated transforms
+    expect(gTransform).toContain('translate(50 50)');
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────
