@@ -11,12 +11,16 @@ TeleopServer::TeleopServer(int port,
                            const std::string& robot_type,
                            const std::string& robot_name,
                            const std::string& robot_namespace,
+                           double robot_length,
+                           double robot_width,
                            PublishCallback callback)
   : port_(port),
     timeout_ms_(timeout_ms),
     robot_type_(robot_type),
     robot_name_(robot_name),
     robot_namespace_(robot_namespace),
+    robot_length_(robot_length),
+    robot_width_(robot_width),
     publish_callback_(std::move(callback)) {
   ws_server_.set_access_channels(websocketpp::log::alevel::none);
   ws_server_.set_error_channels(websocketpp::log::elevel::none);
@@ -79,7 +83,9 @@ void TeleopServer::on_open(ConnectionHdl hdl) {
     {"connected",       true},
     {"robot_type",      robot_type_},
     {"robot_name",      robot_name_},
-    {"robot_namespace", robot_namespace_}
+    {"robot_namespace", robot_namespace_},
+    {"robot_length",    robot_length_},
+    {"robot_width",     robot_width_}
   };
   ws_server_.send(hdl, status.dump(), websocketpp::frame::opcode::text);
 }

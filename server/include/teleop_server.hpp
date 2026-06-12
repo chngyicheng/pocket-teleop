@@ -23,6 +23,8 @@ public:
                const std::string& robot_type,
                const std::string& robot_name,
                const std::string& robot_namespace,
+               double robot_length,
+               double robot_width,
                PublishCallback callback);
   ~TeleopServer();
 
@@ -45,6 +47,8 @@ private:
   const std::string robot_type_;
   const std::string robot_name_;
   const std::string robot_namespace_;
+  const double robot_length_;
+  const double robot_width_;
   PublishCallback publish_callback_;
 
   WsServer ws_server_;

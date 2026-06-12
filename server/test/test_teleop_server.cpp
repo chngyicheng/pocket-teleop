@@ -18,7 +18,7 @@ protected:
     callback_count_ = 0;
     last_lx_ = last_ly_ = last_az_ = 0.0;
     server_ = std::make_unique<TeleopServer>(
-      19091, 300, "diff_drive", "", "",
+      19091, 300, "diff_drive", "", "", 0.0, 0.0,
       [this](double lx, double ly, double az) {
         ++callback_count_;
         last_lx_ = lx; last_ly_ = ly; last_az_ = az;
@@ -314,4 +314,55 @@ TEST_F(TeleopServerTest, EstopResetRepliesWithDisengagedState) {
     } catch (...) {}
   }
   EXPECT_TRUE(found);
+}
+
+// ---------------------------------------------------------------------------
+// Robot footprint tests
+// ---------------------------------------------------------------------------
+
+TEST_F(TeleopServerTest, StatusMessageIncludesRobotDimensions) {
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop");
+  ASSERT_FALSE(msgs.empty());
+  auto j = nlohmann::json::parse(msgs[0]);
+  EXPECT_EQ(j["type"], "status");
+  EXPECT_TRUE(j.contains("robot_length"));
+  EXPECT_TRUE(j.contains("robot_width"));
+  EXPECT_DOUBLE_EQ(j["robot_length"], 0.0);
+  EXPECT_DOUBLE_EQ(j["robot_width"], 0.0);
+}
+
+TEST_F(TeleopServerTest, RobotDimensionsPassedToStatusMessage) {
+  // Create server with non-zero dimensions
+  auto callback = [](double, double, double) {};
+  auto test_server = std::make_unique<TeleopServer>(
+    19094, 300, "diff_drive", "test_bot", "", 0.281, 0.306, callback);
+  auto test_thread = std::thread([&test_server]() { test_server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  auto msgs = connect_and_collect("ws://localhost:19094/teleop");
+  test_server->stop();
+  test_thread.join();
+
+  ASSERT_FALSE(msgs.empty());
+  auto j = nlohmann::json::parse(msgs[0]);
+  EXPECT_EQ(j["type"], "status");
+  EXPECT_DOUBLE_EQ(j["robot_length"], 0.281);
+  EXPECT_DOUBLE_EQ(j["robot_width"], 0.306);
+}
+
+TEST_F(TeleopServerTest, DefaultRobotDimensionsAreZero) {
+  auto callback = [](double, double, double) {};
+  auto test_server = std::make_unique<TeleopServer>(
+    19095, 300, "diff_drive", "", "", 0.0, 0.0, callback);
+  auto test_thread = std::thread([&test_server]() { test_server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  auto msgs = connect_and_collect("ws://localhost:19095/teleop");
+  test_server->stop();
+  test_thread.join();
+
+  ASSERT_FALSE(msgs.empty());
+  auto j = nlohmann::json::parse(msgs[0]);
+  EXPECT_DOUBLE_EQ(j["robot_length"], 0.0);
+  EXPECT_DOUBLE_EQ(j["robot_width"], 0.0);
 }

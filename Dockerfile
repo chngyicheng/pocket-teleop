@@ -43,6 +43,8 @@ CMD ["/bin/bash", "-c", \
      -p robot_type:=${ROBOT_TYPE:-diff_drive} \
      ${ROBOT_NAME:+-p \"robot_name:=${ROBOT_NAME}\"} \
      ${ROBOT_NAMESPACE:+-p \"robot_namespace:=${ROBOT_NAMESPACE}\"} \
+     ${ROBOT_LENGTH_M:+-p \"robot_length_m:=${ROBOT_LENGTH_M}\"} \
+     ${ROBOT_WIDTH_M:+-p \"robot_width_m:=${ROBOT_WIDTH_M}\"} \
      ${ODOM_TOPIC:+-p \"odom_topic:=${ODOM_TOPIC}\"} \
      ${MAP_TOPIC:+-p \"map_topic:=${MAP_TOPIC}\"} \
      ${MAP_WINDOW_M:+-p \"map_window_m:=${MAP_WINDOW_M}\"} \
