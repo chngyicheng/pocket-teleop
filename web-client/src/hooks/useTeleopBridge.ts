@@ -39,6 +39,8 @@ export interface TeleopBridge {
   robotName: string;
   robotNamespace: string;
   robotType: string;
+  robotLength: number;
+  robotWidth: number;
   sendTwist: (lx: number, ly: number, az: number) => void;
   eStop: () => void;
   estopEngaged: boolean;
@@ -72,6 +74,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [robotName, setRobotName] = useState('');
   const [robotNamespace, setRobotNamespace] = useState('');
   const [robotType, setRobotType] = useState('');
+  const [robotLength, setRobotLength] = useState(0);
+  const [robotWidth, setRobotWidth] = useState(0);
   const [estopEngaged, setEstopEngaged] = useState(false);
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
   const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
@@ -91,12 +95,14 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   useEffect(() => {
     const factory = opts.TeleopClientCtor ?? ((o: TeleopClientOptions) => new TeleopClient(o));
     const client = factory({
-      onStatus: (c, t, n, ns) => {
+      onStatus: (c, t, n, ns, rl, rw) => {
         setConnected(c);
         setConnectionState(c ? 'live' : 'disconnected');
         setRobotType(t);
         setRobotName(n);
         setRobotNamespace(ns);
+        setRobotLength(rl);
+        setRobotWidth(rw);
       },
       onReconnecting: (attempt) => {
         setConnectionState('reconnecting');
@@ -243,6 +249,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     robotName,
     robotNamespace,
     robotType,
+    robotLength,
+    robotWidth,
     sendTwist,
     eStop,
     estopEngaged,
