@@ -74,6 +74,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 - **`Protocol` inbound parser guards every numeric field with `Number.isFinite`** — non-finite telemetry must not reach render. Treat missing status fields as `""` / `0` (footprint dims) for back-compat.
 - **`4001` WS close = terminal** (idle-timeout kill) — no retry; bridge redirects to login.
 - **E-STOP product decisions (do NOT re-ask)**: stays tappable on top while the drawer is open; label `■ STOP` → `■ RESET` when engaged.
+- **SettingsDrawer Robot section**: server-backed via GET/PUT `/auth/robot-config`; form fields (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M, VIDEO_TOPIC, VIDEO_TOPIC_TYPE); Save→restart-required toast; validation errors shown per-field (red, P.danger). Replaces deprecated namespace localStorage.
 - Footprint: minimap draws a to-scale dashed outline when both dims > 0 and the long axis renders ≥ 14 px; axis-aligned in map mode, heading-rotated in odom fallback.
 
 ### Inbound message types consumed

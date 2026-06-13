@@ -5,3 +5,4 @@ auth-server/dist/
 web-client/node_modules/
 web-client/dist/
 .env
+config/robot.env

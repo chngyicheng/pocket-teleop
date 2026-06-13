@@ -19,7 +19,7 @@
  * Sections:
  *   1. Gamepad: Select from getAllProfiles().
  *   2. Video: Mode select (ros2|rtsp|udp|srt|mjpeg|disabled) + URL input + Apply button.
- *   3. Connection: Robot namespace input + Save button.
+ *   3. Robot: Server-backed 7-field form (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M, VIDEO_TOPIC, VIDEO_TOPIC_TYPE) + Save button.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -92,6 +92,23 @@ const actionButtonStyle: React.CSSProperties = {
   fontFamily: MONO,
 };
 
+/** Shared style for the small field labels above an input. */
+const fieldLabel: React.CSSProperties = {
+  display: 'block',
+  marginBottom: 4,
+  fontSize: 11,
+  color: P.muted,
+  fontFamily: MONO,
+};
+
+/** Shared style for per-field validation errors below an input. */
+const fieldError: React.CSSProperties = {
+  fontSize: 11,
+  color: P.danger,
+  marginTop: 3,
+  fontFamily: MONO,
+};
+
 const VIDEO_MODES: VideoSourceMode[] = ['ros2', 'rtsp', 'udp', 'srt', 'mjpeg', 'disabled'];
 
 const MODE_LABELS: Record<VideoSourceMode, string> = {
@@ -103,6 +120,16 @@ const MODE_LABELS: Record<VideoSourceMode, string> = {
   disabled: 'Disabled',
 };
 
+interface RobotConfig {
+  ROBOT_TYPE: string;
+  ROBOT_NAME: string;
+  ROBOT_NAMESPACE: string;
+  ROBOT_LENGTH_M: string;
+  ROBOT_WIDTH_M: string;
+  VIDEO_TOPIC: string;
+  VIDEO_TOPIC_TYPE: string;
+}
+
 export default function SettingsDrawer({
   open,
   onClose,
@@ -113,9 +140,20 @@ export default function SettingsDrawer({
   const [videoMode, setVideoMode] = useState<VideoSourceMode>('ros2');
   const [videoUrl, setVideoUrl] = useState('');
   const [videoApplyResult, setVideoApplyResult] = useState<string | null>(null);
-  const [robotNamespace, setRobotNamespace] = useState('');
-  const [namespaceSaved, setNamespaceSaved] = useState(false);
   const [pickerInstance] = useState(() => new VideoSourcePicker());
+
+  // Robot config state
+  const [robotConfig, setRobotConfig] = useState<RobotConfig>({
+    ROBOT_TYPE: '',
+    ROBOT_NAME: '',
+    ROBOT_NAMESPACE: '',
+    ROBOT_LENGTH_M: '',
+    ROBOT_WIDTH_M: '',
+    VIDEO_TOPIC: '',
+    VIDEO_TOPIC_TYPE: '',
+  });
+  const [robotSaveResult, setRobotSaveResult] = useState<string | null>(null);
+  const [robotFieldErrors, setRobotFieldErrors] = useState<Record<string, string>>({});
 
   // Initialize video state from picker
   useEffect(() => {
@@ -124,10 +162,21 @@ export default function SettingsDrawer({
     setVideoUrl(saved.streamUrl || saved.mjpegUrl || '');
   }, [pickerInstance]);
 
-  // Initialize robot namespace from localStorage
+  // Fetch robot config from server on mount
   useEffect(() => {
-    const ns = localStorage.getItem('pocket-teleop.robot-namespace') ?? '';
-    setRobotNamespace(ns);
+    const fetchRobotConfig = async () => {
+      try {
+        const response = await fetch('/auth/robot-config', { method: 'GET' });
+        if (response.ok) {
+          const data = await response.json();
+          setRobotConfig(data);
+          setRobotFieldErrors({});
+        }
+      } catch (err) {
+        // Silently fail on network error; user can still interact with form
+      }
+    };
+    fetchRobotConfig();
   }, []);
 
   const handleVideoApply = async () => {
@@ -137,10 +186,43 @@ export default function SettingsDrawer({
     setTimeout(() => setVideoApplyResult(null), 2000);
   };
 
-  const handleNamespaceSave = () => {
-    localStorage.setItem('pocket-teleop.robot-namespace', robotNamespace);
-    setNamespaceSaved(true);
-    setTimeout(() => setNamespaceSaved(false), 2000);
+  const handleRobotConfigChange = (key: keyof RobotConfig, value: string) => {
+    setRobotConfig((prev) => ({ ...prev, [key]: value }));
+    // Clear field error when user edits
+    if (robotFieldErrors[key]) {
+      setRobotFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  };
+
+  const handleRobotConfigSave = async () => {
+    try {
+      const response = await fetch('/auth/robot-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(robotConfig),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setRobotFieldErrors({});
+        setRobotSaveResult('Saved — restart the stack to apply');
+        setTimeout(() => setRobotSaveResult(null), 3000);
+      } else if (response.status === 400) {
+        const errorData = await response.json();
+        setRobotFieldErrors(errorData.errors || {});
+        setRobotSaveResult(null);
+      } else {
+        setRobotSaveResult('Error saving config');
+        setTimeout(() => setRobotSaveResult(null), 3000);
+      }
+    } catch (err) {
+      setRobotSaveResult('Network error');
+      setTimeout(() => setRobotSaveResult(null), 3000);
+    }
   };
 
   const getVideoResultColor = (): string => {
@@ -160,6 +242,13 @@ export default function SettingsDrawer({
       return message || videoApplyResult;
     }
     return videoApplyResult;
+  };
+
+  const getRobotSaveResultColor = (): string => {
+    if (!robotSaveResult) return P.text;
+    if (robotSaveResult.includes('Saved') || robotSaveResult.includes('restart')) return P.ok;
+    if (robotSaveResult.includes('Error') || robotSaveResult.includes('error')) return P.danger;
+    return P.text;
   };
 
   return (
@@ -318,23 +407,154 @@ export default function SettingsDrawer({
             </div>
           </section>
 
-          {/* Connection Section */}
+          {/* Robot Section */}
           <section>
-            <h3 style={sectionHeading}>Connection</h3>
+            <h3 style={sectionHeading}>Robot</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <input
-                type="text"
-                value={robotNamespace}
-                onChange={(e) => setRobotNamespace(e.target.value)}
-                placeholder="Robot namespace (e.g., /robot)"
-                style={fieldStyle}
-              />
-              <button onClick={handleNamespaceSave} style={actionButtonStyle}>
+              {/* ROBOT_TYPE: select diff_drive | holonomic */}
+              <div>
+                <label style={fieldLabel}>Type</label>
+                <select
+                  value={robotConfig.ROBOT_TYPE}
+                  onChange={(e) => handleRobotConfigChange('ROBOT_TYPE', e.target.value)}
+                  style={fieldStyle}
+                >
+                  <option value="">Select type</option>
+                  <option value="diff_drive">Differential Drive</option>
+                  <option value="holonomic">Holonomic</option>
+                </select>
+                {robotFieldErrors.ROBOT_TYPE && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.ROBOT_TYPE}
+                  </div>
+                )}
+              </div>
+
+              {/* ROBOT_NAME: text */}
+              <div>
+                <label style={fieldLabel}>Name</label>
+                <input
+                  type="text"
+                  value={robotConfig.ROBOT_NAME}
+                  onChange={(e) => handleRobotConfigChange('ROBOT_NAME', e.target.value)}
+                  placeholder="Robot name"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.ROBOT_NAME && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.ROBOT_NAME}
+                  </div>
+                )}
+              </div>
+
+              {/* ROBOT_NAMESPACE: text */}
+              <div>
+                <label style={fieldLabel}>Namespace</label>
+                <input
+                  type="text"
+                  value={robotConfig.ROBOT_NAMESPACE}
+                  onChange={(e) => handleRobotConfigChange('ROBOT_NAMESPACE', e.target.value)}
+                  placeholder="/robot"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.ROBOT_NAMESPACE && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.ROBOT_NAMESPACE}
+                  </div>
+                )}
+              </div>
+
+              {/* ROBOT_LENGTH_M: text (number) */}
+              <div>
+                <label style={fieldLabel}>Length (m)</label>
+                <input
+                  type="text"
+                  value={robotConfig.ROBOT_LENGTH_M}
+                  onChange={(e) => handleRobotConfigChange('ROBOT_LENGTH_M', e.target.value)}
+                  placeholder="0.5"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.ROBOT_LENGTH_M && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.ROBOT_LENGTH_M}
+                  </div>
+                )}
+              </div>
+
+              {/* ROBOT_WIDTH_M: text (number) */}
+              <div>
+                <label style={fieldLabel}>Width (m)</label>
+                <input
+                  type="text"
+                  value={robotConfig.ROBOT_WIDTH_M}
+                  onChange={(e) => handleRobotConfigChange('ROBOT_WIDTH_M', e.target.value)}
+                  placeholder="0.4"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.ROBOT_WIDTH_M && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.ROBOT_WIDTH_M}
+                  </div>
+                )}
+              </div>
+
+              {/* VIDEO_TOPIC: text */}
+              <div>
+                <label style={fieldLabel}>Video Topic</label>
+                <input
+                  type="text"
+                  value={robotConfig.VIDEO_TOPIC}
+                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC', e.target.value)}
+                  placeholder="/camera/image"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.VIDEO_TOPIC && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.VIDEO_TOPIC}
+                  </div>
+                )}
+              </div>
+
+              {/* VIDEO_TOPIC_TYPE: select compressed | raw */}
+              <div>
+                <label style={fieldLabel}>Video Topic Type</label>
+                <select
+                  value={robotConfig.VIDEO_TOPIC_TYPE}
+                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC_TYPE', e.target.value)}
+                  style={fieldStyle}
+                >
+                  <option value="">Select type</option>
+                  <option value="compressed">Compressed</option>
+                  <option value="raw">Raw</option>
+                </select>
+                {robotFieldErrors.VIDEO_TOPIC_TYPE && (
+                  <div style={fieldError}>
+                    {robotFieldErrors.VIDEO_TOPIC_TYPE}
+                  </div>
+                )}
+              </div>
+
+              {/* Save Button */}
+              <button
+                onClick={handleRobotConfigSave}
+                style={actionButtonStyle}
+              >
                 Save
               </button>
-              {namespaceSaved && (
-                <div style={{ fontSize: '12px', color: P.ok, marginTop: '4px', fontFamily: MONO }}>
-                  Saved
+
+              {/* Result Message */}
+              {robotSaveResult && (
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: getRobotSaveResultColor(),
+                    marginTop: '4px',
+                    wordWrap: 'break-word',
+                    whiteSpace: 'normal',
+                    fontFamily: MONO,
+                  }}
+                >
+                  {robotSaveResult}
                 </div>
               )}
             </div>

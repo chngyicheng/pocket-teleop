@@ -50,6 +50,7 @@ describe('SettingsDrawer', () => {
   });
 
   afterEach(() => {
+    vi.clearAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -253,60 +254,216 @@ describe('SettingsDrawer', () => {
     ).resolves.toBeTruthy();
   });
 
-  // ─── Connection Section Tests ─────────────────────────────────────────────
+  // ─── Robot Section Tests ──────────────────────────────────────────────────
 
-  it('renders Connection section with namespace input', () => {
+  it('renders Robot section with form fields', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: 'diff_drive',
+        ROBOT_NAME: 'MyBot',
+        ROBOT_NAMESPACE: '/robot',
+        ROBOT_LENGTH_M: '0.5',
+        ROBOT_WIDTH_M: '0.4',
+        VIDEO_TOPIC: '/camera/image',
+        VIDEO_TOPIC_TYPE: 'compressed',
+      }),
+    }));
     render(<SettingsDrawer open={true} onClose={() => {}} />);
-    expect(screen.getByText('Connection')).toBeTruthy();
-    const inputs = screen.getAllByRole('textbox');
-    expect(inputs.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Robot')).toBeTruthy();
   });
 
-  it('loads initial namespace from localStorage', () => {
-    store['pocket-teleop.robot-namespace'] = '/my_robot';
+  it('fetches initial robot config on mount', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: 'diff_drive',
+        ROBOT_NAME: 'MyBot',
+        ROBOT_NAMESPACE: '/robot',
+        ROBOT_LENGTH_M: '0.5',
+        ROBOT_WIDTH_M: '0.4',
+        VIDEO_TOPIC: '/camera/image',
+        VIDEO_TOPIC_TYPE: 'compressed',
+      }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
     render(<SettingsDrawer open={true} onClose={() => {}} />);
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[];
-    const nsInput = inputs.find((i) => i.value === '/my_robot');
-    expect(nsInput).toBeTruthy();
+
+    // Wait for fetch + state update
+    await expect(
+      screen.findByDisplayValue('MyBot')
+    ).resolves.toBeTruthy();
+
+    expect(mockFetch).toHaveBeenCalledWith('/auth/robot-config', {
+      method: 'GET',
+    });
   });
 
-  it('saves namespace to localStorage on Save button click', async () => {
+  it('renders Robot section and form is initially empty', () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: '',
+        ROBOT_NAME: '',
+        ROBOT_NAMESPACE: '',
+        ROBOT_LENGTH_M: '',
+        ROBOT_WIDTH_M: '',
+        VIDEO_TOPIC: '',
+        VIDEO_TOPIC_TYPE: '',
+      }),
+    }));
     render(<SettingsDrawer open={true} onClose={() => {}} />);
-    const inputs = screen.getAllByRole('textbox');
-    const nsInput = inputs[inputs.length - 1];
-
-    await userEvent.clear(nsInput);
-    await userEvent.type(nsInput, '/robot_ns');
-
-    const saveBtn = screen.getByText(/Save/);
-    await userEvent.click(saveBtn);
-
-    expect(store['pocket-teleop.robot-namespace']).toBe('/robot_ns');
+    expect(screen.getByText('Robot')).toBeTruthy();
+    // Robot form should have select for type and topic-type
+    const selects = screen.getAllByRole('combobox');
+    expect(selects.length).toBeGreaterThanOrEqual(3); // gamepad + video + robot type (at minimum)
   });
 
-  it('displays saved confirmation after namespace save', async () => {
+  it('sends PUT /auth/robot-config with all seven fields on Save', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot1',
+          ROBOT_NAMESPACE: '/r1',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          VIDEO_TOPIC: '/vid',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restartRequired: true }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
     render(<SettingsDrawer open={true} onClose={() => {}} />);
-    const inputs = screen.getAllByRole('textbox');
-    const nsInput = inputs[inputs.length - 1];
 
-    await userEvent.clear(nsInput);
-    await userEvent.type(nsInput, '/test');
+    // Wait for initial GET
+    await screen.findByDisplayValue('Bot1');
 
-    const saveBtn = screen.getByText(/Save/);
-    await userEvent.click(saveBtn);
+    // Clear and edit one field
+    const nameInput = screen.getByDisplayValue('Bot1') as HTMLInputElement;
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, 'Bot2');
 
-    expect(screen.getByText('Saved')).toBeTruthy();
+    // Get all Save buttons and pick the last one (Robot section)
+    const allBtns = screen.getAllByText('Save');
+    const robotSaveBtn = allBtns[allBtns.length - 1];
+    await userEvent.click(robotSaveBtn);
+
+    // Verify PUT was called with all seven fields
+    const putCall = mockFetch.mock.calls.find(
+      (call) => call[1]?.method === 'PUT'
+    );
+    expect(putCall).toBeTruthy();
+    expect(putCall[0]).toBe('/auth/robot-config');
+    const body = JSON.parse(putCall[1].body);
+    expect(body).toHaveProperty('ROBOT_TYPE');
+    expect(body).toHaveProperty('ROBOT_NAME');
+    expect(body).toHaveProperty('ROBOT_NAMESPACE');
+    expect(body).toHaveProperty('ROBOT_LENGTH_M');
+    expect(body).toHaveProperty('ROBOT_WIDTH_M');
+    expect(body).toHaveProperty('VIDEO_TOPIC');
+    expect(body).toHaveProperty('VIDEO_TOPIC_TYPE');
+    expect(body.ROBOT_NAME).toBe('Bot2');
+  });
+
+  it('displays restart-required message on successful PUT', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot',
+          ROBOT_NAMESPACE: '/r',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          VIDEO_TOPIC: '/v',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restartRequired: true }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    await screen.findByDisplayValue('Bot');
+
+    const allBtns = screen.getAllByText('Save');
+    const robotSaveBtn = allBtns[allBtns.length - 1];
+    await userEvent.click(robotSaveBtn);
+
+    await expect(
+      screen.findByText((content) => content.includes('restart'))
+    ).resolves.toBeTruthy();
+  });
+
+  it('displays field errors from PUT 400 response', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot',
+          ROBOT_NAMESPACE: '/r',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          VIDEO_TOPIC: '/v',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          errors: {
+            ROBOT_NAMESPACE: 'Invalid namespace format',
+          },
+        }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    await screen.findByDisplayValue('Bot');
+
+    const allBtns = screen.getAllByText('Save');
+    const robotSaveBtn = allBtns[allBtns.length - 1];
+    await userEvent.click(robotSaveBtn);
+
+    await expect(
+      screen.findByText('Invalid namespace format')
+    ).resolves.toBeTruthy();
   });
 
   // ─── Layout Tests ─────────────────────────────────────────────────────────
 
-  it('has three sections vertically stacked', () => {
+  it('has three sections vertically stacked', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: 'diff_drive',
+        ROBOT_NAME: 'Bot',
+        ROBOT_NAMESPACE: '/r',
+        ROBOT_LENGTH_M: '0.5',
+        ROBOT_WIDTH_M: '0.4',
+        VIDEO_TOPIC: '/v',
+        VIDEO_TOPIC_TYPE: 'compressed',
+      }),
+    }));
     render(<SettingsDrawer open={true} onClose={() => {}} />);
+    await screen.findByDisplayValue('Bot'); // Wait for Robot section to load
     const headings = screen.getAllByRole('heading');
     const titles = headings.map((h) => h.textContent);
     expect(titles).toContain('Gamepad');
     expect(titles).toContain('Video');
-    expect(titles).toContain('Connection');
+    expect(titles).toContain('Robot');
   });
 
   it('has fixed width of 320px and full height', () => {
