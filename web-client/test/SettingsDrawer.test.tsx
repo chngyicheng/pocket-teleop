@@ -115,7 +115,7 @@ describe('SettingsDrawer', () => {
     const drawer = container.querySelector('[role="dialog"]') as HTMLElement;
     expect(drawer.style.width).toBe('320px');
     expect(drawer.style.top).toBe('44px');
-    expect(drawer.style.height).toBe('calc(100vh - 44px)');
+    expect(drawer.style.height).toBe('calc(100dvh - 44px)');
   });
 
   // ─── Gamepad Section Tests ────────────────────────────────────────────────
@@ -319,7 +319,7 @@ describe('SettingsDrawer', () => {
     expect(selects.length).toBeGreaterThanOrEqual(3); // gamepad + video + robot type (at minimum)
   });
 
-  it('sends PUT /auth/robot-config with all seven fields on Save', async () => {
+  it('Robot Save sends a partial PUT with only identity + footprint fields', async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -349,26 +349,65 @@ describe('SettingsDrawer', () => {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, 'Bot2');
 
-    // Get all Save buttons and pick the last one (Robot section)
+    // Robot Save is the last Save button (Video's ROS2-camera Save comes first)
     const allBtns = screen.getAllByText('Save');
     const robotSaveBtn = allBtns[allBtns.length - 1];
     await userEvent.click(robotSaveBtn);
 
-    // Verify PUT was called with all seven fields
-    const putCall = mockFetch.mock.calls.find(
-      (call) => call[1]?.method === 'PUT'
-    );
+    const putCall = mockFetch.mock.calls.find((call) => call[1]?.method === 'PUT');
     expect(putCall).toBeTruthy();
     expect(putCall[0]).toBe('/auth/robot-config');
     const body = JSON.parse(putCall[1].body);
+    // Identity + footprint only — video keys belong to the Video section's Save.
     expect(body).toHaveProperty('ROBOT_TYPE');
     expect(body).toHaveProperty('ROBOT_NAME');
     expect(body).toHaveProperty('ROBOT_NAMESPACE');
     expect(body).toHaveProperty('ROBOT_LENGTH_M');
     expect(body).toHaveProperty('ROBOT_WIDTH_M');
+    expect(body).not.toHaveProperty('VIDEO_TOPIC');
+    expect(body).not.toHaveProperty('VIDEO_TOPIC_TYPE');
+    expect(body.ROBOT_NAME).toBe('Bot2');
+  });
+
+  it('Video ROS2-camera Save sends a partial PUT with only the video topic fields', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot1',
+          ROBOT_NAMESPACE: '/r1',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          VIDEO_TOPIC: '/vid',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restartRequired: true }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    // Wait for initial GET to populate the topic field
+    const topicInput = await screen.findByDisplayValue('/vid');
+    await userEvent.clear(topicInput);
+    await userEvent.type(topicInput, '/camera/new');
+
+    // Video ROS2-camera Save is the first Save button (before the Robot Save)
+    const videoSaveBtn = screen.getAllByText('Save')[0];
+    await userEvent.click(videoSaveBtn);
+
+    const putCall = mockFetch.mock.calls.find((call) => call[1]?.method === 'PUT');
+    expect(putCall).toBeTruthy();
+    const body = JSON.parse(putCall[1].body);
     expect(body).toHaveProperty('VIDEO_TOPIC');
     expect(body).toHaveProperty('VIDEO_TOPIC_TYPE');
-    expect(body.ROBOT_NAME).toBe('Bot2');
+    expect(body).not.toHaveProperty('ROBOT_TYPE');
+    expect(body).not.toHaveProperty('ROBOT_NAME');
+    expect(body.VIDEO_TOPIC).toBe('/camera/new');
   });
 
   it('displays restart-required message on successful PUT', async () => {
@@ -399,8 +438,10 @@ describe('SettingsDrawer', () => {
     const robotSaveBtn = allBtns[allBtns.length - 1];
     await userEvent.click(robotSaveBtn);
 
+    // Exact toast string — distinct from the static "ROS2 Camera" note, which
+    // also mentions restarting ("Saved on the robot — restart the stack to apply.").
     await expect(
-      screen.findByText((content) => content.includes('restart'))
+      screen.findByText('Saved — restart the stack to apply')
     ).resolves.toBeTruthy();
   });
 
@@ -473,7 +514,7 @@ describe('SettingsDrawer', () => {
     const drawer = container.querySelector('[role="dialog"]');
     const style = (drawer as HTMLElement)?.style;
     expect(style?.width).toBe('320px');
-    expect(style?.height).toBe('100vh');
+    expect(style?.height).toBe('100dvh');
   });
 
   it('has dark palette colors', () => {

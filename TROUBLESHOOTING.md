@@ -18,6 +18,9 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
   - [Robot position doesn't match the real world](#robot-position-doesnt-match-the-real-world)
 - [Video](#video)
   - [Video connects but never shows frames (10 s timeout)](#video-connects-but-never-shows-frames-10-s-timeout)
+  - [No video / wrong robot dimensions after upgrading](#no-video--wrong-robot-dimensions-after-upgrading)
+- [Settings](#settings)
+  - [Can't scroll to the bottom of the Settings drawer](#cant-scroll-to-the-bottom-of-the-settings-drawer)
 - [Connection](#connection)
   - [Web UI stuck connecting — `[ETIMEDOUT]`](#web-ui-stuck-connecting--etimedout)
   - [Slow first load / blank screen after login](#slow-first-load--blank-screen-after-login)
@@ -184,6 +187,36 @@ sudo ufw allow 8891/udp
 ```
 
 Port 8080 (auth-server signaling) is TCP and usually already allowed. Port 8891 carries WebRTC media, is **not** proxied through the auth-server, and needs its own rule.
+
+---
+
+### No video / wrong robot dimensions after upgrading
+
+**Symptom:** After updating to the robot-config settings release, video stops showing and/or the robot name/footprint revert to defaults — even though your `.env` still has `VIDEO_TOPIC`, `ROBOT_LENGTH_M`, etc.
+
+**Cause:** Seven keys (`ROBOT_TYPE`, `ROBOT_NAME`, `ROBOT_NAMESPACE`, `ROBOT_LENGTH_M`, `ROBOT_WIDTH_M`, `VIDEO_TOPIC`, `VIDEO_TOPIC_TYPE`) moved out of `.env` into `config/robot.env`, which the web Settings drawer edits. They are no longer read from `.env`, so the values there are now ignored.
+
+**Fix:** migrate those values once. Copy the example, then set your values (or edit them later from the web UI under **Settings → Video / Robot**):
+
+```bash
+cp config/robot.env.example config/robot.env
+# Edit config/robot.env: set VIDEO_TOPIC, ROBOT_LENGTH_M, etc. to your robot's values
+docker compose -p pocket-teleop --env-file ./.env up -d
+```
+
+`config/robot.env` is gitignored and holds **no secrets** — those stay in `.env`. Changes apply on the next `up -d` (no live reload).
+
+---
+
+## Settings
+
+### Can't scroll to the bottom of the Settings drawer
+
+**Symptom:** On a phone, the Save button at the bottom of the Settings drawer is cut off and the panel won't scroll far enough to reach it.
+
+**Cause:** an older build sized the drawer with `100vh`, which on mobile is the (taller) layout viewport — the bottom fell under the browser's address/nav bar.
+
+**Fix:** update to a build using `100dvh` (dynamic viewport height). If you still see it, hard-reload to clear the cached app shell (see [UI still shows the old version](#ui-still-shows-the-old-version-after-a-redeploy)).
 
 ---
 

@@ -18,8 +18,16 @@
  *
  * Sections:
  *   1. Gamepad: Select from getAllProfiles().
- *   2. Video: Mode select (ros2|rtsp|udp|srt|mjpeg|disabled) + URL input + Apply button.
- *   3. Robot: Server-backed 7-field form (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M, VIDEO_TOPIC, VIDEO_TOPIC_TYPE) + Save button.
+ *   2. Video: two grouped subgroups —
+ *        • Source: mode select (ros2|rtsp|udp|srt|mjpeg|disabled) + URL + Apply
+ *          (per-browser MediaMTX runtime switch, instant, not persisted).
+ *        • ROS2 Camera: VIDEO_TOPIC + VIDEO_TOPIC_TYPE + Save (server config via
+ *          PUT /auth/robot-config; used when Source = ROS2; restart to apply).
+ *   3. Robot: identity + footprint (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE,
+ *      ROBOT_LENGTH_M, ROBOT_WIDTH_M) + Save (server config, restart to apply).
+ *
+ * Both Saves issue partial PUTs to /auth/robot-config (merged server-side), so
+ * each section persists only its own fields.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -109,6 +117,35 @@ const fieldError: React.CSSProperties = {
   fontFamily: MONO,
 };
 
+/** Sub-group label inside a section (e.g. "Source" / "ROS2 camera" under Video). */
+const subHeading: React.CSSProperties = {
+  margin: '0 0 6px 0',
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: '0.1em',
+  textTransform: 'uppercase',
+  color: P.text,
+  fontFamily: MONO,
+};
+
+/** Muted explanatory note tying related controls together. */
+const noteStyle: React.CSSProperties = {
+  fontSize: 11,
+  lineHeight: 1.4,
+  color: P.muted,
+  fontFamily: SANS,
+  margin: '0 0 4px 0',
+};
+
+/** Result/toast line shared by the Apply / Save actions. */
+const resultLine: React.CSSProperties = {
+  fontSize: 12,
+  marginTop: 4,
+  wordWrap: 'break-word',
+  whiteSpace: 'normal',
+  fontFamily: MONO,
+};
+
 const VIDEO_MODES: VideoSourceMode[] = ['ros2', 'rtsp', 'udp', 'srt', 'mjpeg', 'disabled'];
 
 const MODE_LABELS: Record<VideoSourceMode, string> = {
@@ -153,6 +190,7 @@ export default function SettingsDrawer({
     VIDEO_TOPIC_TYPE: '',
   });
   const [robotSaveResult, setRobotSaveResult] = useState<string | null>(null);
+  const [videoTopicSaveResult, setVideoTopicSaveResult] = useState<string | null>(null);
   const [robotFieldErrors, setRobotFieldErrors] = useState<Record<string, string>>({});
 
   // Initialize video state from picker
@@ -198,32 +236,53 @@ export default function SettingsDrawer({
     }
   };
 
-  const handleRobotConfigSave = async () => {
+  // Persist a subset of the robot config. The endpoint accepts a partial PUT
+  // and merges server-side, so each section can save only its own fields
+  // without clobbering the others. Errors/clears are scoped to those keys.
+  const saveRobotConfig = async (
+    keys: (keyof RobotConfig)[],
+    setResult: (s: string | null) => void,
+  ) => {
+    const body: Partial<RobotConfig> = {};
+    for (const k of keys) body[k] = robotConfig[k];
     try {
       const response = await fetch('/auth/robot-config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(robotConfig),
+        body: JSON.stringify(body),
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setRobotFieldErrors({});
-        setRobotSaveResult('Saved — restart the stack to apply');
-        setTimeout(() => setRobotSaveResult(null), 3000);
+        await response.json();
+        setRobotFieldErrors((prev) => {
+          const next = { ...prev };
+          for (const k of keys) delete next[k];
+          return next;
+        });
+        setResult('Saved — restart the stack to apply');
+        setTimeout(() => setResult(null), 3000);
       } else if (response.status === 400) {
         const errorData = await response.json();
-        setRobotFieldErrors(errorData.errors || {});
-        setRobotSaveResult(null);
+        setRobotFieldErrors((prev) => ({ ...prev, ...(errorData.errors || {}) }));
+        setResult(null);
       } else {
-        setRobotSaveResult('Error saving config');
-        setTimeout(() => setRobotSaveResult(null), 3000);
+        setResult('Error saving config');
+        setTimeout(() => setResult(null), 3000);
       }
     } catch (err) {
-      setRobotSaveResult('Network error');
-      setTimeout(() => setRobotSaveResult(null), 3000);
+      setResult('Network error');
+      setTimeout(() => setResult(null), 3000);
     }
   };
+
+  const handleRobotConfigSave = () =>
+    saveRobotConfig(
+      ['ROBOT_TYPE', 'ROBOT_NAME', 'ROBOT_NAMESPACE', 'ROBOT_LENGTH_M', 'ROBOT_WIDTH_M'],
+      setRobotSaveResult,
+    );
+
+  const handleVideoTopicSave = () =>
+    saveRobotConfig(['VIDEO_TOPIC', 'VIDEO_TOPIC_TYPE'], setVideoTopicSaveResult);
 
   const getVideoResultColor = (): string => {
     if (!videoApplyResult) return P.text;
@@ -244,10 +303,10 @@ export default function SettingsDrawer({
     return videoApplyResult;
   };
 
-  const getRobotSaveResultColor = (): string => {
-    if (!robotSaveResult) return P.text;
-    if (robotSaveResult.includes('Saved') || robotSaveResult.includes('restart')) return P.ok;
-    if (robotSaveResult.includes('Error') || robotSaveResult.includes('error')) return P.danger;
+  const saveResultColor = (msg: string | null): string => {
+    if (!msg) return P.text;
+    if (msg.includes('Saved') || msg.includes('restart')) return P.ok;
+    if (msg.includes('Error') || msg.includes('error')) return P.danger;
     return P.text;
   };
 
@@ -279,7 +338,10 @@ export default function SettingsDrawer({
           top: topOffset,
           left: 0,
           width: '320px',
-          height: topOffset ? `calc(100vh - ${topOffset}px)` : '100vh',
+          // dvh (dynamic viewport height) tracks the *visible* area on mobile;
+          // plain vh uses the larger layout viewport, pushing the drawer's
+          // bottom under the browser chrome where it can't be scrolled to.
+          height: topOffset ? `calc(100dvh - ${topOffset}px)` : '100dvh',
           backgroundColor: P.surface,
           color: P.text,
           fontFamily: SANS,
@@ -365,10 +427,19 @@ export default function SettingsDrawer({
             </select>
           </section>
 
-          {/* Video Section */}
+          {/* Video Section — all video controls grouped here.
+              Two subgroups: the live MediaMTX source switch (this browser,
+              instant) and the server-side ROS2 camera topic (used when the
+              source is ROS2). */}
           <section>
             <h3 style={sectionHeading}>Video</h3>
+
+            {/* Subgroup 1 — live source switch (per-browser, MediaMTX runtime) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h4 style={subHeading}>Source</h4>
+              <p style={noteStyle}>
+                What this browser plays. Applies instantly; not saved on the robot.
+              </p>
               <select
                 value={videoMode}
                 onChange={(e) => setVideoMode(e.target.value as VideoSourceMode)}
@@ -391,23 +462,73 @@ export default function SettingsDrawer({
                 Apply
               </button>
               {videoApplyResult && (
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: getVideoResultColor(),
-                    marginTop: '4px',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'normal',
-                    fontFamily: MONO,
-                  }}
-                >
+                <div style={{ ...resultLine, color: getVideoResultColor() }}>
                   {getVideoResultMessage()}
+                </div>
+              )}
+            </div>
+
+            {/* Subgroup 2 — ROS2 camera topic (server config, restart to apply) */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginTop: '14px',
+                paddingTop: '14px',
+                borderTop: `1px solid ${P.border}`,
+              }}
+            >
+              <h4 style={subHeading}>ROS2 Camera</h4>
+              <p style={noteStyle}>
+                Used when Source is ROS2: the ROS2 image topic the robot streams.
+                Saved on the robot — restart the stack to apply.
+              </p>
+
+              {/* VIDEO_TOPIC: text */}
+              <div>
+                <label style={fieldLabel}>Topic</label>
+                <input
+                  type="text"
+                  value={robotConfig.VIDEO_TOPIC}
+                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC', e.target.value)}
+                  placeholder="/camera/image"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.VIDEO_TOPIC && (
+                  <div style={fieldError}>{robotFieldErrors.VIDEO_TOPIC}</div>
+                )}
+              </div>
+
+              {/* VIDEO_TOPIC_TYPE: select compressed | raw */}
+              <div>
+                <label style={fieldLabel}>Topic Type</label>
+                <select
+                  value={robotConfig.VIDEO_TOPIC_TYPE}
+                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC_TYPE', e.target.value)}
+                  style={fieldStyle}
+                >
+                  <option value="">Select type</option>
+                  <option value="compressed">Compressed</option>
+                  <option value="raw">Raw</option>
+                </select>
+                {robotFieldErrors.VIDEO_TOPIC_TYPE && (
+                  <div style={fieldError}>{robotFieldErrors.VIDEO_TOPIC_TYPE}</div>
+                )}
+              </div>
+
+              <button onClick={handleVideoTopicSave} style={actionButtonStyle}>
+                Save
+              </button>
+              {videoTopicSaveResult && (
+                <div style={{ ...resultLine, color: saveResultColor(videoTopicSaveResult) }}>
+                  {videoTopicSaveResult}
                 </div>
               )}
             </div>
           </section>
 
-          {/* Robot Section */}
+          {/* Robot Section — identity + footprint (server config, restart to apply) */}
           <section>
             <h3 style={sectionHeading}>Robot</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -424,9 +545,7 @@ export default function SettingsDrawer({
                   <option value="holonomic">Holonomic</option>
                 </select>
                 {robotFieldErrors.ROBOT_TYPE && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.ROBOT_TYPE}
-                  </div>
+                  <div style={fieldError}>{robotFieldErrors.ROBOT_TYPE}</div>
                 )}
               </div>
 
@@ -441,9 +560,7 @@ export default function SettingsDrawer({
                   style={fieldStyle}
                 />
                 {robotFieldErrors.ROBOT_NAME && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.ROBOT_NAME}
-                  </div>
+                  <div style={fieldError}>{robotFieldErrors.ROBOT_NAME}</div>
                 )}
               </div>
 
@@ -458,9 +575,7 @@ export default function SettingsDrawer({
                   style={fieldStyle}
                 />
                 {robotFieldErrors.ROBOT_NAMESPACE && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.ROBOT_NAMESPACE}
-                  </div>
+                  <div style={fieldError}>{robotFieldErrors.ROBOT_NAMESPACE}</div>
                 )}
               </div>
 
@@ -475,9 +590,7 @@ export default function SettingsDrawer({
                   style={fieldStyle}
                 />
                 {robotFieldErrors.ROBOT_LENGTH_M && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.ROBOT_LENGTH_M}
-                  </div>
+                  <div style={fieldError}>{robotFieldErrors.ROBOT_LENGTH_M}</div>
                 )}
               </div>
 
@@ -492,68 +605,15 @@ export default function SettingsDrawer({
                   style={fieldStyle}
                 />
                 {robotFieldErrors.ROBOT_WIDTH_M && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.ROBOT_WIDTH_M}
-                  </div>
+                  <div style={fieldError}>{robotFieldErrors.ROBOT_WIDTH_M}</div>
                 )}
               </div>
 
-              {/* VIDEO_TOPIC: text */}
-              <div>
-                <label style={fieldLabel}>Video Topic</label>
-                <input
-                  type="text"
-                  value={robotConfig.VIDEO_TOPIC}
-                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC', e.target.value)}
-                  placeholder="/camera/image"
-                  style={fieldStyle}
-                />
-                {robotFieldErrors.VIDEO_TOPIC && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.VIDEO_TOPIC}
-                  </div>
-                )}
-              </div>
-
-              {/* VIDEO_TOPIC_TYPE: select compressed | raw */}
-              <div>
-                <label style={fieldLabel}>Video Topic Type</label>
-                <select
-                  value={robotConfig.VIDEO_TOPIC_TYPE}
-                  onChange={(e) => handleRobotConfigChange('VIDEO_TOPIC_TYPE', e.target.value)}
-                  style={fieldStyle}
-                >
-                  <option value="">Select type</option>
-                  <option value="compressed">Compressed</option>
-                  <option value="raw">Raw</option>
-                </select>
-                {robotFieldErrors.VIDEO_TOPIC_TYPE && (
-                  <div style={fieldError}>
-                    {robotFieldErrors.VIDEO_TOPIC_TYPE}
-                  </div>
-                )}
-              </div>
-
-              {/* Save Button */}
-              <button
-                onClick={handleRobotConfigSave}
-                style={actionButtonStyle}
-              >
+              <button onClick={handleRobotConfigSave} style={actionButtonStyle}>
                 Save
               </button>
-
-              {/* Result Message */}
               {robotSaveResult && (
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: getRobotSaveResultColor(),
-                    marginTop: '4px',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'normal',
-                    fontFamily: MONO,
-                  }}
-                >
+                <div style={{ ...resultLine, color: saveResultColor(robotSaveResult) }}>
                   {robotSaveResult}
                 </div>
               )}

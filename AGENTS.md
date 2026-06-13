@@ -109,13 +109,13 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 > **Current state (2026-06-13):** Robot config settings page shipped — operator edits robot identity / footprint / video source from the web Settings drawer; auth-server `GET`/`PUT /auth/robot-config` writes a secret-free `config/robot.env` (env_file overrides, atomic, allowlisted), teleop-server + video-bridge load it on (re)start. Built atop footprint outline + SW precache + the security sweep (HTTPS/TLS, login rate limit, session idle timeout). Per-feature contracts live in the child AGENTS.md ([web-client](web-client/AGENTS.md), [auth-server](auth-server/AGENTS.md), [server](server/AGENTS.md)); shipped detail in [milestones.md](memory/agent-guides/milestones.md). `v1.0.0` gated on operator hardware checks — open: robot-config end-to-end (edit → restart → new values in `status` JSON + video bridge), footprint screen-direction (Waffle wider than long → long axis must render horizontal), SW real-device behavior, TLS phone root-CA + real ACME, minimap screen-direction.
 >
-> **Robot config (new):** Tunable keys live in `config/robot.env` (gitignored; seed from `config/robot.env.example`), **not** `.env` — `.env` keeps only secrets + ROS/network/TLS. Changes apply on next `docker compose ... up -d` (live runtime apply deferred; front-end restart button rejected as host-root risk).
+> **Robot config (new):** Tunable keys live in `config/robot.env` (gitignored; seed from `config/robot.env.example`), **not** `.env` — `.env` keeps only secrets + ROS/network/TLS. Edited from the web Settings drawer: **Video** section owns `VIDEO_TOPIC`/`VIDEO_TOPIC_TYPE` (grouped under the runtime Source picker), **Robot** section owns identity + footprint; each Save is a partial PUT to `/auth/robot-config`. Changes apply on next `docker compose ... up -d` (live runtime apply deferred; front-end restart button rejected as host-root risk). **Upgrade migration:** existing deployments must copy their seven `.env` values into `config/robot.env` once, else video/identity revert to defaults (TROUBLESHOOTING).
 >
 > **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` (`-p` keeps the `auth-data` volume; `down -v` resets creds). **Restart `teleop-server` after any sim restart** — tf2 rejects post-restart transforms as TF_OLD_DATA (TROUBLESHOOTING).
 >
 > **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Test baseline:** webclient **601** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **72**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **602** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **72**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
@@ -123,7 +123,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: robot config settings page (601/96/20/72), footprint outline + SW precache (599/64/20/72), session idle timeout (570/64/20/69).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: robot config settings page + post-merge fixes (602/96/20/72), footprint outline + SW precache (599/64/20/72), session idle timeout (570/64/20/69).
 
 ---
 
