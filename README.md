@@ -159,7 +159,13 @@ All optional; set in `.env` before starting:
 | `ROBOT_TYPE` | `diff_drive` | `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | _(none)_ | Display name shown in the UI |
 | `ROBOT_NAMESPACE` | _(none)_ | ROS2 namespace prefix for topics |
+| `ROBOT_LENGTH_M` | _(none)_ | Footprint length in metres (bumper-to-bumper). Draws a to-scale outline on the minimap. _TurtleBot3 Waffle: `0.281`_ |
+| `ROBOT_WIDTH_M` | _(none)_ | Footprint width in metres (wheel-to-wheel). _TurtleBot3 Waffle: `0.306`_ |
 | `TELEOP_SERVER_URL` | _auto-detected_ | auth-server finds the Docker bridge gateway at startup; override only if that detection is wrong |
+
+Set both `ROBOT_LENGTH_M` and `ROBOT_WIDTH_M` to overlay a dashed outline of the robot's body on the minimap, drawn to scale and oriented with the heading — useful for judging clearances near obstacles. Leave either unset to keep the plain centre arrow. The outline auto-hides when zoomed too far out to be legible.
+
+The web client also registers a service worker that precaches the app shell (HTML/JS/CSS/fonts), so a returning operator opens straight to the cached UI and a weak Wi-Fi link still reaches the login screen. The live control stream (WebSocket, WHEP signalling, WebRTC video) never passes through the cache. If a UI update doesn't appear after a redeploy, hard-reload once (see TROUBLESHOOTING.md).
 
 ### Supported robots
 
