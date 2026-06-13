@@ -21,7 +21,7 @@ React UI
     ├── components/shared.tsx        ← HUD primitives: Joystick, JoystickZone, Crosshair,
     │                                   MiniMap, Compass(Tape), VelBars, Readout,
     │                                   VideoSignalOverlay, CONNECTION_LABELS, ConnectionState
-    ├── components/SettingsDrawer.tsx   ← slide-in drawer (Gamepad/Video/Connection)
+    ├── components/SettingsDrawer.tsx   ← slide-in drawer (Gamepad/Video/Robot)
     ├── components/CollapsibleRail.tsx  ← slide-out rail bookmark
     ├── components/SpeedStepper.tsx     ← −/+ per-axis speed-limit caps
     ├── components/SessionBanner.tsx    ← idle-timeout bottom toast
