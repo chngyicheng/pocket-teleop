@@ -67,9 +67,32 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `odom_frame` | `odom` | tf2 fallback frame when `map_frame` is unavailable |
 | `base_frame` | `base_link` | Robot base frame; pose target + scan yaw correction |
 
+## auth-server endpoints
+
+### Authentication required
+
+- `GET /auth/robot-config` — Returns robot configuration (seven allowlist keys only; never includes secrets). Missing file → returns defaults: `ROBOT_TYPE: diff_drive`, `VIDEO_TOPIC_TYPE: compressed`, others empty.
+- `PUT /auth/robot-config` — Updates robot configuration. Body: partial JSON object with any subset of the seven allowlist keys. Returns `{ values, restartRequired: true }` on success (200), or `{ errors }` per field on validation failure (400). Writes atomically using temp file + rename. Merges with existing values (only updates provided keys). No partial write on error.
+
+**Seven allowlist keys** (robots only read/write these from `/config/robot.env`):
+
+| Key | Type | Constraints | Default | Purpose |
+|---|---|---|---|---|
+| `ROBOT_TYPE` | string | `diff_drive` \| `holonomic` | `diff_drive` | Robot kinematics type sent to client |
+| `ROBOT_NAME` | string | ≤ 64 chars, no newline/=, no control chars | `""` | Display name shown in UI |
+| `ROBOT_NAMESPACE` | string | ROS name rules (alnum + `_`, no `/`, no leading digit); empty allowed | `""` | ROS2 namespace; routes cmd_vel to `/<ns>/cmd_vel` when set |
+| `ROBOT_LENGTH_M` | string (number) | Finite, ≥ 0, ≤ 10; empty allowed (= unconfigured) | `""` | Footprint length (m, x/forward); minimap draws outline when both dims > 0 |
+| `ROBOT_WIDTH_M` | string (number) | Finite, ≥ 0, ≤ 10; empty allowed (= unconfigured) | `""` | Footprint width (m, y/left-right); minimap draws outline when both dims > 0 |
+| `VIDEO_TOPIC` | string | ROS topic path or empty, no newline/=; empty allowed (= disabled) | `""` | Full topic path for camera image (e.g. `/camera/image_raw/compressed`); video-bridge sleeps when empty |
+| `VIDEO_TOPIC_TYPE` | string | `compressed` \| `raw` | `compressed` | Sensor message type: `CompressedImage` or `Image` |
+
 ## Environment variables
 
 ### auth-server
+
+| Variable | Required | Description |
+|---|---|---|
+| `ROBOT_CONFIG_PATH` | No (default: `/config/robot.env`) | Path to robot config file; read/written by `/auth/robot-config` endpoints |
 
 | Variable | Required | Description |
 |---|---|---|

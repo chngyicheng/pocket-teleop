@@ -23,6 +23,7 @@ export interface AppOptions {
   mediaMtxUrl?: string;
   mediaMtxApiUrl?: string;
   idleTimeoutMs?: number;
+  robotConfigPath?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -44,6 +45,10 @@ export function createApp(options: AppOptions): express.Application {
     ?? 'http://localhost:9997';
 
   const idleTimeoutMs = options.idleTimeoutMs ?? (30 * 60 * 1000);
+
+  const robotConfigPath = options.robotConfigPath
+    ?? process.env['ROBOT_CONFIG_PATH']
+    ?? '/config/robot.env';
 
   fs.mkdirSync(options.sessionsPath, { recursive: true });
 
@@ -121,7 +126,7 @@ export function createApp(options: AppOptions): express.Application {
   // Global body parsers consume the request stream before the proxy can pipe it,
   // causing the proxy request to hang (http-proxy pipes the drained stream, which
   // never ends, so the connection stalls).
-  app.use('/auth', express.urlencoded({ extended: false }), express.json(), authRouter(options.credPath, idleTimeoutMs));
+  app.use('/auth', express.urlencoded({ extended: false }), express.json(), authRouter(options.credPath, idleTimeoutMs, robotConfigPath));
 
   // Unauthenticated: redirect to login
   app.use((req, res, next) => {

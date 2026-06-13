@@ -26,13 +26,15 @@ Owns: `src/`, `test/`, `views/`, `Dockerfile.auth` (base → builder → runtime
 | File | What it does |
 |---|---|
 | `src/credentials.ts` | bcrypt hash/verify; init + read/save `credentials.json` |
+| `src/robot_config.ts` | Parse/serialize/validate robot config; seven-key allowlist (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M, VIDEO_TOPIC, VIDEO_TOPIC_TYPE) |
 | `src/app.ts` | `createApp(AppOptions)` factory — testable Express wiring; `/perf` + `/auth-static` routes |
 | `src/index.ts` | Entry point — env validation, server start, WS upgrade wiring |
 | `src/proxy.ts` | HTTP proxy to webclient; `makeWsUpgradeHandler` runs express-session on `/ws` upgrade (fail-closed); `/video` + `/mediamtx-api` proxies |
-| `src/routes/auth.ts` | Login, logout, change-password (rejects new == current); `enforceDefaultCredentialChange`; `/auth/session-status` + `/auth/heartbeat` |
+| `src/routes/auth.ts` | Login, logout, change-password (rejects new == current); `enforceDefaultCredentialChange`; `/auth/session-status`, `/auth/heartbeat`, `/auth/robot-config` (GET/PUT) |
 | `src/rate_limit.ts` | Hand-rolled per-IP + per-user login rate limiter |
 | `views/login.html` / `change-password.html` | Login + force-change pages (themed; offline woff2 via `/auth-static`) |
 | `test/auth.test.ts` / `auth_offline.test.ts` / `credentials.test.ts` | Route integration (supertest) + offline + credential unit tests |
+| `test/robot_config.test.ts` | robot-config module unit + endpoint integration (32 tests) |
 | `test/idle_timeout.test.ts` / `rate_limit.test.ts` / `tls_proxy.test.ts` / `perf_beacon.test.ts` | Idle/rate-limit/TLS/perf behavior |
 | `test/*.adversarial.test.ts` | Hardening cases |
 | `test/mediamtx_integration.test.ts` | Apply-button e2e — needs `mediamtx-test` container (full `--profile test` only) |
@@ -41,7 +43,8 @@ Owns: `src/`, `test/`, `views/`, `Dockerfile.auth` (base → builder → runtime
 
 - **`/ws` upgrade is fail-closed** — runs express-session; no valid session = reject. Never weaken.
 - **No default credentials path** — first login forces a password change (`enforceDefaultCredentialChange`); change-password rejects new == current. Single-operator model: one credential set per robot, multi-user not implemented.
-- **Idle timeout 30 min** rolling: `lastActivity` middleware; `/auth/session-status` poll excluded from activity; `/auth/heartbeat` on real input; WS upgrade 401 when expired + per-connection re-check every 60 s kills with a 4001 close frame. Cookie maxAge 30 min rolling.
+- **Idle timeout 30 min** rolling: `lastActivity` middleware; `/auth/session-status` poll excluded from activity; `/auth/heartbeat` + `/auth/robot-config` (GET/PUT) on real input; WS upgrade 401 when expired + per-connection re-check every 60 s kills with a 4001 close frame. Cookie maxAge 30 min rolling.
+- **Robot config** (`GET/PUT /auth/robot-config`): Seven-key allowlist only (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M, VIDEO_TOPIC, VIDEO_TOPIC_TYPE). Reads/writes `/config/robot.env` atomically. Never exposes secrets. Partial PUT allowed; merges with existing. Validation per field; 400 with error map on invalid.
 - **Login rate limit**: per-IP 10/min + per-user 5/min (`rate_limit.ts`).
 - bcrypt for credential hashing; secrets via env only, never in source.
 - Session cookie `secure: 'auto'` follows `req.secure` from `trust proxy` + Caddy's `X-Forwarded-Proto`; plain-HTTP LAN keeps a non-Secure cookie and works unchanged.

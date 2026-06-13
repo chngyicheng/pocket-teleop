@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { readCredentials, saveCredentials, verifyPassword, hashPassword } from '../credentials.js';
 import { makeLoginLimiters } from '../rate_limit.js';
+import { readRobotConfig, validateRobotConfig, writeRobotConfig } from '../robot_config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const VIEWS_DIR = path.join(__dirname, '../../views');
@@ -12,7 +13,7 @@ const VIEWS_DIR = path.join(__dirname, '../../views');
 // The actual string value does not matter; it is used only to consume bcrypt.compare time.
 const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 
-export function authRouter(credPath: string, idleTimeoutMs: number = 30 * 60 * 1000): Router {
+export function authRouter(credPath: string, idleTimeoutMs: number = 30 * 60 * 1000, robotConfigPath: string = '/config/robot.env'): Router {
   const router = Router();
   const { ipLimiter, userLimiter, recordFailure } = makeLoginLimiters();
 
@@ -139,6 +140,25 @@ export function authRouter(credPath: string, idleTimeoutMs: number = 30 * 60 * 1
     } catch (err) {
       next(err);
     }
+  });
+
+  router.get('/robot-config', (req: Request, res: Response) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const config = readRobotConfig(robotConfigPath);
+    return res.json(config);
+  });
+
+  router.put('/robot-config', (req: Request, res: Response) => {
+    if (!req.session.userId) return res.status(401).json({ error: 'Unauthorized' });
+    const validation = validateRobotConfig(req.body);
+    if (!validation.ok) {
+      return res.status(400).json({ errors: validation.errors });
+    }
+    // Merge with existing values
+    const existing = readRobotConfig(robotConfigPath);
+    const merged = { ...existing, ...validation.values };
+    writeRobotConfig(robotConfigPath, merged);
+    return res.json({ values: merged, restartRequired: true });
   });
 
   return router;
