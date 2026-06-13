@@ -1,14 +1,23 @@
+# Compose file with robot config overrides via env_file mechanism.
+#
+# Overrides flow:
+#   .env (secrets: TELEOP_ADMIN_USER, SESSION_SECRET, ROS network params, TLS config)
+#         +
+#   config/robot.env (operator-configurable via web settings: ROBOT_TYPE, VIDEO_TOPIC, footprint, etc.)
+#         =
+#   Final container environment
+#
+# Note: Robot identity keys (ROBOT_TYPE, ROBOT_NAME, etc.) are intentionally removed
+# from the 'environment' section below — if hardcoded there, they would shadow (override)
+# the config/robot.env values loaded via env_file. This allows the web settings page
+# to write config/robot.env at runtime without needing a container restart.
+
 services:
   teleop-server:
     build:
       context: .
       network: host
     environment:
-      - ROBOT_TYPE=${ROBOT_TYPE:-diff_drive}
-      - ROBOT_NAME=${ROBOT_NAME:-}
-      - ROBOT_NAMESPACE=${ROBOT_NAMESPACE:-}
-      - ROBOT_LENGTH_M=${ROBOT_LENGTH_M:-}
-      - ROBOT_WIDTH_M=${ROBOT_WIDTH_M:-}
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
       - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-eth0}
       - FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/fastrtps_resolved.xml
@@ -19,6 +28,9 @@ services:
       - MAP_FRAME=${MAP_FRAME:-}
       - ODOM_FRAME=${ODOM_FRAME:-}
       - BASE_FRAME=${BASE_FRAME:-}
+    env_file:
+      - path: ./config/robot.env
+        required: false
     restart: unless-stopped
     network_mode: "host"
     healthcheck:
@@ -54,11 +66,12 @@ services:
       network: host
     network_mode: "host"
     environment:
-      - VIDEO_TOPIC=${VIDEO_TOPIC:-}
-      - VIDEO_TOPIC_TYPE=${VIDEO_TOPIC_TYPE:-compressed}
       - MEDIAMTX_RTMP=rtmp://127.0.0.1:1935/teleop
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
       - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-}
+    env_file:
+      - path: ./config/robot.env
+        required: false
     restart: unless-stopped
     depends_on:
       - mediamtx
@@ -107,6 +120,7 @@ services:
       - MEDIAMTX_URL=http://localhost:8889
     volumes:
       - auth-data:/data
+      - ./config:/config
     depends_on:
       - webclient
       - teleop-server

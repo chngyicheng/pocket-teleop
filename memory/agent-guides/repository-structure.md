@@ -177,6 +177,7 @@ Tests (`test/`): one `*.test.ts(x)` per module above (RTL + jsdom for components
 
 ```bash
 # Full stack — requires .env with TELEOP_ADMIN_USER, TELEOP_ADMIN_PASSWORD, SESSION_SECRET
+# Optional: config/robot.env for operator-configurable robot settings (defaults in config/robot.env.example)
 docker compose -p pocket-teleop --env-file ./.env up --build -d
 
 # Web-client tests (Docker only — never bare npm, never ad-hoc node:22-alpine mounts).
@@ -195,7 +196,19 @@ docker compose -p pocket-teleop run --rm --no-deps webclient-test npx tsc --noEm
 docker compose -p pocket-teleop run --rm --no-deps --build auth-server-test npm test
 ```
 
-**Worktree note:** `.env` is not copied into worktrees. Pass `--env-file /home/chngyicheng/pocket-teleop/.env` explicitly when running compose from a worktree.
+**Worktree note:** `.env` and `config/robot.env` are not copied into worktrees. Pass `--env-file /home/chngyicheng/pocket-teleop/.env` explicitly when running compose from a worktree. To test robot config changes, create a minimal `config/robot.env` in the worktree (copy `config/robot.env.example` and edit).
+
+## Environment configuration
+
+**Compose loads settings in this order:**
+
+1. `docker-compose.yml` hardcoded defaults (for tooling-only vars like `MEDIAMTX_RTMP`)
+2. `.env` — secrets (credentials, SESSION_SECRET, ROS network IP, TLS config)
+3. `config/robot.env` — operator-configurable robot identity (type, name, footprint, video topic)
+
+**Why split?** Secrets must not change at runtime; robot settings are configurable via the web settings page (writes `config/robot.env` directly, no restart). The 7 keys are **not** in `.env.example` anymore — copy `config/robot.env.example` to `config/robot.env` and populate the 7 robot-specific keys:
+  - `ROBOT_TYPE`, `ROBOT_NAME`, `ROBOT_NAMESPACE`, `ROBOT_LENGTH_M`, `ROBOT_WIDTH_M`
+  - `VIDEO_TOPIC`, `VIDEO_TOPIC_TYPE`
 
 ## Port assignments (client)
 
