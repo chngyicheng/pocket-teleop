@@ -21,6 +21,7 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
 - [Connection](#connection)
   - [Web UI stuck connecting — `[ETIMEDOUT]`](#web-ui-stuck-connecting--etimedout)
   - [Slow first load / blank screen after login](#slow-first-load--blank-screen-after-login)
+  - [UI still shows the old version after a redeploy](#ui-still-shows-the-old-version-after-a-redeploy)
 - [ROS2](#ros2)
   - [Inspecting ROS2 topics from another machine (multicast broken)](#inspecting-ros2-topics-from-another-machine-multicast-broken)
 
@@ -213,6 +214,20 @@ docker logs pocket-teleop-auth-server-1 | grep perf | tail -1
 - `readyMs` — first paint after React mounts (≈ "controls visible").
 
 If `readyMs` is high but `bundleTransferMs` is `0` and `bundleKB` is ~57, the remaining time is the HTML round-trip — i.e. **link latency** (slow/variable Wi-Fi, mobile-radio wake-up), not the app.
+
+### UI still shows the old version after a redeploy
+
+A service worker precaches the app shell (HTML/JS/CSS/fonts) for fast repeat loads. It is configured to **auto-update** — a new shell is fetched in the background and applied on the next load — and nginx serves `/sw.js` with `Cache-Control: no-cache` so the worker itself is never pinned. If a redeploy still doesn't appear:
+
+```bash
+# 1. Hard-reload the page (loads bypassing the cache):
+#    Android Chrome: pull-to-refresh twice, or Menu → Reload
+#    Desktop: Ctrl/Cmd-Shift-R
+# 2. If still stale, clear the site's service worker:
+#    DevTools → Application → Service Workers → Unregister, then reload.
+```
+
+This only affects the cached **shell** — it never touches live control or video, which bypass the worker entirely.
 
 ---
 

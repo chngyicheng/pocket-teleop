@@ -40,8 +40,8 @@ class FakeTeleopClient {
   setGamepadEnabled() {}
 
   // Test helpers
-  triggerStatus(connected: boolean, robotType = '', robotName = '', robotNamespace = '') {
-    this.opts.onStatus?.(connected, robotType, robotName, robotNamespace);
+  triggerStatus(connected: boolean, robotType = '', robotName = '', robotNamespace = '', robotLength = 0, robotWidth = 0) {
+    this.opts.onStatus?.(connected, robotType, robotName, robotNamespace, robotLength, robotWidth);
   }
 
   triggerReconnecting(attempt: number) {
@@ -751,5 +751,49 @@ describe('useTeleopBridge', () => {
       value: originalWindowLocation,
       writable: true,
     });
+  });
+
+  it('initializes robotLength and robotWidth to 0 by default', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.robotLength).toBe(0);
+    expect(result.current.robotWidth).toBe(0);
+  });
+
+  it('onStatus update sets robotLength and robotWidth', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerStatus(true, 'differential', 'robot1', '/namespace', 0.281, 0.306);
+    });
+
+    expect(result.current.robotLength).toBe(0.281);
+    expect(result.current.robotWidth).toBe(0.306);
+  });
+
+  it('onStatus with missing dimensions defaults to 0', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerStatus(true, 'differential', 'robot1', '/namespace');
+    });
+
+    expect(result.current.robotLength).toBe(0);
+    expect(result.current.robotWidth).toBe(0);
   });
 });

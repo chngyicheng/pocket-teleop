@@ -64,6 +64,8 @@ describe('parseMessage', () => {
       robot_type: 'diff_drive',
       robot_name: 'Test Bot',
       robot_namespace: 'test_ns',
+      robot_length: 0,
+      robot_width: 0,
     });
   });
 
@@ -77,6 +79,8 @@ describe('parseMessage', () => {
       robot_type: 'ackermann',
       robot_name: '',
       robot_namespace: '',
+      robot_length: 0,
+      robot_width: 0,
     });
   });
 
@@ -88,6 +92,8 @@ describe('parseMessage', () => {
       robot_type: 'diff_drive',
       robot_name: '',
       robot_namespace: '',
+      robot_length: 0,
+      robot_width: 0,
     });
   });
 
@@ -131,6 +137,81 @@ describe('parseMessage', () => {
       '{"type":"status","connected":"yes","robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns"}'
     );
     expect(result.type).toBe('unknown');
+  });
+
+  it('status message with valid robot_length and robot_width', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":0.281,"robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0.281);
+      expect(result.robot_width).toBe(0.306);
+    }
+  });
+
+  it('status message with missing robot_length defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0);
+      expect(result.robot_width).toBe(0.306);
+    }
+  });
+
+  it('status message with missing robot_width defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":0.281}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0.281);
+      expect(result.robot_width).toBe(0);
+    }
+  });
+
+  it('status message with negative robot_length defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":-0.5,"robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0);
+      expect(result.robot_width).toBe(0.306);
+    }
+  });
+
+  it('status message with robot_length = 0 defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":0,"robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0);
+    }
+  });
+
+  it('status message with NaN robot_length defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":null,"robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0);
+    }
+  });
+
+  it('status message with string robot_length defaults to 0', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","robot_length":"0.281","robot_width":0.306}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.robot_length).toBe(0);
+      expect(result.robot_width).toBe(0.306);
+    }
   });
 
   it('parses estop_state engaged=true', () => {

@@ -23,6 +23,8 @@ def generate_launch_description():
                 'robot_type':      LaunchConfiguration('robot_type'),
                 'robot_name':      EnvironmentVariable('ROBOT_NAME',      default_value=''),
                 'robot_namespace': EnvironmentVariable('ROBOT_NAMESPACE', default_value=''),
+                'robot_length_m':  ParameterValue(EnvironmentVariable('ROBOT_LENGTH_M', default_value='0.0'), value_type=float),
+                'robot_width_m':   ParameterValue(EnvironmentVariable('ROBOT_WIDTH_M', default_value='0.0'), value_type=float),
                 'odom_topic':      EnvironmentVariable('ODOM_TOPIC',      default_value='/odom'),
                 'map_topic':       EnvironmentVariable('MAP_TOPIC',       default_value='/map'),
                 'map_window_m':    ParameterValue(EnvironmentVariable('MAP_WINDOW_M', default_value='24.0'), value_type=float),

@@ -16,7 +16,7 @@
 ## Message protocol — server → client
 
 ```json
-{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1"}
+{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1","robot_length":0.281,"robot_width":0.306}
 {"type":"pong"}
 {"type":"error","message":"<reason>"}
 {"type":"estop_state","engaged":true}
@@ -27,7 +27,8 @@
 
 - `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
 - `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
-- Client treats missing fields as `""` for backwards compatibility.
+- `robot_length` and `robot_width` (meters) always present; `0` when unconfigured. The minimap draws a dashed footprint outline to scale when both are > 0 and the long axis would render ≥ 14 px (zoom-gated). ROS convention: length = x (forward/back), width = y (left/right).
+- Client treats missing fields as `""` (strings) or `0` (footprint dims) for backwards compatibility.
 - `map` message (SLAM occupancy grid): cells are encoded as trinary RLE string (u=unknown, f=free, o=occupied, followed by run length; row-major order). Sent at ~0.5 Hz when available. Frame origin is world-relative. Cells within a crop window (configurable via `MAP_WINDOW_M`) are transmitted.
 - `pose` message (tf2 transform): SLAM `map→base_link` pose frame when SLAM is active; falls back to `odom→base_link` (frame="odom") when SLAM unavailable. Sent at ~5 Hz.
 - `scan` message (lidar): pointcloud in base_link-fixed frame (yaw-corrected). Up to 120 points; 0 indicates invalid/no-return. Sent at ~5 Hz.
@@ -56,6 +57,8 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `robot_type` | `diff_drive` | Sent to client in status message on connect |
 | `robot_name` | `""` | Human-readable display name; sent to client in status message |
 | `robot_namespace` | `""` | ROS2 namespace; overrides `cmd_vel_topic` → `/<ns>/cmd_vel` when set |
+| `robot_length_m` | `0.0` | Robot footprint length (m, x/forward); sent to client in status. `0` = unconfigured → minimap draws no outline |
+| `robot_width_m` | `0.0` | Robot footprint width (m, y/left-right); sent to client in status. `0` = unconfigured → minimap draws no outline |
 | `odom_topic` | `/odom` | Odometry subscription (absolute path; no namespace magic) |
 | `map_topic` | `/map` | SLAM occupancy grid subscription (transient_local+reliable QoS) |
 | `map_window_m` | `24.0` | Side length (m) of the map crop window centered on the robot |
@@ -87,6 +90,8 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `ROBOT_TYPE` | No (default: `diff_drive`) | Reported to client on connect; `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | No (default: `""`) | Display name shown in UI; omit or leave empty for no label |
 | `ROBOT_NAMESPACE` | No (default: `""`) | ROS2 namespace; routes cmd_vel to `/<ns>/cmd_vel` when set |
+| `ROBOT_LENGTH_M` | No (default: `0.0`) | Footprint length in m (bumper-to-bumper, x/forward); minimap draws the outline when set. TurtleBot3 Waffle = `0.281` |
+| `ROBOT_WIDTH_M` | No (default: `0.0`) | Footprint width in m (wheel-to-wheel, y/left-right); minimap draws the outline when set. TurtleBot3 Waffle = `0.306` |
 | `MAP_TOPIC` | No (default: `/map`) | SLAM occupancy grid topic (transient_local QoS); unset/empty = default `/map` |
 | `MAP_FRAME` | No (default: `map`) | tf2 frame for the SLAM-corrected pose lookup |
 | `MAP_WINDOW_M` | No (default: `24.0`) | Side length (m) of the transmitted map crop window, centered on the robot |

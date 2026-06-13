@@ -7,6 +7,8 @@ services:
       - ROBOT_TYPE=${ROBOT_TYPE:-diff_drive}
       - ROBOT_NAME=${ROBOT_NAME:-}
       - ROBOT_NAMESPACE=${ROBOT_NAMESPACE:-}
+      - ROBOT_LENGTH_M=${ROBOT_LENGTH_M:-}
+      - ROBOT_WIDTH_M=${ROBOT_WIDTH_M:-}
       - ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
       - ROS_NETWORK_INTERFACE=${ROS_NETWORK_INTERFACE:-eth0}
       - FASTRTPS_DEFAULT_PROFILES_FILE=/tmp/fastrtps_resolved.xml

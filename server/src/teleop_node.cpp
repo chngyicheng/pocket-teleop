@@ -11,6 +11,8 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   declare_parameter("robot_type",      std::string("diff_drive"));
   declare_parameter("robot_name",      std::string(""));
   declare_parameter("robot_namespace", std::string(""));
+  declare_parameter("robot_length_m",  0.0);
+  declare_parameter("robot_width_m",   0.0);
 
   const auto port            = get_parameter("port").as_int();
   const auto timeout_ms      = get_parameter("timeout_ms").as_int();
@@ -18,6 +20,8 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   const auto robot_type      = get_parameter("robot_type").as_string();
   const auto robot_name      = get_parameter("robot_name").as_string();
   const auto robot_namespace = get_parameter("robot_namespace").as_string();
+  const auto robot_length    = get_parameter("robot_length_m").as_double();
+  const auto robot_width     = get_parameter("robot_width_m").as_double();
 
   std::string topic;
   if (robot_namespace.empty()) {
@@ -39,6 +43,8 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
     robot_type,
     robot_name,
     robot_namespace,
+    robot_length,
+    robot_width,
     [this](double lx, double ly, double az) { publish_twist(lx, ly, az); });
 
   declare_parameter("odom_topic", std::string("/odom"));

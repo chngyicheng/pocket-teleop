@@ -1,6 +1,6 @@
 export type InboundMessage =
   | { type: 'pong' }
-  | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string }
+  | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string; robot_length: number; robot_width: number }
   | { type: 'error'; message: string }
   | { type: 'odom'; x: number; y: number; heading: number }
   | { type: 'estop_state'; engaged: boolean }
@@ -35,12 +35,20 @@ export function parseMessage(raw: string): InboundMessage {
       if (typeof msg['connected'] !== 'boolean') {
         return { type: 'unknown', raw };
       }
+      const robot_length = typeof msg['robot_length'] === 'number' && Number.isFinite(msg['robot_length']) && msg['robot_length'] > 0
+        ? msg['robot_length']
+        : 0;
+      const robot_width = typeof msg['robot_width'] === 'number' && Number.isFinite(msg['robot_width']) && msg['robot_width'] > 0
+        ? msg['robot_width']
+        : 0;
       return {
         type:            'status',
         connected:       msg['connected'],
         robot_type:      msg['robot_type']      as string,
         robot_name:      (msg['robot_name']      as string | undefined) ?? '',
         robot_namespace: (msg['robot_namespace'] as string | undefined) ?? '',
+        robot_length,
+        robot_width,
       };
     }
     if (msg['type'] === 'error') {

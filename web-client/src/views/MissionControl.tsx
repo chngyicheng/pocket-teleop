@@ -543,6 +543,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 mapGrid={bridge.mapGrid}
                 mapPose={bridge.mapPose}
                 scan={bridge.scan}
+                robotLength={bridge.robotLength}
+                robotWidth={bridge.robotWidth}
               />
 
               {/* HEADING */}
@@ -696,6 +698,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             mapGrid={bridge.mapGrid}
             mapPose={bridge.mapPose}
             scan={bridge.scan}
+            robotLength={bridge.robotLength}
+            robotWidth={bridge.robotWidth}
           />
           <Compass
             heading={odomPos.heading}

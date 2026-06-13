@@ -14,7 +14,7 @@ const PUBLISH_INTERVAL_MS = 50;
 const STOP_REPEATS = 10;
 
 export interface TeleopClientOptions {
-  onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string) => void;
+  onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string, robotLength: number, robotWidth: number) => void;
   onError?: (message: string) => void;
   onClose?: (code: number, reason: string) => void;
   retryIntervalMs?: number;
@@ -228,7 +228,7 @@ export class TeleopClient {
     const msg = parseMessage(raw);
     if (msg.type === 'status') {
       this.retryAttempt = 0; // fully connected; reset exponential backoff counter
-      this.options.onStatus?.(msg.connected, msg.robot_type, msg.robot_name, msg.robot_namespace);
+      this.options.onStatus?.(msg.connected, msg.robot_type, msg.robot_name, msg.robot_namespace, msg.robot_length, msg.robot_width);
     } else if (msg.type === 'error') {
       this.options.onError?.(msg.message);
     } else if (msg.type === 'pong') {

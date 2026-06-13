@@ -622,6 +622,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             mapGrid={bridge.mapGrid}
             mapPose={bridge.mapPose}
             scan={bridge.scan}
+            robotLength={bridge.robotLength}
+            robotWidth={bridge.robotWidth}
           />
 
           <SidePanel title="HEADING">
