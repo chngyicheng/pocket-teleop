@@ -2,6 +2,99 @@
 
 > Progressive disclosure. Read what you need. Start at **Layer 1**, drill deeper only if stuck.
 
+# DOX framework
+
+- DOX is highly performant AGENTS.md hierarchy installed here
+- Agent must follow DOX instructions across any edits
+
+## Core Contract
+
+- AGENTS.md files are binding work contracts for their subtrees
+- Work products, source materials, instructions, records, assets, and durable docs must stay understandable from the nearest applicable AGENTS.md plus every parent AGENTS.md above it
+
+## Read Before Editing
+
+1. Read the root AGENTS.md
+2. Identify every file or folder you expect to touch
+3. Walk from the repository root to each target path
+4. Read every AGENTS.md found along each route
+5. If a parent AGENTS.md lists a child AGENTS.md whose scope contains the path, read that child and continue from there
+6. Use the nearest AGENTS.md as the local contract and parent docs for repo-wide rules
+7. If docs conflict, the closer doc controls local work details, but no child doc may weaken DOX
+
+Do not rely on memory. Re-read the applicable DOX chain in the current session before editing.
+
+## Update After Editing
+
+Every meaningful change requires a DOX pass before the task is done.
+
+Update the closest owning AGENTS.md when a change affects:
+
+- purpose, scope, ownership, or responsibilities
+- durable structure, contracts, workflows, or operating rules
+- required inputs, outputs, permissions, constraints, side effects, or artifacts
+- user preferences about behavior, communication, process, organization, or quality
+- AGENTS.md creation, deletion, move, rename, or index contents
+
+Update parent docs when parent-level structure, ownership, workflow, or child index changes. Update child docs when parent changes alter local rules. Remove stale or contradictory text immediately. Small edits that do not change behavior or contracts may leave docs unchanged, but the DOX pass still must happen.
+
+## Hierarchy
+
+- Root AGENTS.md is the DOX rail: project-wide instructions, global preferences, durable workflow rules, and the top-level Child DOX Index
+- Child AGENTS.md files own domain-specific instructions and their own Child DOX Index
+- Each parent explains what its direct children cover and what stays owned by the parent
+- The closer a doc is to the work, the more specific and practical it must be
+
+## Child Doc Shape
+
+- Create a child AGENTS.md when a folder becomes a durable boundary with its own purpose, rules, responsibilities, workflow, materials, or quality standards
+- Work Guidance must reflect the current standards of the project or user instructions; if there are no specific standards or instructions yet, leave it empty
+- Verification must reflect an existing check; if no verification framework exists yet, leave it empty and update it when one exists
+
+Default section order:
+- Purpose
+- Ownership
+- Local Contracts
+- Work Guidance
+- Verification
+- Child DOX Index
+
+## Style
+
+- Keep docs concise, current, and operational
+- Document stable contracts, not diary entries
+- Put broad rules in parent docs and concrete details in child docs
+- Prefer direct bullets with explicit names
+- Do not duplicate rules across many files unless each scope needs a local version
+- Delete stale notes instead of explaining history
+- Trim obvious statements, repeated rules, misplaced detail, and warnings for risks that no longer exist
+
+## Closeout
+
+1. Re-check changed paths against the DOX chain
+2. Update nearest owning docs and any affected parents or children
+3. Refresh every affected Child DOX Index
+4. Remove stale or contradictory text
+5. Run existing verification when relevant
+6. Report any docs intentionally left unchanged and why
+
+## User Preferences
+
+When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
+
+## Child DOX Index
+
+Root owns project-wide rules, run stack, execution mode, handover state, and the document/plan indexes. Direct children own their subtree contracts:
+
+| Child | Scope |
+|---|---|
+| [server/AGENTS.md](server/AGENTS.md) | C++ ROS2 teleop node — `CommandHandler` / `TeleopServer` / `TeleopNode`, WebSocket → `/cmd_vel` |
+| [auth-server/AGENTS.md](auth-server/AGENTS.md) | Node/Express login + reverse proxy on 8080 (sessions, rate limit, idle timeout, `/ws` `/video` proxy) |
+| [video-bridge/AGENTS.md](video-bridge/AGENTS.md) | Python rclpy + GStreamer ROS2-image → RTMP → MediaMTX WHEP |
+| [web-client/AGENTS.md](web-client/AGENTS.md) | React 18 + Vite 5 mission UI + framework-free transport/logic modules + SW precache |
+| [docs/AGENTS.md](docs/AGENTS.md) | Durable plans, specs, code-review/debug reports, assets |
+| [memory/agent-guides/AGENTS.md](memory/agent-guides/AGENTS.md) | Condensed authoritative agent guides the indexes above link to |
+
 ---
 
 ## Rules for changing this file
@@ -14,32 +107,21 @@
 
 ## Handover state — continue from here
 
-> **Current state (2026-06-13):** **Footprint outline + service-worker precache shipped** (atop the security sweep). Footprint: set `ROBOT_LENGTH_M`/`ROBOT_WIDTH_M` (env → `robot_length_m`/`robot_width_m` params → `status` JSON `robot_length`/`robot_width`, 0 = unconfigured) and the minimap draws a to-scale dashed outline under the arrow / above scan, zoom-gated (hidden when the long axis < 14 px), axis-aligned in map mode and heading-rotated in odom fallback. TurtleBot3 Waffle = 0.281 × 0.306 m. SW: `vite-plugin-pwa` generateSW precaches the app shell (autoUpdate, `/sw.js` no-cache via nginx) — repeat visits open from cache, weak Wi-Fi still reaches the login shell; **the live stream never touches the SW** (WS upgrades aren't fetch events; WHEP is POST; video is WebRTC/UDP; `/ws //video //whep //auth //perf //mediamtx-api` are in navigateFallbackDenylist + match no runtimeCaching). **Earlier this sweep:** HTTPS/TLS + login rate limit + session idle timeout (30-min idle, `/auth/session-status` poll excluded from activity, throttled `/auth/heartbeat` on real input, banner < 5 min, WS 4001 kill → logout; `idleTimeoutMs` injectable, not yet env). Rate limit per-IP 10/min + per-user 5/min (hand-rolled). TLS opt-in via `--profile tls` Caddy. **Live-verify open (hardware):** footprint screen-direction (Waffle is wider than long — check the long axis renders horizontal), SW real-device behavior (cache open / weak-net shell / stream untouched / autoUpdate), TLS phone root-CA + real ACME, minimap screen-direction. `v1.0.0` tag still gated on operator hardware checks.
+> **Current state (2026-06-13):** Footprint outline + service-worker precache shipped, atop the security sweep (HTTPS/TLS, login rate limit, session idle timeout). Per-feature contracts live in the child AGENTS.md ([web-client](web-client/AGENTS.md), [auth-server](auth-server/AGENTS.md), [server](server/AGENTS.md)); shipped detail in [milestones.md](memory/agent-guides/milestones.md). `v1.0.0` gated on operator hardware checks — open: footprint screen-direction (Waffle wider than long → long axis must render horizontal), SW real-device behavior, TLS phone root-CA + real ACME, minimap screen-direction.
 >
-> **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` from repo root (`-p` pin keeps the `auth-data` volume; `down -v` resets creds). **Restart `teleop-server` after any sim restart** — tf2 rejects post-restart transforms as TF_OLD_DATA (see TROUBLESHOOTING).
+> **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` (`-p` keeps the `auth-data` volume; `down -v` resets creds). **Restart `teleop-server` after any sim restart** — tf2 rejects post-restart transforms as TF_OLD_DATA (TROUBLESHOOTING).
 >
-> **Deployment must-do (host, not repo):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
+> **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Product decisions — do NOT re-ask:** E-STOP stays tappable on top while the drawer is open. E-STOP label is `■ STOP` (engaged → `■ RESET`).
+> **Test baseline:** webclient **599** pass / **11** skipped / auth **64** / video-bridge **20** / C++ **72**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile test`); `integration.test.ts` self-skips without a live server.
 >
-> **Test baseline:** webclient **599** pass / **11** skipped / auth **64** / video-bridge **20** / C++ **72**. Docker only; `--build` required after edits or `compose run` reuses a stale image. Iterate with a targeted vitest file list. Known reds that are not regressions: auth `mediamtx_integration.test.ts` (3) needs the full `--profile test` stack; `integration.test.ts` self-skips without a live server.
+> **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
-> **Subagent/worktree gotchas:** (0) Subagents never run git — controller stages by explicit path + commits (a blanket `git add` once swept 2754 worktree files). (1) A Haiku's cwd can pin to the **main repo instead of the worktree** — check `git status` in BOTH before trusting reports; it may also "re-create" files that already exist on the branch (one re-invented the RLE codec in a wrong format — canonical impl lives on the branch, transfer only the new wiring). (2) Docker runs may leave root-owned `node_modules` in a worktree; chown back before `git worktree remove`: `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w`.
->
-> **Next — operator to pick (2026-06-13).** Done so far: HTTPS/TLS, login rate limit, session idle timeout, footprint outline + SW precache (speed limit slider closed without code — covered by the SPEED stepper). Remaining security/health-sweep pool items: geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality. Other open plan: **gamepad cold-start detection** (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 addendum (execution rules: worktrees, trophy TDD, Haiku wenyan-ultra; staleness warning — re-verify file refs against current code).
+> **Next — operator to pick (2026-06-13).** Remaining security/health pool: geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality. Open plan: gamepad cold-start detection (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 execution addendum — re-verify file refs against current code.
 
-### Milestones done (recent)
+### Milestones + deviations
 
-Full history: [milestones.md](memory/agent-guides/milestones.md). Tests column = webclient / auth / video-bridge / C++.
-
-| Milestone | Tests (web/auth/vb/cpp) | Tag |
-|---|---|---|
-| Session idle timeout — 3 chain-branch tasks (Haiku + trophy TDD; controller added upgrade-time idle reject + sustained-activity heartbeat interval, de-placeholdered a test): auth-server 30-min idle destroy (`lastActivity` middleware; status poll excluded from activity), `GET /auth/session-status` + `POST /auth/heartbeat`, cookie maxAge 30 min rolling, WS upgrade 401 when expired + per-connection store re-check every 60 s killing with hand-built 4001 close frame (8 new vitest); web `useSessionStatus` poll/banner/input-heartbeat + `SessionBanner` bottom toast (9 new vitest); teleop_client treats 4001 as terminal — no retry, bridge redirects to login (5 new vitest). Plan's "WS message = activity" dropped — client pings every 200 ms, would never idle (deviation row) | 570 / 64 / 20 / 69 | `feat/idle-timeout-*` |
-| Robot footprint outline + SW precache — 4 chain-branch tasks (Haiku + trophy TDD; controller renumbered C++ test ports off 19092, regenerated package-lock for vite-plugin-pwa): `ROBOT_LENGTH_M`/`ROBOT_WIDTH_M` env → params → `status` JSON (0 = unconfigured) over the ROBOT_NAME road; `protocol`/`useTeleopBridge` expose dims (finite-positive guard); `map_render.footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate) + MiniMap dashed rect under arrow / above scan (map axis-aligned, odom heading-rotated), 3 call sites; `vite-plugin-pwa@1.3.0` generateSW app-shell precache (autoUpdate, denylist /ws //video //whep //auth //perf //mediamtx-api, CacheFirst /assets/), `sw_register.ts` prod-only injectable wrapper, nginx `/sw.js` no-cache — WS/WHEP/WebRTC never touch the SW. Footprint screen-direction + live SW behavior are hardware-verify (deviations). TB3 Waffle 0.281×0.306 m. 32 new tests | 599 / 64 / 20 / 72 | `feat/footprint-*`, `feat/sw-precache` |
-
-### Known deviations (still relevant)
-
-See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: footprint outline + SW precache (599/64/20/72), session idle timeout (570/64/20/69).
 
 ---
 
@@ -49,21 +131,13 @@ See [deviations.md](memory/agent-guides/deviations.md). Append new ones there.
 |---|---|
 | Run stack now | Layer 1 (below) |
 | Build, test, docker commands | [repository-structure.md](memory/agent-guides/repository-structure.md) |
-| Full deviation list | [deviations.md](memory/agent-guides/deviations.md) |
-| Full milestone history | [milestones.md](memory/agent-guides/milestones.md) |
+| Deviations / milestones | [deviations.md](memory/agent-guides/deviations.md) / [milestones.md](memory/agent-guides/milestones.md) |
 | Tech stack + dependencies | [techstack.md](memory/agent-guides/techstack.md) |
 | Message protocol + data types | [data-schema.md](memory/agent-guides/data-schema.md) |
 | Git workflow + doc-update rules | [version-control.md](memory/agent-guides/version-control.md) |
 | TDD standard, guardrails, task guides | [project-skills.md](memory/agent-guides/project-skills.md) |
-| **HTTPS/TLS plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-https-tls-implementation.md` |
-| **Login rate limit plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-login-rate-limit-implementation.md` |
-| **Session idle timeout plan (2026-05-06, ✅ done 2026-06-11)** | `docs/superpowers/plans/2026-05-06-session-timeout-implementation.md` |
-| **Speed limit slider plan (2026-05-06, ✅ closed 2026-06-12 — superseded by the SPEED stepper, gamepad plan 務四)** | `docs/superpowers/plans/2026-05-06-speed-limit-slider-implementation.md` |
-| **Footprint outline + SW precache plan (2026-06-11, ✅ done 2026-06-13)** | `docs/superpowers/plans/2026-06-11-footprint-outline-sw-precache.md` |
-| **Gamepad cold-start detection plan (2026-06-07, ⏳ pending)** | `docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md` |
-| **SLAM minimap plan (2026-06-10, ✅ done)** | `docs/superpowers/plans/2026-06-10-slam-minimap.md` |
-| **Gamepad controls plan (2026-06-06, ✅ done)** | `docs/superpowers/plans/2026-06-06-gamepad-controls-improvements.md` |
-| Earlier plans + specs (all shipped) | `docs/superpowers/plans/` + `docs/superpowers/specs/` — dated filenames; feature → plan mapping via [milestones.md](memory/agent-guides/milestones.md) |
+| Pending plan: gamepad cold-start detection | `docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md` |
+| Shipped plans + specs | `docs/superpowers/{plans,specs}/` — dated filenames; feature → plan mapping via [milestones.md](memory/agent-guides/milestones.md) |
 | Code review report + fix plan (2026-05-27) | `docs/2026-05-27-codebase-review.md`, `docs/superpowers/plans/2026-05-27-codebase-review-fixes.md` |
 
 ### Feature plan pool (waiting on user to pick priority)
