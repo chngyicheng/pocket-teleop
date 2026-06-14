@@ -1,3 +1,5 @@
+export type ScanPose = { frame: 'map' | 'odom'; x: number; y: number; heading: number };
+
 export type InboundMessage =
   | { type: 'pong' }
   | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string; robot_length: number; robot_width: number }
@@ -6,7 +8,7 @@ export type InboundMessage =
   | { type: 'estop_state'; engaged: boolean }
   | { type: 'pose'; frame: 'map' | 'odom'; x: number; y: number; heading: number }
   | { type: 'map'; resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }
-  | { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[] }
+  | { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }
   | { type: 'unknown'; raw: string };
 
 export function buildTwist(lx: number, ly: number, az: number): string {
@@ -119,13 +121,40 @@ export function parseMessage(raw: string): InboundMessage {
           !ranges.every((r): r is number => typeof r === 'number' && Number.isFinite(r))) {
         return { type: 'unknown', raw };
       }
-      return {
+
+      // Parse optional pose: all four fields must be present and valid
+      let pose: ScanPose | undefined;
+      const pose_frame = msg['pose_frame'];
+      const pose_x = msg['pose_x'];
+      const pose_y = msg['pose_y'];
+      const pose_heading = msg['pose_heading'];
+
+      if (pose_frame !== undefined && pose_x !== undefined && pose_y !== undefined && pose_heading !== undefined &&
+          (pose_frame === 'map' || pose_frame === 'odom') &&
+          typeof pose_x === 'number' && Number.isFinite(pose_x) &&
+          typeof pose_y === 'number' && Number.isFinite(pose_y) &&
+          typeof pose_heading === 'number' && Number.isFinite(pose_heading)) {
+        pose = {
+          frame: pose_frame as 'map' | 'odom',
+          x: pose_x,
+          y: pose_y,
+          heading: pose_heading,
+        };
+      }
+
+      const result: { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose } = {
         type: 'scan',
         angle_min,
         angle_increment,
         range_max,
         ranges,
       };
+
+      if (pose !== undefined) {
+        result.pose = pose;
+      }
+
+      return result;
     }
     return { type: 'unknown', raw };
   } catch {

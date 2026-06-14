@@ -1,7 +1,7 @@
 import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
-import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage } from './protocol.js';
+import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
@@ -24,7 +24,7 @@ export interface TeleopClientOptions {
   onOdom?: (x: number, y: number, heading: number) => void;
   onPose?: (frame: 'map' | 'odom', x: number, y: number, heading: number) => void;
   onMap?: (map: { resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }) => void;
-  onScan?: (scan: { angle_min: number; angle_increment: number; range_max: number; ranges: number[] }) => void;
+  onScan?: (scan: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
@@ -256,12 +256,16 @@ export class TeleopClient {
       const frame = msg.frame === 'map' || msg.frame === 'odom' ? msg.frame : 'odom';
       this.options.onPose?.(frame, msg.x, msg.y, msg.heading);
     } else if (msg.type === 'scan') {
-      this.options.onScan?.({
+      const scanData: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose } = {
         angle_min: msg.angle_min,
         angle_increment: msg.angle_increment,
         range_max: msg.range_max,
         ranges: msg.ranges,
-      });
+      };
+      if (msg.pose !== undefined) {
+        scanData.pose = msg.pose;
+      }
+      this.options.onScan?.(scanData);
     }
   }
 

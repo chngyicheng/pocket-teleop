@@ -25,6 +25,7 @@ export interface ScanData {
   angleIncrement: number;
   rangeMax: number;
   ranges: number[];
+  pose?: { frame: 'map' | 'odom'; x: number; y: number; heading: number };
 }
 
 export interface TeleopBridge {
@@ -132,12 +133,16 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
         setMapPose({ frame, x, y, heading });
       },
       onScan: (scanRaw) => {
-        setScan({
+        const scanData: ScanData = {
           angleMin: scanRaw.angle_min,
           angleIncrement: scanRaw.angle_increment,
           rangeMax: scanRaw.range_max,
           ranges: scanRaw.ranges,
-        });
+        };
+        if (scanRaw.pose !== undefined) {
+          scanData.pose = scanRaw.pose;
+        }
+        setScan(scanData);
       },
       onEstopState: (engaged) => {
         setEstopEngaged(engaged);

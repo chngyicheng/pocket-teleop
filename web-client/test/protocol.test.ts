@@ -481,4 +481,96 @@ describe('parseMessage', () => {
     const result = parseMessage(raw);
     expect(result).toEqual({ type: 'unknown', raw });
   });
+
+  // scan message with pose tests
+  it('scan message with complete pose (map frame)', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"map","pose_x":1.5,"pose_y":-0.3,"pose_heading":0.785}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.angle_increment).toBe(0.01);
+      expect(result.range_max).toBe(10.0);
+      expect(result.ranges).toEqual([1.5, 2.0]);
+      expect(result.pose).toEqual({
+        frame: 'map',
+        x: 1.5,
+        y: -0.3,
+        heading: 0.785,
+      });
+    }
+  });
+
+  it('scan message with complete pose (odom frame)', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":0,"angle_increment":0.01,"range_max":10.0,"ranges":[],"pose_frame":"odom","pose_x":0,"pose_y":0,"pose_heading":0}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.pose).toEqual({
+        frame: 'odom',
+        x: 0,
+        y: 0,
+        heading: 0,
+      });
+    }
+  });
+
+  it('scan message missing pose_heading still parses scan (backward compatible)', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"map","pose_x":1.5,"pose_y":-0.3}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.ranges).toEqual([1.5, 2.0]);
+      expect(result.pose).toBeUndefined();
+    }
+  });
+
+  it('scan message with invalid pose_frame (not map/odom) has no pose', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"world","pose_x":1.5,"pose_y":-0.3,"pose_heading":0.785}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.ranges).toEqual([1.5, 2.0]);
+      expect(result.pose).toBeUndefined();
+    }
+  });
+
+  it('scan message with non-finite pose_x has no pose', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"map","pose_x":null,"pose_y":-0.3,"pose_heading":0.785}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.pose).toBeUndefined();
+    }
+  });
+
+  it('scan message with non-finite pose_y has no pose', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"map","pose_x":1.5,"pose_y":"inf","pose_heading":0.785}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.pose).toBeUndefined();
+    }
+  });
+
+  it('scan message with non-finite pose_heading has no pose', () => {
+    const result = parseMessage(
+      '{"type":"scan","angle_min":-1.57,"angle_increment":0.01,"range_max":10.0,"ranges":[1.5,2.0],"pose_frame":"map","pose_x":1.5,"pose_y":-0.3,"pose_heading":null}'
+    );
+    expect(result.type).toBe('scan');
+    if (result.type === 'scan') {
+      expect(result.angle_min).toBe(-1.57);
+      expect(result.pose).toBeUndefined();
+    }
+  });
 });
