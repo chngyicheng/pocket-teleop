@@ -119,7 +119,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
-> **Next — operator to pick (2026-06-13).** Remaining security/health pool: geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality. Open plan: gamepad cold-start detection (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 execution addendum — re-verify file refs against current code.
+> **Next — operator to pick (2026-06-14).** Remaining security/health pool: geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality. Open plans: scan↔map sync fix A (`docs/superpowers/plans/2026-06-14-scan-map-sync-implementation.md` — pairs each scan with its capture pose so scan overlays map walls; hardware-verify); gamepad cold-start detection (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 execution addendum — re-verify file refs against current code.
 
 ### Milestones + deviations
 
