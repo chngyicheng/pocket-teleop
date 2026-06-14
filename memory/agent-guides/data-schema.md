@@ -22,7 +22,7 @@
 {"type":"estop_state","engaged":true}
 {"type":"map","resolution":0.05,"width":480,"height":480,"origin_x":-12.0,"origin_y":-12.0,"cells":"u120f300o5..."}
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
-{"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74]}
+{"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
 ```
 
 - `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
@@ -31,7 +31,7 @@
 - Client treats missing fields as `""` (strings) or `0` (footprint dims) for backwards compatibility.
 - `map` message (SLAM occupancy grid): cells are encoded as trinary RLE string (u=unknown, f=free, o=occupied, followed by run length; row-major order). Sent at ~0.5 Hz when available. Frame origin is world-relative. Cells within a crop window (configurable via `MAP_WINDOW_M`) are transmitted.
 - `pose` message (tf2 transform): SLAM `map→base_link` pose frame when SLAM is active; falls back to `odom→base_link` (frame="odom") when SLAM unavailable. Sent at ~5 Hz.
-- `scan` message (lidar): pointcloud in base_link-fixed frame (yaw-corrected). Up to 120 points; 0 indicates invalid/no-return. Sent at ~5 Hz.
+- `scan` message (lidar): pointcloud in base_link-fixed frame (yaw-corrected). Up to 120 points; 0 indicates invalid/no-return. **Includes optional capture pose:** `pose_x`, `pose_y`, `pose_heading`, `pose_frame` (added at scan capture time via tf2 lookup; frame is "map" when available, fallback "odom", omitted if both lookups fail—backward compatible). Sent at ~5 Hz.
 
 ## C++ result types (CommandHandler)
 
