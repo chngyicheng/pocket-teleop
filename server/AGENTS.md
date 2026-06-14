@@ -65,9 +65,9 @@ Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, 
 {"type":"estop_state","engaged":true}
 {"type":"map","resolution":0.05,"width":480,"height":480,"origin_x":-12.0,"origin_y":-12.0,"cells":"u120f300o5..."}
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
-{"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74]}
+{"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
 ```
-`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), ~5 Hz. ROS convention: length = x (fwd/back), width = y (left/right).
+`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. ROS convention: length = x (fwd/back), width = y (left/right).
 
 ### C++ result types (CommandHandler)
 

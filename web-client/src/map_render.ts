@@ -78,23 +78,86 @@ export function mapToScreenTransform(
 }
 
 /**
+ * Convert a world point to screen coordinates using current robot pose.
+ * Screen convention: robot at (cx, cy) = (size/2, size/2), front (robot x-axis) upward.
+ *
+ * @param world { x, y } world coordinates (map/odom frame)
+ * @param currentPose { x, y, heading } current robot pose
+ * @param size canvas size in pixels
+ * @param metersAcross view span in meters
+ * @returns { x, y } screen coordinates
+ */
+export function worldToScreenPoint(
+  world: { x: number; y: number },
+  currentPose: Pose,
+  size: number,
+  metersAcross: number
+): { x: number; y: number } {
+  const s = size / metersAcross; // pixels per meter
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const θ = currentPose.heading;
+  const sinθ = Math.sin(θ);
+  const cosθ = Math.cos(θ);
+
+  // Rotate to robot frame (undo the heading rotation)
+  const dx = world.x - currentPose.x;
+  const dy = world.y - currentPose.y;
+  const forward = dx * cosθ + dy * sinθ;
+  const left = -dx * sinθ + dy * cosθ;
+
+  const x = cx - left * s;
+  const y = cy - forward * s;
+
+  return { x, y };
+}
+
+/**
+ * Select the capture pose for a scan, returning the pose to use for base_link → world transform.
+ * If scanPose exists and its frame matches currentPose frame, use scanPose.
+ * Otherwise (frame mismatch or undefined), fall back to currentPose (robot-centered behavior).
+ *
+ * @param scanPose optional pose with frame when scan was captured
+ * @param currentPose current robot pose (defines frame context)
+ * @returns the pose to use for scan-to-world transform
+ */
+export function selectScanCapturePose(
+  scanPose: { frame: string; x: number; y: number; heading: number } | undefined,
+  currentPose: { frame: string; x: number; y: number; heading: number }
+): Pose {
+  if (scanPose && scanPose.frame === currentPose.frame) {
+    return { x: scanPose.x, y: scanPose.y, heading: scanPose.heading };
+  }
+  return { x: currentPose.x, y: currentPose.y, heading: currentPose.heading };
+}
+
+/**
  * Convert lidar scan rays to screen coordinates.
  * Scan is in base_link frame. Skip invalid ranges (≤0).
  *
  * Each ray: i-th angle = angleMin + i·angleIncrement
  * base_link: x forward, y left
  * Conversion: bx = r·cos(φ), by = r·sin(φ)
- * Screen: x' = cx - by·s, y' = cy - bx·s (robot front is upward)
+ * Then: base_link → world using capturePose (rotate by heading, translate)
+ * Finally: world → screen using currentPose
+ *
+ * When capturePose === currentPose, reduces to robot-centered behavior.
+ *
+ * @param scan lidar scan data
+ * @param capturePose pose when scan was captured (for base_link → world)
+ * @param currentPose current robot pose (for world → screen)
+ * @param size canvas size in pixels
+ * @param metersAcross view span in meters
+ * @returns array of screen coordinates for each valid ray
  */
 export function scanToScreenPoints(
   scan: Scan,
+  capturePose: Pose,
+  currentPose: Pose,
   size: number,
   metersAcross: number
 ): Array<{ x: number; y: number }> {
-  const s = size / metersAcross;
-  const cx = size / 2;
-  const cy = size / 2;
-
   const points: Array<{ x: number; y: number }> = [];
 
   for (let i = 0; i < scan.ranges.length; i++) {
@@ -102,13 +165,19 @@ export function scanToScreenPoints(
     if (r <= 0) continue; // skip invalid
 
     const φ = scan.angleMin + i * scan.angleIncrement;
-    const bx = r * Math.cos(φ); // forward
-    const by = r * Math.sin(φ); // left
+    const bx = r * Math.cos(φ); // forward in base_link
+    const by = r * Math.sin(φ); // left in base_link
 
-    const x = cx - by * s;
-    const y = cy - bx * s;
+    // base_link → world via capturePose
+    const ch = capturePose.heading;
+    const sinch = Math.sin(ch);
+    const cosch = Math.cos(ch);
+    const wx = capturePose.x + bx * cosch - by * sinch;
+    const wy = capturePose.y + bx * sinch + by * cosch;
 
-    points.push({ x, y });
+    // world → screen via currentPose
+    const point = worldToScreenPoint({ x: wx, y: wy }, currentPose, size, metersAcross);
+    points.push(point);
   }
 
   return points;

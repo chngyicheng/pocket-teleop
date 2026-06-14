@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <optional>
+#include <nlohmann/json.hpp>
 
 namespace map_codec {
 
@@ -13,6 +15,16 @@ struct DecimatedScan {
   double angle_min;            // radians, adjusted for frame transform
   double angle_increment;      // radians, scaled by decimation step
   std::vector<double> ranges;  // distances in meters (2 decimal places)
+};
+
+/**
+ * Robot pose at scan capture time
+ */
+struct ScanPose {
+  double x;                    // position X (meters)
+  double y;                    // position Y (meters)
+  double heading;              // yaw angle (radians)
+  std::string frame;           // "map" or "odom"
 };
 
 /**
@@ -85,6 +97,21 @@ DecimatedScan decimate_scan(
   double range_min,
   double range_max,
   int max_points
+);
+
+/**
+ * Build the scan WebSocket message JSON. When pose is present, adds
+ * pose_x/pose_y/pose_heading/pose_frame; when absent, omits them (backward compatible).
+ *
+ * @param scan           Decimated laser scan
+ * @param range_max      Maximum range (meters)
+ * @param pose           Optional capture pose; when nullopt, pose fields are omitted
+ * @return JSON object ready to stringify and broadcast
+ */
+nlohmann::json build_scan_message(
+  const DecimatedScan& scan,
+  double range_max,
+  const std::optional<ScanPose>& pose
 );
 
 } // namespace map_codec

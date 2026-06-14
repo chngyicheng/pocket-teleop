@@ -279,13 +279,41 @@ void TeleopNode::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr& msg) {
     120
   );
 
-  nlohmann::json scan_msg = {
-    {"type", "scan"},
-    {"angle_min", decimated.angle_min},
-    {"angle_increment", decimated.angle_increment},
-    {"range_max", msg->range_max},
-    {"ranges", decimated.ranges}
-  };
+  // Try to get capture pose at scan time
+  std::optional<map_codec::ScanPose> scan_pose;
+  const auto map_frame = get_parameter("map_frame").as_string();
+  const auto odom_frame = get_parameter("odom_frame").as_string();
 
+  try {
+    // Try map → base_link first
+    auto transform = tf_buffer_->lookupTransform(map_frame, base_frame, msg->header.stamp);
+    const auto& pos = transform.transform.translation;
+    const auto& q = transform.transform.rotation;
+
+    double yaw = std::atan2(
+      2.0 * (q.w * q.z + q.x * q.y),
+      1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+
+    scan_pose = map_codec::ScanPose{pos.x, pos.y, yaw, "map"};
+
+  } catch (const tf2::TransformException&) {
+    try {
+      // Fallback to odom → base_link
+      auto transform = tf_buffer_->lookupTransform(odom_frame, base_frame, msg->header.stamp);
+      const auto& pos = transform.transform.translation;
+      const auto& q = transform.transform.rotation;
+
+      double yaw = std::atan2(
+        2.0 * (q.w * q.z + q.x * q.y),
+        1.0 - 2.0 * (q.y * q.y + q.z * q.z));
+
+      scan_pose = map_codec::ScanPose{pos.x, pos.y, yaw, "odom"};
+
+    } catch (const tf2::TransformException&) {
+      // Both lookups failed; pose remains nullopt (backward compatible)
+    }
+  }
+
+  auto scan_msg = map_codec::build_scan_message(decimated, msg->range_max, scan_pose);
   server_->broadcast(scan_msg.dump());
 }

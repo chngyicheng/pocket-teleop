@@ -243,3 +243,54 @@ TEST_F(MapCodecTest, DecimateScamEmpty) {
 
   EXPECT_EQ(result.ranges.size(), 0);
 }
+
+// build_scan_message tests
+TEST_F(MapCodecTest, BuildScanMessageWithPoseMap) {
+  // Has pose with "map" frame
+  DecimatedScan scan{0.0, 0.01, {2.79, 1.74}};
+  ScanPose pose{1.5, -0.5, 0.78, "map"};
+
+  auto json = build_scan_message(scan, 3.5, pose);
+
+  EXPECT_EQ(json["type"], "scan");
+  EXPECT_DOUBLE_EQ(json["angle_min"], 0.0);
+  EXPECT_DOUBLE_EQ(json["angle_increment"], 0.01);
+  EXPECT_DOUBLE_EQ(json["range_max"], 3.5);
+  EXPECT_EQ(json["ranges"].size(), 2);
+  EXPECT_TRUE(json.contains("pose_x"));
+  EXPECT_DOUBLE_EQ(json["pose_x"], 1.5);
+  EXPECT_DOUBLE_EQ(json["pose_y"], -0.5);
+  EXPECT_DOUBLE_EQ(json["pose_heading"], 0.78);
+  EXPECT_EQ(json["pose_frame"], "map");
+}
+
+TEST_F(MapCodecTest, BuildScanMessageWithPoseOdom) {
+  // Has pose with "odom" frame
+  DecimatedScan scan{0.0, 0.01, {2.79}};
+  ScanPose pose{0.25, 1.3, 1.57, "odom"};
+
+  auto json = build_scan_message(scan, 5.0, pose);
+
+  EXPECT_EQ(json["type"], "scan");
+  EXPECT_TRUE(json.contains("pose_x"));
+  EXPECT_EQ(json["pose_frame"], "odom");
+  EXPECT_DOUBLE_EQ(json["pose_x"], 0.25);
+  EXPECT_DOUBLE_EQ(json["pose_y"], 1.3);
+}
+
+TEST_F(MapCodecTest, BuildScanMessageNoPose) {
+  // No pose (backward compatible)
+  DecimatedScan scan{0.0, 0.01, {2.79, 1.74}};
+
+  auto json = build_scan_message(scan, 3.5, std::nullopt);
+
+  EXPECT_EQ(json["type"], "scan");
+  EXPECT_DOUBLE_EQ(json["angle_min"], 0.0);
+  EXPECT_DOUBLE_EQ(json["angle_increment"], 0.01);
+  EXPECT_DOUBLE_EQ(json["range_max"], 3.5);
+  EXPECT_EQ(json["ranges"].size(), 2);
+  EXPECT_FALSE(json.contains("pose_x"));
+  EXPECT_FALSE(json.contains("pose_y"));
+  EXPECT_FALSE(json.contains("pose_heading"));
+  EXPECT_FALSE(json.contains("pose_frame"));
+}

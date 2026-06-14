@@ -130,4 +130,27 @@ DecimatedScan decimate_scan(
   return result;
 }
 
+nlohmann::json build_scan_message(
+  const DecimatedScan& scan,
+  double range_max,
+  const std::optional<ScanPose>& pose
+) {
+  nlohmann::json msg = {
+    {"type", "scan"},
+    {"angle_min", scan.angle_min},
+    {"angle_increment", scan.angle_increment},
+    {"range_max", range_max},
+    {"ranges", scan.ranges}
+  };
+
+  if (pose.has_value()) {
+    msg["pose_x"] = pose->x;
+    msg["pose_y"] = pose->y;
+    msg["pose_heading"] = pose->heading;
+    msg["pose_frame"] = pose->frame;
+  }
+
+  return msg;
+}
+
 } // namespace map_codec

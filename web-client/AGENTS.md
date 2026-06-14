@@ -63,7 +63,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `settings.ts` | `SettingsRouter` + namespace/video-url localStorage; `loadMaxSpeed`/`saveMaxSpeed` + clamp (lin 0.1–2.0 / ang 0.1–3.0) |
 | `video_source.ts` | RTSP/UDP/SRT/MJPEG validate + `buildMtxSource` + apply (MediaMTX config API) |
 | `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; getStats@1Hz; backoff retry |
-| `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate) |
+| `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate); scan capture-pose world overlay (`scanToScreenPoints` fuses capture+current pose, `worldToScreenPoint`, `selectScanCapturePose` frame-match fallback) |
 | `sw_register.ts` | Prod-only injectable SW registration wrapper |
 | `perf_beacon.ts` | Navigation/Paint/resource timing → `POST /perf` |
 
@@ -79,7 +79,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 
 ### Inbound message types consumed
 
-`status` (robot_type/name/namespace/length/width), `pong`, `error`, `estop_state`, `map` (trinary-RLE occupancy grid), `pose` (`map`→`base_link`, odom fallback), `scan` (≤120 pts, 0 = invalid). Outbound: `twist` (`linear_x`/`linear_y`/`angular_z`, clamped `[-1,1]`), `ping`, `estop`, `estop_reset`.
+`status` (robot_type/name/namespace/length/width), `pong`, `error`, `estop_state`, `map` (trinary-RLE occupancy grid), `pose` (`map`→`base_link`, odom fallback), `scan` (≤120 pts, 0 = invalid, optional `pose` with capture frame/x/y/heading). Outbound: `twist` (`linear_x`/`linear_y`/`angular_z`, clamped `[-1,1]`), `ping`, `estop`, `estop_reset`.
 
 ## Work Guidance
 
