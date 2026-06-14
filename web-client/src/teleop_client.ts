@@ -28,6 +28,7 @@ export interface TeleopClientOptions {
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
+  onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
@@ -87,7 +88,7 @@ export class TeleopClient {
       onClose: (code, reason) => {
         this.stopKeepalive();
         this.stopPublisher();
-        this.gamepadHandler.stop();
+        this.gamepadHandler.setEnabled(false);
         if (this.intentionalDisconnect) {
           this.options.onClose?.(code, reason);
           return;
@@ -117,7 +118,15 @@ export class TeleopClient {
       onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az),
       onButton:   (action) => this.handleGamepadButton(action),
       onActivity: () => this.options.onGamepadActivity?.(),
+      onConnectionChange: (connected, id) => this.options.onGamepadConnected?.(connected, id),
     });
+    // Gamepad detection (attach/start) runs immediately, independent of socket.
+    // Detection loop polls for controller activity; actual twist/button transmission
+    // is gated by setEnabled(). This ensures operator can always reconnect by pressing
+    // a button, even if the socket is down.
+    this.gamepadHandler.attach();
+    this.gamepadHandler.start();
+    this.gamepadHandler.setEnabled(false);
   }
 
   connect(url: string): void {
@@ -134,7 +143,7 @@ export class TeleopClient {
     this.connection.connect(url);
     this.startKeepalive();
     this.startPublisher();
-    this.gamepadHandler.start();
+    this.gamepadHandler.setEnabled(true);
   }
 
   disconnect(): void {
@@ -145,7 +154,7 @@ export class TeleopClient {
     }
     this.stopKeepalive();
     this.stopPublisher();
-    this.gamepadHandler.stop();
+    this.gamepadHandler.detach();
     this.connection.disconnect();
   }
 
@@ -282,7 +291,7 @@ export class TeleopClient {
       this.connection.connect(this.url);
       this.startKeepalive();
       this.startPublisher();
-      this.gamepadHandler.start();
+      this.gamepadHandler.setEnabled(true);
     }, delay);
   }
 
@@ -314,7 +323,7 @@ export class TeleopClient {
   private handlePongTimeout(): void {
     this.stopKeepalive();
     this.stopPublisher();
-    this.gamepadHandler.stop();
+    this.gamepadHandler.setEnabled(false);
     this.pingSentAt = 0;
     this.missedPongs = 0;
     this.options.onClose?.(4000, 'pong timeout');

@@ -35,6 +35,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     maxAngular: 1.0,
     setMaxLinear: vi.fn(),
     setMaxAngular: vi.fn(),
+    gamepadConnected: false,
     ...overrides,
   };
 }
@@ -834,5 +835,37 @@ describe('MissionTablet', () => {
 
     // Minimap grid should be shown when mapGrid is null
     expect(screen.getByTestId('minimap-grid')).toBeTruthy();
+  });
+
+  it('renders gamepad indicator when gamepadConnected is true', () => {
+    const bridge = createFakeBridge({ gamepadConnected: true });
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+      />
+    );
+
+    // Gamepad indicator should be visible with "🎮 GP" text
+    expect(screen.getByText('🎮 GP')).toBeTruthy();
+  });
+
+  it('does not render gamepad indicator when gamepadConnected is false', () => {
+    const bridge = createFakeBridge({ gamepadConnected: false });
+    const stream = createFakeStream();
+
+    render(
+      <MissionTablet
+        bridge={bridge}
+        stream={stream}
+        onMenu={vi.fn()}
+      />
+    );
+
+    // Gamepad indicator should not be present
+    expect(() => screen.getByText('🎮 GP')).toThrow();
   });
 });

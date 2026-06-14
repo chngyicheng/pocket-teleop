@@ -27,6 +27,8 @@ vi.mock('../src/gamepad_handler.js', () => {
   return {
     GamepadHandler: class {
       constructor(_opts: any) {}
+      attach() {}
+      detach() {}
       start() {}
       stop() {}
       setProfile(_profile: any) {}

@@ -28,15 +28,18 @@ React UI
     └── hooks/
         ├── useTeleopBridge.ts  ← wraps TeleopClient (connectionState, retryCount, latencyMs,
         │                          odom, eStop/resetEstop, sendTwist, gamepadTwist, inputSource,
-        │                          maxLinear/maxAngular, robot dims)
+        │                          gamepadConnected, maxLinear/maxAngular, robot dims)
         ├── useWhepStream.ts    ← wraps WhepClient; lazy start (requestIdleCallback) + code-split
         └── useSessionStatus.ts ← poll /auth/session-status + throttled /auth/heartbeat + banner
 
 Transport / logic (framework-free TS — no React imports):
   TeleopClient ← 20 Hz continuous publish + bounded zero-burst; keepalive + backoff reconnect;
-                 maxMissedPongs zombie detector; 4001 close = terminal (no retry)
+                 maxMissedPongs zombie detector; 4001 close = terminal (no retry);
+                 attaches + starts GamepadHandler in ctor (detection runs always, socket only gates send)
     ├── Connection      ← WebSocket lifecycle; ws?.close() guard on reconnect
-    ├── GamepadHandler  ← rAF Gamepad polling; profile-aware axes; rising-edge buttons; estop→LB
+    ├── GamepadHandler  ← rAF Gamepad polling (try/finally so one throw can't kill the loop); profile-aware
+    │                     axes; rising-edge buttons; estop→LB; attach/detach bind window gamepadconnected/
+    │                     disconnected (idempotent, SSR-safe); poll() owns connection state → onConnectionChange
     ├── GamepadProfiles ← built-in profiles + localStorage
     ├── KeyboardHandler ← WASD/arrow → twist; Space = latching E-STOP (ignored in editable fields)
     ├── TouchJoystick   ← floating touch joystick, normalised −1..1
@@ -57,7 +60,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `connection.ts` | WebSocket open/close/send; fires callbacks |
 | `teleop_client.ts` | Orchestrates modules; 20 Hz publish + zero-burst; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal |
 | `input_shaping.ts` | `shapeAxis(v)` — deadzone 0.1 + cubic curve at the `sendTwist` choke |
-| `gamepad_profiles.ts` / `gamepad_handler.ts` | Profiles + localStorage; rAF polling, profile-aware axes, rising-edge buttons, `estop`→LB |
+| `gamepad_profiles.ts` / `gamepad_handler.ts` | Profiles + localStorage; rAF polling, profile-aware axes, rising-edge buttons, `estop`→LB; `attach`/`detach` window connect/disconnect events, detection independent of socket, `onConnectionChange` → bridge `gamepadConnected` → 🎮 GP chip |
 | `keyboard_handler.ts` | WASD/arrow → twist; Space = latching E-STOP (ignored while editable field focused) |
 | `touch_joystick.ts` | `TouchJoystick` — floating touch joystick, jsdom-testable |
 | `settings.ts` | `SettingsRouter` + namespace/video-url localStorage; `loadMaxSpeed`/`saveMaxSpeed` + clamp (lin 0.1–2.0 / ang 0.1–3.0) |
