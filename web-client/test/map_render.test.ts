@@ -4,6 +4,8 @@ import {
   scanToScreenPoints,
   mapToRgba,
   footprintScreenRect,
+  worldToScreenPoint,
+  selectScanCapturePose,
 } from '../src/map_render';
 
 describe('mapToScreenTransform', () => {
@@ -110,9 +112,28 @@ describe('mapToScreenTransform', () => {
   });
 });
 
+describe('worldToScreenPoint', () => {
+  it('worldToScreenPoint: heading=0, world(1,2)→screen(30,40)', () => {
+    const world = { x: 1, y: 2 };
+    const currentPose = { x: 0, y: 0, heading: 0 };
+    const size = 100;
+    const metersAcross = 10;
+    const s = size / metersAcross; // 10; cx=cy=50
+    // θ=0: cos(0)=1, sin(0)=0
+    // dx=1-0=1, dy=2-0=2
+    // forward = 1*1 + 2*0 = 1
+    // left = -1*0 + 2*1 = 2
+    // x = 50 - 2*10 = 30; y = 50 - 1*10 = 40
+
+    const point = worldToScreenPoint(world, currentPose, size, metersAcross);
+    expect(point.x).toBeCloseTo(30, 5);
+    expect(point.y).toBeCloseTo(40, 5);
+  });
+});
+
 describe('scanToScreenPoints', () => {
   // angleMin=0, inc=π/2, ranges=[1,1,0,2]→3 points
-  it('angleMin=0, inc=π/2, ranges=[1,1,0,2] filters range<=0', () => {
+  it('angleMin=0, inc=π/2, ranges=[1,1,0,2] filters range<=0 (legacy robot-centered)', () => {
     const size = 100;
     const metersAcross = 10;
     const s = size / metersAcross; // 10
@@ -124,12 +145,14 @@ describe('scanToScreenPoints', () => {
       ranges: [1, 1, 0, 2],
     };
 
-    const points = scanToScreenPoints(scan, size, metersAcross);
+    // Robot-centered case: capturePose === currentPose
+    const pose = { x: 0, y: 0, heading: 0 };
+    const points = scanToScreenPoints(scan, pose, pose, size, metersAcross);
 
-    // i=0: φ=0, r=1, bx=1, by=0 → x=50-0*10=50, y=50-1*10=40
-    // i=1: φ=π/2, r=1, bx=0, by=1 → x=50-1*10=40, y=50-0*10=50
+    // i=0: φ=0, r=1, bx=1, by=0 → world(0+1*1-0*0, 0+1*0+0*1)=(1,0) → screen(50,40)
+    // i=1: φ=π/2, r=1, bx=0, by=1 → world(0+0*1-1*0, 0+0*0+1*1)=(0,1) → screen(40,50)
     // i=2: r=0, skip
-    // i=3: φ=3π/2, r=2, bx=0, by=-2 → x=50-(-2)*10=70, y=50-0*10=50
+    // i=3: φ=3π/2, r=2, bx=0, by=-2 → world(0+0*1-(-2)*0, 0+0*0+(-2)*1)=(0,-2) → screen(70,50)
 
     expect(points.length).toBe(3);
     expect(points[0].x).toBeCloseTo(50, 5);
@@ -138,6 +161,75 @@ describe('scanToScreenPoints', () => {
     expect(points[1].y).toBeCloseTo(50, 5);
     expect(points[2].x).toBeCloseTo(70, 5);
     expect(points[2].y).toBeCloseTo(50, 5);
+  });
+
+  it('scan with capture pose displacement and rotation', () => {
+    const size = 100;
+    const metersAcross = 10;
+    const s = size / metersAcross; // 10
+
+    const scan = {
+      angleMin: 0,
+      angleIncrement: 0, // single ray
+      rangeMax: 10,
+      ranges: [2.0],
+    };
+
+    // Capture at (1, 0) heading π/2; current at (0, 0) heading 0
+    const capturePose = { x: 1, y: 0, heading: Math.PI / 2 };
+    const currentPose = { x: 0, y: 0, heading: 0 };
+
+    const points = scanToScreenPoints(scan, capturePose, currentPose, size, metersAcross);
+
+    // i=0: φ=0, r=2.0, bx=2.0*cos(0)=2.0, by=2.0*sin(0)=0
+    // base_link → world via capturePose (heading π/2):
+    //   ch = π/2: cos(π/2)=0, sin(π/2)=1
+    //   wx = 1 + 2.0*0 - 0*1 = 1
+    //   wy = 0 + 2.0*1 + 0*0 = 2
+    // world(1,2) → screen via currentPose (heading 0):
+    //   dx=1-0=1, dy=2-0=2
+    //   forward = 1*1 + 2*0 = 1
+    //   left = -1*0 + 2*1 = 2
+    //   x = 50 - 2*10 = 30; y = 50 - 1*10 = 40
+
+    expect(points.length).toBe(1);
+    expect(points[0].x).toBeCloseTo(30, 5);
+    expect(points[0].y).toBeCloseTo(40, 5);
+  });
+});
+
+describe('selectScanCapturePose', () => {
+  it('scanPose present and frame matches currentPose → return scanPose', () => {
+    const scanPose = { frame: 'map' as const, x: 1, y: 2, heading: 0.5 };
+    const currentPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const result = selectScanCapturePose(scanPose, currentPose);
+
+    expect(result.x).toBe(1);
+    expect(result.y).toBe(2);
+    expect(result.heading).toBe(0.5);
+  });
+
+  it('scanPose frame mismatch (odom vs map) → return currentPose', () => {
+    const scanPose = { frame: 'odom' as const, x: 1, y: 2, heading: 0.5 };
+    const currentPose = { frame: 'map' as const, x: 3, y: 4, heading: 1.0 };
+
+    const result = selectScanCapturePose(scanPose, currentPose);
+
+    expect(result.x).toBe(3);
+    expect(result.y).toBe(4);
+    expect(result.heading).toBe(1.0);
+  });
+
+  it('scanPose undefined → return currentPose', () => {
+    const scanPose = undefined;
+    const currentPose = { frame: 'map' as const, x: 5, y: 6, heading: 2.0 };
+
+    const result = selectScanCapturePose(scanPose, currentPose);
+
+    expect(result.x).toBe(5);
+    expect(result.y).toBe(6);
+    expect(result.heading).toBe(2.0);
   });
 });
 

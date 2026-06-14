@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import type { WhepState } from '../whep_client.js';
-import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect } from '../map_render.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose } from '../map_render.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -432,7 +432,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
       // Draw scan overlay
       if (scan) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
-        const points = scanToScreenPoints(scan, size, m);
+        const capturePose = selectScanCapturePose(scan.pose, mapPose);
+        const points = scanToScreenPoints(scan, capturePose, mapPose, size, m);
         ctx.fillStyle = hexToRgba(color, 0.8);
         for (const p of points) {
           ctx.fillRect(p.x - 0.75, p.y - 0.75, 1.5, 1.5);
