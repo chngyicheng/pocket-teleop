@@ -5,6 +5,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/battery_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <tf2_ros/static_transform_broadcaster.h>
 
@@ -415,4 +416,107 @@ TEST_F(TeleopNodeTest, ReturnHomeAutoTriggerDisabled) {
   EXPECT_DOUBLE_EQ(msgs.back().linear.x, 0.0);
   EXPECT_DOUBLE_EQ(msgs.back().linear.y, 0.0);
   EXPECT_DOUBLE_EQ(msgs.back().angular.z, 0.0);
+}
+
+TEST_F(TeleopNodeTest, BatteryBroadcastReachesWsClient) {
+  // Publish a BatteryState message and verify it reaches the WS client.
+  // Use the default node_ which subscribes to /battery_state.
+  auto battery_publisher = node_->create_publisher<sensor_msgs::msg::BatteryState>(
+    "/battery_state", 10);
+
+  std::vector<std::string> texts;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    texts.push_back(msg->get_payload());
+  });
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Publish a battery state message
+    sensor_msgs::msg::BatteryState test_battery;
+    test_battery.header.stamp = node_->now();
+    test_battery.percentage = 0.84;  // 84%
+    test_battery.voltage = 12.6;
+    test_battery.current = -1.5;  // negative = discharging
+    test_battery.power_supply_status = sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_DISCHARGING;
+    battery_publisher->publish(test_battery);
+
+    // Ping like a real client for ~2 seconds to span multiple 1 Hz battery broadcasts
+    for (int i = 0; i < 11; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      websocketpp::lib::error_code pec;
+      client.send(con->get_handle(), R"({"type":"ping"})",
+                  websocketpp::frame::opcode::text, pec);
+    }
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  bool found = false;
+  for (const auto& text : texts) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || j.value("type", "") != "battery") continue;
+    found = true;
+    EXPECT_NEAR(j["percentage"].get<double>(), 84.0, 0.01);
+    EXPECT_NEAR(j["voltage"].get<double>(), 12.6, 0.01);
+    EXPECT_NEAR(j["current"].get<double>(), -1.5, 0.01);
+    EXPECT_FALSE(j["charging"].get<bool>());
+  }
+  EXPECT_TRUE(found) << "no battery message received over WebSocket";
+}
+
+TEST_F(TeleopNodeTest, BatteryChargingFlag) {
+  // Verify that the charging flag is correctly set based on power_supply_status.
+  auto battery_publisher = node_->create_publisher<sensor_msgs::msg::BatteryState>(
+    "/battery_state", 10);
+
+  std::vector<std::string> texts;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    texts.push_back(msg->get_payload());
+  });
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Publish a battery state with CHARGING status
+    sensor_msgs::msg::BatteryState test_battery;
+    test_battery.header.stamp = node_->now();
+    test_battery.percentage = 0.50;
+    test_battery.voltage = 12.0;
+    test_battery.current = 2.0;  // positive = charging
+    test_battery.power_supply_status = sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_CHARGING;
+    battery_publisher->publish(test_battery);
+
+    // Ping like a real client for ~2 seconds to span multiple 1 Hz battery broadcasts
+    for (int i = 0; i < 11; ++i) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      websocketpp::lib::error_code pec;
+      client.send(con->get_handle(), R"({"type":"ping"})",
+                  websocketpp::frame::opcode::text, pec);
+    }
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  bool found = false;
+  for (const auto& text : texts) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || j.value("type", "") != "battery") continue;
+    found = true;
+    EXPECT_TRUE(j["charging"].get<bool>());
+    EXPECT_NEAR(j["percentage"].get<double>(), 50.0, 0.01);
+  }
+  EXPECT_TRUE(found) << "no battery message with charging=true received over WebSocket";
 }

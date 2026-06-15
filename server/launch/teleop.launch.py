@@ -29,6 +29,7 @@ def generate_launch_description():
                 'map_topic':              EnvironmentVariable('MAP_TOPIC',              default_value='/map'),
                 'map_window_m':           ParameterValue(EnvironmentVariable('MAP_WINDOW_M', default_value='24.0'), value_type=float),
                 'scan_topic':             EnvironmentVariable('SCAN_TOPIC',             default_value='/scan'),
+                'battery_topic':          EnvironmentVariable('BATTERY_TOPIC',          default_value='/battery_state'),
                 'map_frame':              EnvironmentVariable('MAP_FRAME',              default_value='map'),
                 'odom_frame':             EnvironmentVariable('ODOM_FRAME',             default_value='odom'),
                 'base_frame':             EnvironmentVariable('BASE_FRAME',             default_value='base_link'),
