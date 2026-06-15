@@ -1,6 +1,6 @@
 # Milestones — full history
 
-> Moved out of AGENTS.md to keep the handover lean. Newest rows live in AGENTS.md "Milestones done" and migrate here as they age. Tests column = webclient / auth / video-bridge / C++ (— where not yet present). Rationale per milestone: [deviations.md](deviations.md) + the plan linked in the AGENTS.md document index.
+> Full shipped history (one row per milestone). AGENTS.md keeps only a "Most recent" three-line summary in its "Milestones + deviations" section; every milestone's full row lives here. Tests column = webclient / auth / video-bridge / C++ (— where not yet present). Rationale per milestone: [deviations.md](deviations.md) + the plan linked in the AGENTS.md document index.
 
 | Milestone | Tests (web/auth/vb/cpp) | Tag |
 |---|---|---|
