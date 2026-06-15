@@ -3,6 +3,7 @@ import { GamepadHandler } from './gamepad_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
+import type { NetworkStats } from './network_quality.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
 const PUBLISH_INTERVAL_MS = 50;
@@ -63,6 +64,10 @@ export class TeleopClient {
 
   // Zombie-link detection: counts pings sent with no pong reply in between.
   private missedPongs = 0;
+
+  // Network quality tracking
+  private rttSamples: number[] = [];
+  private pingWindow: boolean[] = [];
 
   // Speed scaling
   private maxLinear = 1.0;
@@ -141,6 +146,8 @@ export class TeleopClient {
     this.estopEngaged = false;
     this.missedPongs = 0;
     this.pingSentAt = 0;
+    this.rttSamples = [];
+    this.pingWindow = [];
     this.connection.connect(url);
     this.startKeepalive();
     this.startPublisher();
@@ -170,6 +177,23 @@ export class TeleopClient {
   setMaxSpeed(maxLinear: number, maxAngular: number): void {
     this.maxLinear = maxLinear;
     this.maxAngular = maxAngular;
+  }
+
+  getNetworkStats(): NetworkStats {
+    const n = this.rttSamples.length;
+    const rtt = n > 0 ? this.rttSamples[n - 1] : 0;
+    let jitter = 0;
+    if (n >= 2) {
+      let sum = 0;
+      for (let i = 1; i < n; i++) {
+        sum += Math.abs(this.rttSamples[i] - this.rttSamples[i - 1]);
+      }
+      jitter = sum / (n - 1);
+    }
+    const lossRate = this.pingWindow.length > 0
+      ? this.pingWindow.filter((a) => !a).length / this.pingWindow.length
+      : 0;
+    return { rtt, jitter, lossRate };
   }
 
   private sendScaledTwist(lx: number, ly: number, az: number): void {
@@ -243,7 +267,18 @@ export class TeleopClient {
       this.options.onError?.(msg.message);
     } else if (msg.type === 'pong') {
       if (this.pingSentAt > 0) {
-        this.options.onLatency?.(Date.now() - this.pingSentAt);
+        const rtt = Date.now() - this.pingSentAt;
+        this.options.onLatency?.(rtt);
+        // Track RTT sample (cap 20)
+        this.rttSamples.push(rtt);
+        if (this.rttSamples.length > 20) {
+          this.rttSamples.shift();
+        }
+        // Track ping window: pong answered (true)
+        this.pingWindow.push(true);
+        if (this.pingWindow.length > 20) {
+          this.pingWindow.shift();
+        }
         this.pingSentAt = 0;
       }
       this.missedPongs = 0; // live link — clear the zombie counter
@@ -311,6 +346,11 @@ export class TeleopClient {
         // A still-pending pingSentAt means the previous ping was never answered.
         if (this.pingSentAt > 0) {
           this.missedPongs += 1;
+          // Track ping window: ping lost (false)
+          this.pingWindow.push(false);
+          if (this.pingWindow.length > 20) {
+            this.pingWindow.shift();
+          }
           if (this.missedPongs >= this.maxMissedPongs) {
             this.handlePongTimeout();
             return;
