@@ -45,6 +45,11 @@ export interface SettingsDrawerProps {
    * Defaults to 0 (full height).
    */
   topOffset?: number;
+  /**
+   * Read-only disconnect behavior from server status. Maps internal enum to human-readable label.
+   * Defaults to 'stop'.
+   */
+  disconnectAction?: string;
 }
 
 /** Mission palette — matches the dark industrial console used across the app. */
@@ -167,12 +172,29 @@ interface RobotConfig {
   VIDEO_TOPIC_TYPE: string;
 }
 
+/** Map server disconnect_action enum to human-readable label. */
+const getDisconnectActionLabel = (action: string): string => {
+  switch (action) {
+    case 'stop':
+      return 'Stop';
+    case 'hold':
+      return 'Hold velocity';
+    case 'return_home':
+      return 'Return home';
+    case 'continue':
+      return 'Continue';
+    default:
+      return action;
+  }
+};
+
 export default function SettingsDrawer({
   open,
   onClose,
   activeGamepadProfile = 'Default Profile',
   onGamepadProfileChange,
   topOffset = 0,
+  disconnectAction = 'stop',
 }: SettingsDrawerProps): JSX.Element {
   const [videoMode, setVideoMode] = useState<VideoSourceMode>('ros2');
   const [videoUrl, setVideoUrl] = useState('');
@@ -607,6 +629,14 @@ export default function SettingsDrawer({
                 {robotFieldErrors.ROBOT_WIDTH_M && (
                   <div style={fieldError}>{robotFieldErrors.ROBOT_WIDTH_M}</div>
                 )}
+              </div>
+
+              {/* Disconnect Behavior: read-only display */}
+              <div>
+                <label style={fieldLabel}>Disconnect Behavior</label>
+                <p style={{ ...fieldStyle, backgroundColor: P.surface, padding: '8px', margin: 0, borderRadius: 3, fontSize: 13, color: P.muted }}>
+                  {getDisconnectActionLabel(disconnectAction)}
+                </p>
               </div>
 
               <button onClick={handleRobotConfigSave} style={actionButtonStyle}>

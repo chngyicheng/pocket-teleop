@@ -551,4 +551,46 @@ describe('SettingsDrawer', () => {
     expect(style?.transition).toContain('0.2s');
     expect(style?.transition).toContain('ease');
   });
+
+  // ─── Disconnect Behavior Tests ────────────────────────────────────────────
+
+  it('renders Disconnect Behavior label in Robot section', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+    const label = screen.getByText('Disconnect Behavior');
+    expect(label).toBeTruthy();
+  });
+
+  it('displays disconnect_action="stop" as "Stop"', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} disconnectAction="stop" />);
+    expect(screen.getByText('Stop')).toBeTruthy();
+  });
+
+  it('displays disconnect_action="hold" as "Hold velocity"', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} disconnectAction="hold" />);
+    expect(screen.getByText('Hold velocity')).toBeTruthy();
+  });
+
+  it('displays disconnect_action="return_home" as "Return home"', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} disconnectAction="return_home" />);
+    expect(screen.getByText('Return home')).toBeTruthy();
+  });
+
+  it('displays disconnect_action="continue" as "Continue"', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} disconnectAction="continue" />);
+    expect(screen.getByText('Continue')).toBeTruthy();
+  });
+
+  it('defaults disconnectAction to "stop" when not provided', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+    expect(screen.getByText('Stop')).toBeTruthy();
+  });
+
+  it('Disconnect Behavior field is read-only (not an input)', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} disconnectAction="hold" />);
+    const label = screen.getByText('Disconnect Behavior');
+    const container = label.closest('div');
+    const inputs = container?.querySelectorAll('input');
+    // Should have no input child (read-only display only)
+    expect(inputs?.length).toBe(0);
+  });
 });
