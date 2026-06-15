@@ -45,6 +45,8 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
     robot_namespace,
     robot_length,
     robot_width,
+    DisconnectAction::Stop,
+    0,
     [this](double lx, double ly, double az) { publish_twist(lx, ly, az); });
 
   declare_parameter("odom_topic", std::string("/odom"));

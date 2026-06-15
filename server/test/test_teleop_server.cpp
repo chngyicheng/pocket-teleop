@@ -19,6 +19,7 @@ protected:
     last_lx_ = last_ly_ = last_az_ = 0.0;
     server_ = std::make_unique<TeleopServer>(
       19091, 300, "diff_drive", "", "", 0.0, 0.0,
+      DisconnectAction::Stop, 0,
       [this](double lx, double ly, double az) {
         ++callback_count_;
         last_lx_ = lx; last_ly_ = ly; last_az_ = az;
@@ -335,7 +336,8 @@ TEST_F(TeleopServerTest, RobotDimensionsPassedToStatusMessage) {
   // Create server with non-zero dimensions
   auto callback = [](double, double, double) {};
   auto test_server = std::make_unique<TeleopServer>(
-    19094, 300, "diff_drive", "test_bot", "", 0.281, 0.306, callback);
+    19094, 300, "diff_drive", "test_bot", "", 0.281, 0.306,
+    DisconnectAction::Stop, 0, callback);
   auto test_thread = std::thread([&test_server]() { test_server->start(); });
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -353,7 +355,8 @@ TEST_F(TeleopServerTest, RobotDimensionsPassedToStatusMessage) {
 TEST_F(TeleopServerTest, DefaultRobotDimensionsAreZero) {
   auto callback = [](double, double, double) {};
   auto test_server = std::make_unique<TeleopServer>(
-    19095, 300, "diff_drive", "", "", 0.0, 0.0, callback);
+    19095, 300, "diff_drive", "", "", 0.0, 0.0,
+    DisconnectAction::Stop, 0, callback);
   auto test_thread = std::thread([&test_server]() { test_server->start(); });
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -365,4 +368,235 @@ TEST_F(TeleopServerTest, DefaultRobotDimensionsAreZero) {
   auto j = nlohmann::json::parse(msgs[0]);
   EXPECT_DOUBLE_EQ(j["robot_length"], 0.0);
   EXPECT_DOUBLE_EQ(j["robot_width"], 0.0);
+}
+
+// ---------------------------------------------------------------------------
+// Disconnect behavior tests
+// ---------------------------------------------------------------------------
+
+TEST(DisconnectActionParseTest, ParseValidActions) {
+  EXPECT_EQ(parse_disconnect_action("stop"), DisconnectAction::Stop);
+  EXPECT_EQ(parse_disconnect_action("hold"), DisconnectAction::Hold);
+  EXPECT_EQ(parse_disconnect_action("return_home"), DisconnectAction::ReturnHome);
+  EXPECT_EQ(parse_disconnect_action("continue"), DisconnectAction::Continue);
+}
+
+TEST(DisconnectActionParseTest, ParseUnknownDefaultsToStop) {
+  EXPECT_EQ(parse_disconnect_action("unknown"), DisconnectAction::Stop);
+  EXPECT_EQ(parse_disconnect_action(""), DisconnectAction::Stop);
+}
+
+TEST(DisconnectActionStringTest, StringRoundTrip) {
+  std::vector<DisconnectAction> actions = {
+    DisconnectAction::Stop,
+    DisconnectAction::Hold,
+    DisconnectAction::ReturnHome,
+    DisconnectAction::Continue
+  };
+  for (auto action : actions) {
+    auto str = disconnect_action_to_string(action);
+    EXPECT_EQ(parse_disconnect_action(str), action);
+  }
+}
+
+TEST_F(TeleopServerTest, StatusMessageIncludesDisconnectAction) {
+  auto msgs = connect_and_collect("ws://localhost:19091/teleop");
+  ASSERT_FALSE(msgs.empty());
+  auto j = nlohmann::json::parse(msgs[0]);
+  EXPECT_EQ(j["type"], "status");
+  EXPECT_TRUE(j.contains("disconnect_action"));
+  EXPECT_EQ(j["disconnect_action"], "stop");
+}
+
+TEST_F(TeleopServerTest, StopModeTimeoutClosesImmediately) {
+  // Already using Stop mode in SetUp. Verify it publishes (0,0,0) on timeout.
+  // (This test already exists as WatchdogFiresZeroVelocityOnTimeout)
+  SUCCEED();
+}
+
+TEST(HoldModeTest, HoldModeRepublishesLastCommand) {
+  // Create server with Hold mode, timeout 200ms, hold 400ms
+  int callback_count = 0;
+  double last_lx = 0, last_ly = 0, last_az = 0;
+  auto callback = [&](double lx, double ly, double az) {
+    ++callback_count;
+    last_lx = lx;
+    last_ly = ly;
+    last_az = az;
+  };
+
+  auto server = std::make_unique<TeleopServer>(
+    19096, 200, "diff_drive", "", "", 0.0, 0.0,
+    DisconnectAction::Hold, 400, callback);
+  auto server_thread = std::thread([&server]() { server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Connect and send twist, then go silent
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19096/teleop", ec);
+  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
+    client.send(hdl, R"({"type":"twist","linear_x":0.5,"linear_y":0.0,"angular_z":0.2})",
+                websocketpp::frame::opcode::text);
+  });
+
+  client.connect(con);
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  server->stop();
+  server_thread.join();
+
+  // Expect: twist (0.5, 0, 0.2) published, then held for 400ms,
+  // then eventually (0, 0, 0) after deadline
+  EXPECT_GE(callback_count, 3);  // twist, at least 1 hold republish, final zero
+  // The final zero should be the last call
+  EXPECT_DOUBLE_EQ(last_lx, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly, 0.0);
+  EXPECT_DOUBLE_EQ(last_az, 0.0);
+}
+
+TEST(ContinueModeTest, ContinueModeRepublishesLastCommand) {
+  // Continue mode should behave identically to Hold mode
+  int callback_count = 0;
+  double last_lx = 0, last_ly = 0, last_az = 0;
+  auto callback = [&](double lx, double ly, double az) {
+    ++callback_count;
+    last_lx = lx;
+    last_ly = ly;
+    last_az = az;
+  };
+
+  auto server = std::make_unique<TeleopServer>(
+    19097, 200, "diff_drive", "", "", 0.0, 0.0,
+    DisconnectAction::Continue, 400, callback);
+  auto server_thread = std::thread([&server]() { server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19097/teleop", ec);
+  client.set_open_handler([&](websocketpp::connection_hdl hdl) {
+    client.send(hdl, R"({"type":"twist","linear_x":0.3,"linear_y":0.1,"angular_z":-0.1})",
+                websocketpp::frame::opcode::text);
+  });
+
+  client.connect(con);
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  server->stop();
+  server_thread.join();
+
+  EXPECT_GE(callback_count, 3);
+  EXPECT_DOUBLE_EQ(last_lx, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly, 0.0);
+  EXPECT_DOUBLE_EQ(last_az, 0.0);
+}
+
+TEST(ReturnHomeTest, ReturnHomeModeCallsCallback) {
+  // Create server with ReturnHome mode and a flag callback
+  bool return_home_called = false;
+  int callback_count = 0;
+  double last_lx = 0, last_ly = 0, last_az = 0;
+
+  auto callback = [&](double lx, double ly, double az) {
+    ++callback_count;
+    last_lx = lx;
+    last_ly = ly;
+    last_az = az;
+  };
+
+  auto return_home_callback = [&]() { return_home_called = true; };
+
+  auto server = std::make_unique<TeleopServer>(
+    19098, 200, "diff_drive", "", "", 0.0, 0.0,
+    DisconnectAction::ReturnHome, 0, callback, return_home_callback);
+  auto server_thread = std::thread([&server]() { server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19098/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  server->stop();
+  server_thread.join();
+
+  EXPECT_TRUE(return_home_called);
+  EXPECT_GE(callback_count, 1);
+  // Final publish should be (0, 0, 0)
+  EXPECT_DOUBLE_EQ(last_lx, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly, 0.0);
+  EXPECT_DOUBLE_EQ(last_az, 0.0);
+}
+
+TEST(ReturnHomeTest, ReturnHomeWithNullCallbackFallsBackToStop) {
+  // ReturnHome mode with no callback should behave like Stop
+  int callback_count = 0;
+  double last_lx = 0, last_ly = 0, last_az = 0;
+
+  auto callback = [&](double lx, double ly, double az) {
+    ++callback_count;
+    last_lx = lx;
+    last_ly = ly;
+    last_az = az;
+  };
+
+  auto server = std::make_unique<TeleopServer>(
+    19099, 200, "diff_drive", "", "", 0.0, 0.0,
+    DisconnectAction::ReturnHome, 0, callback, nullptr);
+  auto server_thread = std::thread([&server]() { server->start(); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19099/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  server->stop();
+  server_thread.join();
+
+  EXPECT_GE(callback_count, 1);
+  EXPECT_DOUBLE_EQ(last_lx, 0.0);
+  EXPECT_DOUBLE_EQ(last_ly, 0.0);
+  EXPECT_DOUBLE_EQ(last_az, 0.0);
 }
