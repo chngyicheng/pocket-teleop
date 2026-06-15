@@ -190,6 +190,22 @@ Minimap rendering requires odometry; SLAM is optional:
 
 When SLAM publishes the map and the `map→base_link` transform, the UI shows the SLAM-localized pose (with lidar overlay when a scan is available). If SLAM is unavailable or silent, the minimap falls back to odometry (`odom→base_link`).
 
+### Disconnect behavior (safety)
+
+What the robot does when the operator's connection drops and the watchdog fires. The active mode is shown read-only in **Settings → Robot**.
+
+| Variable | Default | Description |
+|---|---|---|
+| `DISCONNECT_ACTION` | `stop` | `stop` \| `hold` \| `continue` \| `return_home` |
+| `DISCONNECT_ACTION_PARAM` | `0` | For `hold`/`continue`: ms to keep republishing the last command before stopping |
+| `RETURN_HOME_SERVICE` | `/return_home` | `std_srvs/Trigger` service called once for `return_home` |
+
+- **`stop`** (default) — publish zero velocity and close. Fail-stop; backward compatible.
+- **`hold`** / **`continue`** — keep republishing the last command for `DISCONNECT_ACTION_PARAM` ms, then stop. **⚠ Violates fail-stop — a lost link keeps the robot moving. Use only where an abrupt stop is itself unsafe.**
+- **`return_home`** — **auto-trigger is currently disabled**; on disconnect it logs and behaves as `stop`. The `RETURN_HOME_SERVICE` client is wired and ready to re-enable (one-line change in `teleop_node.cpp`).
+
+Set in `.env`; takes effect on the next `docker compose ... up -d`.
+
 ## Video streaming
 
 The video panel auto-connects over WebRTC (via MediaMTX) and can be re-sourced at runtime from **Settings → Video** — no restart needed.

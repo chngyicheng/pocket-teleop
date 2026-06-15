@@ -53,6 +53,7 @@ export interface TeleopBridge {
   setMaxLinear: (v: number) => void;
   setMaxAngular: (v: number) => void;
   gamepadConnected: boolean;
+  disconnectAction: string;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -82,6 +83,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
   const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
   const [gamepadConnected, setGamepadConnected] = useState(false);
+  const [disconnectAction, setDisconnectAction] = useState('stop');
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -98,7 +100,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   useEffect(() => {
     const factory = opts.TeleopClientCtor ?? ((o: TeleopClientOptions) => new TeleopClient(o));
     const client = factory({
-      onStatus: (c, t, n, ns, rl, rw) => {
+      onStatus: (c, t, n, ns, rl, rw, da) => {
         setConnected(c);
         setConnectionState(c ? 'live' : 'disconnected');
         setRobotType(t);
@@ -106,6 +108,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
         setRobotNamespace(ns);
         setRobotLength(rl);
         setRobotWidth(rw);
+        setDisconnectAction(da);
       },
       onReconnecting: (attempt) => {
         setConnectionState('reconnecting');
@@ -272,5 +275,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     setMaxLinear,
     setMaxAngular,
     gamepadConnected,
+    disconnectAction,
   };
 }

@@ -2,7 +2,7 @@ export type ScanPose = { frame: 'map' | 'odom'; x: number; y: number; heading: n
 
 export type InboundMessage =
   | { type: 'pong' }
-  | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string; robot_length: number; robot_width: number }
+  | { type: 'status'; connected: boolean; robot_type: string; robot_name: string; robot_namespace: string; robot_length: number; robot_width: number; disconnect_action: string }
   | { type: 'error'; message: string }
   | { type: 'odom'; x: number; y: number; heading: number }
   | { type: 'estop_state'; engaged: boolean }
@@ -51,6 +51,7 @@ export function parseMessage(raw: string): InboundMessage {
         robot_namespace: (msg['robot_namespace'] as string | undefined) ?? '',
         robot_length,
         robot_width,
+        disconnect_action: (msg['disconnect_action'] as string | undefined) ?? 'stop',
       };
     }
     if (msg['type'] === 'error') {

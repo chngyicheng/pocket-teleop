@@ -66,6 +66,7 @@ describe('parseMessage', () => {
       robot_namespace: 'test_ns',
       robot_length: 0,
       robot_width: 0,
+      disconnect_action: 'stop',
     });
   });
 
@@ -81,6 +82,7 @@ describe('parseMessage', () => {
       robot_namespace: '',
       robot_length: 0,
       robot_width: 0,
+      disconnect_action: 'stop',
     });
   });
 
@@ -94,6 +96,7 @@ describe('parseMessage', () => {
       robot_namespace: '',
       robot_length: 0,
       robot_width: 0,
+      disconnect_action: 'stop',
     });
   });
 
@@ -571,6 +574,57 @@ describe('parseMessage', () => {
     if (result.type === 'scan') {
       expect(result.angle_min).toBe(-1.57);
       expect(result.pose).toBeUndefined();
+    }
+  });
+
+  // disconnect_action tests
+  it('status message with disconnect_action="hold" parses correctly', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","disconnect_action":"hold"}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.disconnect_action).toBe('hold');
+    }
+  });
+
+  it('status message with disconnect_action="return_home" parses correctly', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","disconnect_action":"return_home"}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.disconnect_action).toBe('return_home');
+    }
+  });
+
+  it('status message with disconnect_action="continue" parses correctly', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","disconnect_action":"continue"}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.disconnect_action).toBe('continue');
+    }
+  });
+
+  it('status message missing disconnect_action defaults to "stop"', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns"}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.disconnect_action).toBe('stop');
+    }
+  });
+
+  it('status message with disconnect_action=null defaults to "stop"', () => {
+    const result = parseMessage(
+      '{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"Bot","robot_namespace":"ns","disconnect_action":null}'
+    );
+    expect(result.type).toBe('status');
+    if (result.type === 'status') {
+      expect(result.disconnect_action).toBe('stop');
     }
   });
 });

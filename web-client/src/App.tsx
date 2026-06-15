@@ -104,6 +104,7 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         topOffset={headerHeight}
+        disconnectAction={bridge.disconnectAction}
       />
       <SessionBanner
         remainingMs={session.remainingMs}

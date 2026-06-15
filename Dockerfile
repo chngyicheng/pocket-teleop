@@ -51,4 +51,7 @@ CMD ["/bin/bash", "-c", \
      ${SCAN_TOPIC:+-p \"scan_topic:=${SCAN_TOPIC}\"} \
      ${MAP_FRAME:+-p \"map_frame:=${MAP_FRAME}\"} \
      ${ODOM_FRAME:+-p \"odom_frame:=${ODOM_FRAME}\"} \
-     ${BASE_FRAME:+-p \"base_frame:=${BASE_FRAME}\"}"]
+     ${BASE_FRAME:+-p \"base_frame:=${BASE_FRAME}\"} \
+     ${DISCONNECT_ACTION:+-p \"disconnect_action:=${DISCONNECT_ACTION}\"} \
+     ${DISCONNECT_ACTION_PARAM:+-p disconnect_action_param:=${DISCONNECT_ACTION_PARAM}} \
+     ${RETURN_HOME_SERVICE:+-p \"return_home_service:=${RETURN_HOME_SERVICE}\"}"]
