@@ -8,12 +8,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 import { batteryReadoutModel } from '../battery_readout.js';
+import { networkReadoutModel } from '../network_readout.js';
 
 export type MissionLayout = 'phone-landscape' | 'phone-portrait';
 
@@ -182,6 +183,20 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       : batModel.tier === 'danger'
         ? p.danger
         : p.accent; // warn or none → amber
+
+  // Network quality readout: compute color tier from quality score
+  const sigModel = networkReadoutModel(bridge.networkQuality);
+  const sigColor =
+    sigModel.tier === 'ok'
+      ? p.ok
+      : sigModel.tier === 'danger'
+        ? p.danger
+        : sigModel.tier === 'warn'
+          ? p.accent
+          : p.muted; // none → gray
+  const sigTitle = bridge.networkStats
+    ? `RTT ${Math.round(bridge.networkStats.rtt)}ms · Jitter ${Math.round(bridge.networkStats.jitter)}ms · Loss ${(bridge.networkStats.lossRate * 100).toFixed(0)}%`
+    : 'No data';
 
   // Connection state label. While reconnecting, show the live attempt counter
   // (bridge.retryCount, counts up 1→2→3…) instead of the placeholder text.
@@ -432,7 +447,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   color={p.accent}
                 />
                 <Readout label="BAT" value={batModel.value} color={batColor} />
-                <Readout label="SIG" value="—" color={p.accent} />
+                <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
               </div>
 
               {/* VIDEO info — at the bottom so SPEED sits near the top, away from joysticks */}
@@ -703,7 +718,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             color={p.accent}
           />
           <Readout label="BAT" value={batModel.value} color={batColor} />
-          <Readout label="SIG" value="—" color={p.accent} />
+          <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
         </div>
 
         {/* Bottom-right mini-map + compass */}

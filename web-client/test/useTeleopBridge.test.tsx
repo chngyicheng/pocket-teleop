@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTeleopBridge, type TeleopBridge } from '../src/hooks/useTeleopBridge.js';
 import type { TeleopClientOptions } from '../src/teleop_client.js';
+import type { NetworkStats } from '../src/network_quality.js';
 
 // Fake TeleopClient for testing
 class FakeTeleopClient {
@@ -11,6 +12,7 @@ class FakeTeleopClient {
   maxLinear = 1.0;
   maxAngular = 1.0;
   opts: TeleopClientOptions;
+  private networkStats: NetworkStats | null = null;
 
   constructor(opts: TeleopClientOptions = {}) {
     this.opts = opts;
@@ -38,6 +40,14 @@ class FakeTeleopClient {
 
   setGamepadProfile() {}
   setGamepadEnabled() {}
+
+  getNetworkStats(): NetworkStats | null {
+    return this.networkStats;
+  }
+
+  setNetworkStats(stats: NetworkStats | null) {
+    this.networkStats = stats;
+  }
 
   // Test helpers
   triggerStatus(connected: boolean, robotType = '', robotName = '', robotNamespace = '', robotLength = 0, robotWidth = 0) {
@@ -818,5 +828,45 @@ describe('useTeleopBridge', () => {
     });
 
     expect(result.current.gamepadConnected).toBe(false);
+  });
+
+  it('network quality updates after onLatency trigger and timer advance', async () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // Initially null
+    expect(result.current.networkQuality).toBeNull();
+    expect(result.current.networkStats).toBeNull();
+
+    // Set network stats on the fake client
+    const testStats: NetworkStats = {
+      rtt: 50,
+      jitter: 5,
+      lossRate: 0.001,
+    };
+    fakeClient.setNetworkStats(testStats);
+
+    // Trigger latency to enable network data collection
+    act(() => {
+      fakeClient.triggerLatency(50);
+    });
+
+    // Advance timers by 1100ms (more than the 1000ms interval)
+    act(() => {
+      vi.advanceTimersByTime(1100);
+    });
+
+    // Now networkQuality and networkStats should be populated
+    expect(result.current.networkStats).toEqual(testStats);
+    // Quality should be 4 (good RTT, jitter, loss)
+    expect(result.current.networkQuality).toBe(4);
+
+    vi.useRealTimers();
   });
 });

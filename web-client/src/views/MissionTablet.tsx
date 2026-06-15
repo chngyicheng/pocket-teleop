@@ -12,12 +12,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MiniMap, Compass, VelBars, Readout, CONNECTION_LABELS, VideoSignalOverlay, JoystickZone } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
 import { batteryReadoutModel } from '../battery_readout.js';
+import { networkReadoutModel } from '../network_readout.js';
 
 export interface MissionTabletProps {
   bridge: TeleopBridge;
@@ -216,6 +217,20 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         ? p.danger
         : p.accent; // warn or none → amber
 
+  // Network quality readout: compute color tier from quality score
+  const sigModel = networkReadoutModel(bridge.networkQuality);
+  const sigColor =
+    sigModel.tier === 'ok'
+      ? p.ok
+      : sigModel.tier === 'danger'
+        ? p.danger
+        : sigModel.tier === 'warn'
+          ? p.accent
+          : p.muted; // none → gray
+  const sigTitle = bridge.networkStats
+    ? `RTT ${Math.round(bridge.networkStats.rtt)}ms · Jitter ${Math.round(bridge.networkStats.jitter)}ms · Loss ${(bridge.networkStats.lossRate * 100).toFixed(0)}%`
+    : 'No data';
+
   // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
   // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
   // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
@@ -349,10 +364,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           )}
         </div>
 
-        {/* UP, BAT, SIG placeholder readouts (—) */}
+        {/* UP placeholder readout (—); BAT + SIG are live */}
         <Readout label="UP" value="—" color={p.accent} />
         <Readout label="BAT" value={batModel.value} color={batColor} />
-        <Readout label="SIG" value="—" color={p.accent} />
+        <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
 
         {/* LAT readout pill */}
         <Readout

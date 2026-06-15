@@ -4,6 +4,7 @@ import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
 import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
 import { estimateRemainingMinutes, pruneSamples, type BatterySample } from '../battery_estimate.js';
+import { computeQuality, type NetworkStats } from '../network_quality.js';
 
 export interface MapGrid {
   cells: Uint8Array;
@@ -47,6 +48,8 @@ export interface TeleopBridge {
   scan: ScanData | null;
   battery: BatteryData | null;
   batteryEstimateMinutes: number | null;
+  networkQuality: number | null;
+  networkStats: NetworkStats | null;
   robotName: string;
   robotNamespace: string;
   robotType: string;
@@ -96,6 +99,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [disconnectAction, setDisconnectAction] = useState('stop');
   const [battery, setBattery] = useState<BatteryData | null>(null);
   const [batteryEstimateMinutes, setBatteryEstimateMinutes] = useState<number | null>(null);
+  const [networkQuality, setNetworkQuality] = useState<number | null>(null);
+  const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -105,6 +110,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const lastGamepadActivityRef = useRef(0);
   const lastTouchActivityRef = useRef(0);
   const batterySamplesRef = useRef<BatterySample[]>([]);
+  const hasNetworkDataRef = useRef(false);
 
   const ACTIVITY_WINDOW_MS = 300;
   const IDLE_MS = 400;
@@ -129,6 +135,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onLatency: (ms) => {
         setLatencyMs(ms);
+        hasNetworkDataRef.current = true;
       },
       onOdom: (x, y, heading) => {
         setOdom({ x, y, heading });
@@ -231,8 +238,20 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       setInputSource((prev) => (prev !== newSource ? newSource : prev));
     }, IDLE_CHECK_INTERVAL_MS);
 
+    // Set up network quality stats polling interval
+    const networkStatsInterval = setInterval(() => {
+      if (hasNetworkDataRef.current && clientRef.current?.getNetworkStats) {
+        const stats = clientRef.current.getNetworkStats();
+        if (stats) {
+          setNetworkStats(stats);
+          setNetworkQuality(computeQuality(stats));
+        }
+      }
+    }, 1000);
+
     return () => {
       clearInterval(idleCheckInterval);
+      clearInterval(networkStatsInterval);
       client.disconnect();
     };
     // maxLinear/maxAngular are intentionally NOT deps: live changes are pushed to
@@ -290,6 +309,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     scan,
     battery,
     batteryEstimateMinutes,
+    networkQuality,
+    networkStats,
     robotName,
     robotNamespace,
     robotType,

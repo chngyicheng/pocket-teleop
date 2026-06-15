@@ -24,6 +24,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     scan: null,
     battery: null,
     batteryEstimateMinutes: null,
+    networkQuality: null,
+    networkStats: null,
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
@@ -409,7 +411,7 @@ describe('MissionControl', () => {
     }
   });
 
-  it('BAT and SIG telemetry readouts display "—" (placeholder) in phone view', () => {
+  it('BAT and SIG telemetry readouts display in phone view', () => {
     const bridge = createFakeBridge();
     const stream = createFakeStream();
     const onMenu = vi.fn();
@@ -430,11 +432,12 @@ describe('MissionControl', () => {
     const batValueSpan = batLabelSpan?.nextElementSibling as HTMLElement | undefined;
     expect(batValueSpan?.textContent).toBe('—');
 
-    // Find the SIG label span, then check its sibling value span
+    // Find the SIG label span; it's now inside a SignalBars container
     const sigLabelSpan = allSpans.find((el) => el.textContent === 'SIG');
     expect(sigLabelSpan).toBeTruthy();
-    const sigValueSpan = sigLabelSpan?.nextElementSibling as HTMLElement | undefined;
-    expect(sigValueSpan?.textContent).toBe('—');
+    // Verify that signal bars are rendered (when quality is null, all bars are muted)
+    const signalBarsContainer = screen.getByTestId('signal-bars');
+    expect(signalBarsContainer).toBeTruthy();
   });
 
   /**

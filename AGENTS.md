@@ -109,7 +109,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ## Handover state — continue from here
 
-> **LATEST (2026-06-15) — start here.** `main` is at the merge of **disconnect-after behavior** + **battery telemetry** (both pushed; per-feature detail in [milestones.md](memory/agent-guides/milestones.md), protocol/env in [data-schema.md](memory/agent-guides/data-schema.md) + [server/AGENTS.md](server/AGENTS.md)). **Test baseline: webclient 688 / auth 96 / video-bridge 20 / C++ 88.** **Next build-order item: Network quality** (#1 in "Build these next in order" below; fills the faked `SIG —` readout). Carry-forward debt: a pre-existing `npx tsc --noEmit` red in `web-client/test/useTeleopBridge.test.tsx` (a `FakeTeleopClient` missing ~29 `TeleopClient` members) — the green gate is vitest `npm test`, prod build skips test typecheck, so it's latent; worth a cleanup. Two real-robot smokes are still worth doing (disconnect per-mode behavior; a battery topic → BAT badge — TB3 sim has no `/battery_state`, fake it per TROUBLESHOOTING). `return_home` disconnect auto-trigger is intentionally OFF (one-line re-enable in `teleop_node.cpp`).
+> **LATEST (2026-06-16) — start here.** **Network quality** just landed on branch `feat/network-quality` (logic commit `2b39bdc` + UI commit; awaiting merge/push approval — NOT yet on `main`). It fills the faked `SIG —` readout with a 4-bar `SignalBars` driven by `computeQuality(getNetworkStats())` polled at 1 Hz; client-only, no protocol change (detail in [milestones.md](memory/agent-guides/milestones.md) + [web-client/AGENTS.md](web-client/AGENTS.md)). **Test baseline: webclient 753 / auth 96 / video-bridge 20 / C++ 88.** **Next build-order item: Latency history graph** (#1 in "Build these next in order" below). Carry-forward debt: a pre-existing `npx tsc --noEmit` red in `web-client/test/useTeleopBridge.test.tsx` (a `FakeTeleopClient` missing ~29 `TeleopClient` members) — the green gate is vitest `npm test`, prod build skips test typecheck, so it's latent; worth a cleanup. Network-quality deferred bits: click-to-expand SIG detail popover (title-attr tooltip ships instead). Two real-robot smokes are still worth doing (disconnect per-mode behavior; a battery topic → BAT badge — TB3 sim has no `/battery_state`, fake it per TROUBLESHOOTING). `return_home` disconnect auto-trigger is intentionally OFF (one-line re-enable in `teleop_node.cpp`).
 >
 > **`v1.0.0` release gate (open).** Not tagged yet. Six of seven hardware-verify items confirmed on the real robot (scan-overlay direction + tf-at-stamp, robot-config end-to-end, footprint direction, SW real-device, TLS phone root-CA + real ACME, minimap direction). **Sole remaining gate: cold-browser gamepad/E-STOP activation without priming** — tag `v1.0.0` once an operator confirms a cold browser arms joysticks + LB E-STOP with no priming page. Per-feature contracts live in the child AGENTS.md ([web-client](web-client/AGENTS.md), [auth-server](auth-server/AGENTS.md), [server](server/AGENTS.md)); shipped history in [milestones.md](memory/agent-guides/milestones.md).
 >
@@ -119,23 +119,24 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Test baseline:** webclient **688** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **88**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **753** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **88**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
 > **Next — recommended build order.** **Backlog pool re-verified 2026-06-15** (addendum appended to each plan under `docs/superpowers/plans/2026-05-06-*`): all cited source files still exist, but every plan's UI tasks predate the React migration and must be re-cast from `web-client/index.html` (now a bare React mount) onto `views/MissionControl.tsx` / `MissionTablet.tsx` / `components/`; framework-free logic + server C++ tasks remain valid.
 >
 > **Build these next in order (fastest-to-ship value first; estimates are dev-only, exclude hardware-verify):**
-> 1. **Network quality** (~2 d) — fills the faked `SIG —` `<Readout>`; client-side. Plan: `docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
-> 2. **Latency history graph** (~2–3 d) — `useTeleopBridge` already exposes `latencyMs`; pure React chart. Plan: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
-> 3. **Map view** (~3–5 d) — reuse the React MiniMap + `map_render.ts` transport (plan shrank); also unblocks geofence's editor. Plan: `docs/superpowers/plans/2026-05-06-map-view-implementation.md`
-> 4. **Geofence** (~4–6 d) — SAFETY; standalone logic module, but its visual polygon editor needs Map view first. Plan: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+> 1. **Latency history graph** (~2–3 d) — `useTeleopBridge` already exposes `latencyMs` (and now `networkStats`); pure React chart. Plan: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
+> 2. **Map view** (~3–5 d) — reuse the React MiniMap + `map_render.ts` transport (plan shrank); also unblocks geofence's editor. Plan: `docs/superpowers/plans/2026-05-06-map-view-implementation.md`
+> 3. **Geofence** (~4–6 d) — SAFETY; standalone logic module, but its visual polygon editor needs Map view first. Plan: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+>
+> _(Network quality — done, on branch `feat/network-quality`, awaiting merge.)_
 >
 > **After geofence: on hold / unscheduled** — diagnostics, action macros, multi-camera, then the larger/hardware-or-infra items (PTZ + aux outputs need real hardware; session recording, multi-observer, bidirectional audio, OTA — defer + re-scope before estimating). Do not build PTZ/aux/audio blind — validate against hardware to avoid the "verified only in tests" trap.
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: battery telemetry (688/96/20/88), disconnect-after behavior — SAFETY (646/96/20/86), scan↔map sync capture-pose overlay (634/96/20/75).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: network quality indicator (753/96/20/88), battery telemetry (688/96/20/88), disconnect-after behavior — SAFETY (646/96/20/86).
 
 ---
 

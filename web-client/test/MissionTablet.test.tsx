@@ -24,6 +24,8 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     scan: null,
     battery: null,
     batteryEstimateMinutes: null,
+    networkQuality: null,
+    networkStats: null,
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
@@ -380,7 +382,7 @@ describe('MissionTablet', () => {
 
     const { container } = render(<MissionTablet {...props} />);
 
-    // Check for UP, BAT, SIG with '—' values
+    // Check for UP, BAT, SIG with '—' values (SIG is now SignalBars, not Readout)
     const findReadoutValue = (label: string): string | null => {
       const labelSpans = Array.from(container.querySelectorAll('span'));
       const labelSpan = labelSpans.find((s) => s.textContent === label);
@@ -390,7 +392,9 @@ describe('MissionTablet', () => {
 
     expect(findReadoutValue('UP')).toBe('—');
     expect(findReadoutValue('BAT')).toBe('—');
-    expect(findReadoutValue('SIG')).toBe('—');
+    // SIG is now a SignalBars component; verify it's rendered with data-testid
+    const signalBarsContainer = container.querySelector('[data-testid="signal-bars"]');
+    expect(signalBarsContainer).toBeTruthy();
   });
 
   it('STREAM panel shows codec details; fps/res show — when stats=null', () => {

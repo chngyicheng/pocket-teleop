@@ -19,7 +19,7 @@ React UI
     ├── views/MissionControl.tsx     ← phone (portrait + landscape)
     ├── views/MissionTablet.tsx      ← tablet grid
     ├── components/shared.tsx        ← HUD primitives: Joystick, JoystickZone, Crosshair,
-    │                                   MiniMap, Compass(Tape), VelBars, Readout,
+    │                                   MiniMap, Compass(Tape), VelBars, Readout, SignalBars,
     │                                   VideoSignalOverlay, CONNECTION_LABELS, ConnectionState
     ├── components/SettingsDrawer.tsx   ← slide-in drawer (Gamepad/Video/Robot)
     ├── components/CollapsibleRail.tsx  ← slide-out rail bookmark
@@ -28,7 +28,8 @@ React UI
     └── hooks/
         ├── useTeleopBridge.ts  ← wraps TeleopClient (connectionState, retryCount, latencyMs,
         │                          odom, eStop/resetEstop, sendTwist, gamepadTwist, inputSource,
-        │                          gamepadConnected, maxLinear/maxAngular, robot dims)
+        │                          gamepadConnected, maxLinear/maxAngular, robot dims, battery,
+        │                          networkQuality/networkStats — getNetworkStats() polled @1 Hz)
         ├── useWhepStream.ts    ← wraps WhepClient; lazy start (requestIdleCallback) + code-split
         └── useSessionStatus.ts ← poll /auth/session-status + throttled /auth/heartbeat + banner
 
@@ -58,7 +59,9 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `index.html` | Vite entry shell — instant `#boot-splash` + `<div id="root">` |
 | `protocol.ts` | Message types + serializers (twist, estop/estop_reset/estop_state, ping, odom); inbound parser with `Number.isFinite` guards |
 | `connection.ts` | WebSocket open/close/send; fires callbacks |
-| `teleop_client.ts` | Orchestrates modules; 20 Hz publish + zero-burst; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal |
+| `teleop_client.ts` | Orchestrates modules; 20 Hz publish + zero-burst; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal; tracks last-20 RTT + 20-ping loss window → `getNetworkStats()` |
+| `network_quality.ts` | Pure `computeQuality(stats)→0–4` from RTT/jitter/loss component scores (min aggregation); non-finite/negative → worst |
+| `network_readout.ts` | Pure quality→`{quality,tier}` (none/danger/warn/ok); component layer maps tier→palette (mirrors `battery_readout.ts`) |
 | `input_shaping.ts` | `shapeAxis(v)` — deadzone 0.1 + cubic curve at the `sendTwist` choke |
 | `gamepad_profiles.ts` / `gamepad_handler.ts` | Profiles + localStorage; rAF polling, profile-aware axes, rising-edge buttons, `estop`→LB; `attach`/`detach` window connect/disconnect events, detection independent of socket, `onConnectionChange` → bridge `gamepadConnected` → 🎮 GP chip |
 | `keyboard_handler.ts` | WASD/arrow → twist; Space = latching E-STOP (ignored while editable field focused) |

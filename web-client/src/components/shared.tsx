@@ -933,6 +933,70 @@ export const Readout: React.FC<ReadoutProps> = ({
   );
 };
 
+// ─── SignalBars ───────────────────────────────────────────────────────────────
+
+export interface SignalBarsProps {
+  quality: number | null;
+  color: string;
+  mutedColor?: string;
+  title?: string;
+}
+
+export const SignalBars: React.FC<SignalBarsProps> = ({
+  quality,
+  color,
+  mutedColor = 'rgba(255,255,255,0.15)',
+  title,
+}) => {
+  const barHeights = [5, 8, 11, 14]; // px
+  const barWidth = 3; // px
+  const barGap = 2; // px
+
+  return (
+    <div
+      data-testid="signal-bars"
+      title={title}
+      style={{
+        background: 'rgba(8,10,14,0.55)',
+        backdropFilter: 'blur(6px)',
+        padding: '3px 8px',
+        display: 'flex',
+        gap: 6,
+        alignItems: 'flex-end',
+        borderRadius: 2,
+        border: '1px solid rgba(255,255,255,0.05)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <span style={{ opacity: 0.5, letterSpacing: '0.1em' }}>SIG</span>
+      <div
+        style={{
+          display: 'flex',
+          gap: barGap,
+          alignItems: 'flex-end',
+        }}
+      >
+        {barHeights.map((height, i) => {
+          const filled = quality !== null && i < quality;
+          return (
+            <div
+              key={i}
+              data-testid="signal-bar"
+              data-filled={String(filled)}
+              style={{
+                width: barWidth,
+                height,
+                backgroundColor: filled ? color : mutedColor,
+                borderRadius: 1,
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 // ─── VideoSignalOverlay ────────────────────────────────────────────────────────
 
 export interface VideoSignalOverlayProps {
