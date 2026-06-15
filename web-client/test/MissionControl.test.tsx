@@ -979,4 +979,30 @@ describe('MissionControl', () => {
     // Gamepad indicator should not be present
     expect(() => screen.getByText('🎮 GP')).toThrow();
   });
+
+  it('displays battery percentage from bridge.battery', () => {
+    const bridge = createFakeBridge({
+      battery: {
+        percentage: 12,
+        voltage: 11.0,
+        current: -2.1,
+        charging: false,
+      },
+      batteryEstimateMinutes: 30,
+    });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // BAT readout should show the percentage value
+    expect(screen.getByText(/12%/)).toBeTruthy();
+  });
 });

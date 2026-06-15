@@ -17,6 +17,7 @@ import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
+import { batteryReadoutModel } from '../battery_readout.js';
 
 export interface MissionTabletProps {
   bridge: TeleopBridge;
@@ -206,6 +207,15 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // (robotType). When neither is known yet, render nothing (no fake placeholder).
   const robotLabel = bridge.robotName || bridge.robotType;
 
+  // Battery readout: compute display value and color tier from bridge data
+  const batModel = batteryReadoutModel(bridge.battery, bridge.batteryEstimateMinutes);
+  const batColor =
+    batModel.tier === 'ok'
+      ? p.ok
+      : batModel.tier === 'danger'
+        ? p.danger
+        : p.accent; // warn or none → amber
+
   // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
   // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
   // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
@@ -341,7 +351,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
 
         {/* UP, BAT, SIG placeholder readouts (—) */}
         <Readout label="UP" value="—" color={p.accent} />
-        <Readout label="BAT" value="—" color={p.accent} />
+        <Readout label="BAT" value={batModel.value} color={batColor} />
         <Readout label="SIG" value="—" color={p.accent} />
 
         {/* LAT readout pill */}
