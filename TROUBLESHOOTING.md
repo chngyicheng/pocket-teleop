@@ -13,6 +13,8 @@ Common problems and how to resolve them. For setup and usage, see the [README](R
   - [Controls feel reversed or mapped to the wrong stick](#controls-feel-reversed-or-mapped-to-the-wrong-stick)
 - [Driving](#driving)
   - [Robot keeps moving (or spins) after releasing the joystick](#robot-keeps-moving-or-spins-after-releasing-the-joystick)
+- [Telemetry](#telemetry)
+  - [Battery readout shows "—" (no battery)](#battery-readout-shows--no-battery)
 - [Minimap](#minimap)
   - [Minimap shows "NO MAP"](#minimap-shows-no-map)
   - [Minimap frozen after restarting the simulator](#minimap-frozen-after-restarting-the-simulator)
@@ -98,6 +100,27 @@ ros2 topic echo /cmd_vel --csv
 More than one node name = found it. Close the extra publisher or cancel the nav goal.
 
 **Long-term fix for teleop + nav coexistence:** run a `twist_mux` — teleop and nav2 each publish on their own topic with priorities and per-source timeouts; the mux output feeds the base. Teleop wins while you're touching the controls, nav resumes afterwards, and a silent source times out to zero instead of latching. Also enable your real base driver's cmd_vel timeout where available — the robot should fail safe even if the network drops mid-drive.
+
+---
+
+## Telemetry
+
+### Battery readout shows "—" (no battery)
+
+**Symptom:** the BAT readout stays `—` even though the robot is connected and driving.
+
+**Cause:** there is no `sensor_msgs/BatteryState` message on `BATTERY_TOPIC` (default `/battery_state`). The server only broadcasts battery when a message arrives, and the UI hides the badge otherwise — `—` means "no battery data", not 0%. The **TurtleBot3 Gazebo simulation does not publish `/battery_state`** (that topic comes from the physical robot's OpenCR firmware), so the badge is expected to stay blank in sim.
+
+**Fix / validate in sim:** check the topic exists (`ros2 topic list | grep -i battery`) and is the one in `BATTERY_TOPIC`. To exercise the feature without real hardware, publish a fake battery from a shell sourced with the same `ROS_DOMAIN_ID` as the stack:
+
+```bash
+# 0.84 = 84 % (BatteryState.percentage is 0–1; the server ×100).
+# power_supply_status: 2 = DISCHARGING (1 = CHARGING → shows ⚡).
+ros2 topic pub /battery_state sensor_msgs/msg/BatteryState \
+  '{percentage: 0.84, voltage: 12.6, current: -1.5, power_supply_status: 2}' -r 1
+```
+
+Tiers: >80 % green, 20–80 % amber, <20 % red. Stopping the publisher leaves the last value latched (the server has nothing new to send); restart the stack to clear.
 
 ---
 
