@@ -59,13 +59,13 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
     disconnect_action_param,
     [this](double lx, double ly, double az) { publish_twist(lx, ly, az); },
     [this]() {
-      if (return_home_client_ && return_home_client_->service_is_ready()) {
-        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
-        return_home_client_->async_send_request(req);
-        RCLCPP_INFO(get_logger(), "return_home service call initiated");
-      } else {
-        RCLCPP_WARN(get_logger(), "return_home service unavailable; falling back to stop");
-      }
+      // return_home auto-trigger is intentionally DISABLED for now: on a
+      // disconnect we only log and let the server fall through to stop
+      // (zero cmd_vel + close). The Trigger client is still created so
+      // re-enabling is a one-line change — restore the async_send_request
+      // call here (see git history / AGENTS.md "Disconnect-after behavior").
+      RCLCPP_WARN(get_logger(),
+        "disconnect=return_home: auto-trigger disabled; stopping instead");
     });
 
   declare_parameter("odom_topic", std::string("/odom"));

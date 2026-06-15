@@ -347,8 +347,9 @@ TEST_F(TeleopNodeTest, DisconnectActionParameterization) {
   EXPECT_TRUE(found_status) << "No status message with disconnect_action received";
 }
 
-TEST_F(TeleopNodeTest, ReturnHomeCallsService) {
-  // Test ReturnHome mode: service client should be called on disconnect
+TEST_F(TeleopNodeTest, ReturnHomeAutoTriggerDisabled) {
+  // Auto-trigger is intentionally disabled for now: return_home mode must NOT
+  // call the Trigger service on disconnect; it falls through to stop instead.
   rclcpp::NodeOptions opts;
   opts.append_parameter_override("port", 19094);
   opts.append_parameter_override("timeout_ms", 200);
@@ -406,10 +407,10 @@ TEST_F(TeleopNodeTest, ReturnHomeCallsService) {
   rclcpp::shutdown();
   if (spin_thread.joinable()) spin_thread.join();
 
-  // Service should have been called
-  EXPECT_TRUE(service_called) << "return_home service was not called";
+  // Auto-trigger disabled: the service must NOT have been called.
+  EXPECT_FALSE(service_called) << "return_home auto-trigger should be disabled";
 
-  // Should eventually see zero velocity
+  // Still stops: should eventually see zero velocity
   ASSERT_FALSE(msgs.empty());
   EXPECT_DOUBLE_EQ(msgs.back().linear.x, 0.0);
   EXPECT_DOUBLE_EQ(msgs.back().linear.y, 0.0);

@@ -202,7 +202,7 @@ What the robot does when the operator's connection drops and the watchdog fires.
 
 - **`stop`** (default) — publish zero velocity and close. Fail-stop; backward compatible.
 - **`hold`** / **`continue`** — keep republishing the last command for `DISCONNECT_ACTION_PARAM` ms, then stop. **⚠ Violates fail-stop — a lost link keeps the robot moving. Use only where an abrupt stop is itself unsafe.**
-- **`return_home`** — trigger the `RETURN_HOME_SERVICE`, then stop. Degrades to `stop` if the service is unavailable.
+- **`return_home`** — **auto-trigger is currently disabled**; on disconnect it logs and behaves as `stop`. The `RETURN_HOME_SERVICE` client is wired and ready to re-enable (one-line change in `teleop_node.cpp`).
 
 Set in `.env`; takes effect on the next `docker compose ... up -d`.
 

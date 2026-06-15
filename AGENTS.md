@@ -115,13 +115,13 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Test baseline:** webclient **646** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **84**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **646** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **86**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
 > **Next — recommended build order (2026-06-15).** Scan↔map sync (plan A1) and the gamepad cold-start fix are both **merged to main**; sole open release gate is the cold-browser gamepad/E-STOP hardware check before `v1.0.0` (above). **Backlog pool re-verified 2026-06-15** (addendum appended to each plan under `docs/superpowers/plans/2026-05-06-*`): all cited source files still exist, but every plan's UI tasks predate the React migration and must be re-cast from `web-client/index.html` (now a bare React mount) onto `views/MissionControl.tsx` / `MissionTablet.tsx` / `components/`; framework-free logic + server C++ tasks remain valid.
 >
-> **Disconnect behavior (SAFETY) shipped 2026-06-15** — merged `feat/disconnect-behavior` (646/96/20/84). `DISCONNECT_ACTION` env (`stop`/`hold`/`continue`/`return_home`) drives the watchdog; `hold`/`continue` flagged as fail-stop violations; `return_home` calls a `std_srvs/Trigger` on `/return_home` (degrades to stop). Wired through **both** prod paths (Dockerfile CMD + launch file) + compose env; read-only in Settings → Robot. No hardware-verify gate (server logic, unit-covered) but a real-robot smoke (timeout → expected behavior per mode, esp. return_home service) is worth doing before relying on it operationally.
+> **Disconnect behavior (SAFETY) shipped 2026-06-15** — `feat/disconnect-behavior` (646/96/20/86). `DISCONNECT_ACTION` env (`stop`/`hold`/`continue`/`return_home`) drives the watchdog; `hold`/`continue` flagged as fail-stop violations. **`return_home` auto-trigger is DISABLED** (operator decision): the `std_srvs/Trigger` client on `/return_home` is wired + ready, but the node callback currently logs and behaves as stop — re-enable is a one-line change in `teleop_node.cpp`. Wired through **both** prod paths (Dockerfile CMD + launch file) + compose env; read-only in Settings → Robot. No hardware-verify gate (server logic, unit-covered) but a real-robot smoke (timeout → expected behavior per mode) is worth doing before relying on it operationally.
 >
 > **Build these next in order (fastest-to-ship value first; estimates are dev-only, exclude hardware-verify):**
 > 1. **Battery telemetry** (~2 d) — fills the faked `BAT —` `<Readout>` (MissionControl.tsx:424/695); server C++ + `protocol.ts` exist. Plan: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
@@ -134,7 +134,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: disconnect-after behavior — SAFETY (646/96/20/84), scan↔map sync capture-pose overlay (634/96/20/75), robot config settings page + post-merge fixes (602/96/20/72).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: disconnect-after behavior — SAFETY (646/96/20/86), scan↔map sync capture-pose overlay (634/96/20/75), robot config settings page + post-merge fixes (602/96/20/72).
 
 ---
 

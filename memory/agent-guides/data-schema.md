@@ -77,7 +77,7 @@ On watchdog timeout (operator's connection lost) the server branches on `disconn
 
 - **`stop`** (default, fail-stop) — publishes one zero `cmd_vel` and closes. Backward-compatible original behavior.
 - **`hold`** / **`continue`** — keeps republishing the **last** twist for `disconnect_action_param` ms, then zero+close. **⚠ Violates the fail-stop principle** — a lost link keeps the robot moving. Only for scenarios where an abrupt stop is itself unsafe (e.g. blocking a corridor). E-stop while holding republishes zero.
-- **`return_home`** — calls the `return_home_service` (`std_srvs/Trigger`) once, then zero+close. If the service is unavailable it degrades to `stop` (zero+close).
+- **`return_home`** — **auto-trigger is currently DISABLED** (operator decision): on disconnect the node logs a warning and behaves as `stop` (zero+close). The `return_home_service` (`std_srvs/Trigger`) client is still created; re-enabling is a one-line change in `teleop_node.cpp` (restore the `async_send_request` call).
 
 ## auth-server endpoints
 
