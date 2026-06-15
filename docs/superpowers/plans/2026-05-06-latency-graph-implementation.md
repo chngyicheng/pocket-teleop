@@ -55,3 +55,12 @@
 - 環形緩衝大小固定 60——30 秒已夠決策窗
 - canvas 重繪每秒：移動端可承受
 - 不存 history 至 localStorage——session 即丟，無分析需求
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：`useTeleopBridge` 已暴露 `latencyMs`；歷史圖置 React 組件（非 index.html canvas）。

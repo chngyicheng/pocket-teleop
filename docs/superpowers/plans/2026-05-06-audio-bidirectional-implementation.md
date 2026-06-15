@@ -66,3 +66,12 @@
 - 機器人需音頻硬件；軟件路徑可配，無硬件時禁用
 - echo cancellation 默認啟用（瀏覽器內置）
 - 不錄製音頻（隱私）；session-recording 計劃明確排除
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：設計層計劃（無具體 file ref）；WHEP 今為 `useWhepStream` React hook，須刷新 scope 對之。

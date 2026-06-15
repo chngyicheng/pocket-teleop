@@ -68,3 +68,12 @@
 - 宏執行為「自動駕駛」狀態，安全責任移至宏設計者；UI 警告不可省
 - 不支持條件分支（if/else）或循環——保持簡單
 - 任何手動輸入立即中止——避免衝突
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：邏輯有效；macro 按鈕置 React（非 index.html）。

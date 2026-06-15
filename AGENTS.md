@@ -119,7 +119,17 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
-> **Next — operator to pick (2026-06-14).** Scan↔map sync (plan A1) is now **implemented on `feat/scan-map-sync`, pending operator hardware-verify before merge to main** (rotate/drive in place → scan overlays walls without trailing; map↔odom frame switch must not misproject). Remaining security/health pool: geofence → disconnect behavior → battery telemetry → diagnostics panel → network quality. Open plan: gamepad cold-start detection (`docs/superpowers/plans/2026-06-07-gamepad-cold-start-detection.md`). Pool plans carry a 2026-06-11 execution addendum — re-verify file refs against current code.
+> **Next — recommended build order (2026-06-15).** Scan↔map sync (plan A1) and the gamepad cold-start fix are both **merged to main**; sole open release gate is the cold-browser gamepad/E-STOP hardware check before `v1.0.0` (above). **Backlog pool re-verified 2026-06-15** (addendum appended to each plan under `docs/superpowers/plans/2026-05-06-*`): all cited source files still exist, but every plan's UI tasks predate the React migration and must be re-cast from `web-client/index.html` (now a bare React mount) onto `views/MissionControl.tsx` / `MissionTablet.tsx` / `components/`; framework-free logic + server C++ tasks remain valid.
+>
+> **Build these in order (fastest-to-ship value first; estimates are dev-only, exclude hardware-verify):**
+> 1. **Disconnect behavior** (~1–2 d) — SAFETY; pure server C++, the only plan with zero React staleness. Plan: `docs/superpowers/plans/2026-05-06-disconnect-behavior-implementation.md`
+> 2. **Battery telemetry** (~2 d) — fills the faked `BAT —` `<Readout>` (MissionControl.tsx:424/695); server C++ + `protocol.ts` exist. Plan: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
+> 3. **Network quality** (~2 d) — fills the faked `SIG —` `<Readout>`; client-side. Plan: `docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
+> 4. **Latency history graph** (~2–3 d) — `useTeleopBridge` already exposes `latencyMs`; pure React chart. Plan: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
+> 5. **Map view** (~3–5 d) — reuse the React MiniMap + `map_render.ts` transport (plan shrank); also unblocks #6's editor. Plan: `docs/superpowers/plans/2026-05-06-map-view-implementation.md`
+> 6. **Geofence** (~4–6 d) — SAFETY; standalone logic module, but its visual polygon editor needs Map view (#5) first. Plan: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+>
+> **After geofence: on hold / unscheduled** — diagnostics, action macros, multi-camera, then the larger/hardware-or-infra items (PTZ + aux outputs need real hardware; session recording, multi-observer, bidirectional audio, OTA — defer + re-scope before estimating). Do not build PTZ/aux/audio blind — validate against hardware to avoid the "verified only in tests" trap.
 
 ### Milestones + deviations
 

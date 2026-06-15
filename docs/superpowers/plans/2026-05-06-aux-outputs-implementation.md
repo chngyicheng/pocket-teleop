@@ -68,3 +68,12 @@
 - 按鈕安全：toggle 類默認應為「關」
 - 不限按鈕數量但 UI 上限約 8（手機屏寬限）
 - 命令注入：name 須在配置白名單內，server 拒未知 name
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：同 ptz——`command_handler`/`protocol`/`teleop_client` 現存；toggle UI 置 React。

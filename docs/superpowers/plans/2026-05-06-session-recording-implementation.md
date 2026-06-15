@@ -72,3 +72,12 @@
 - twist 文件純文本利於分析；二進制可後續優化
 - 不錄音頻（無音頻流暫無）；audio-bidirectional 計劃實後可擴
 - 回放 UI 不在此範圍——下載後本地播放器看
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：`auth-server/src/app.ts` 現存；server 端為主，錄製控制 UI 置 React。

@@ -70,3 +70,12 @@
 - 更新中 auth-server 自身被重啟——客戶端 UI 須 reconnect 處理
 - rollback 限定 git 樹乾淨；衝突時拒絕並警告
 - 不支持自動更新（須用戶觸發）——避免意外升級
+
+
+---
+
+## 重核附則（2026-06-15）— 對現碼校驗
+
+- **文件引用皆存**：本計劃所引諸源文件今仍在，無改名/刪除。
+- **React 遷移（關鍵 staleness）**：UI 任務原指 `web-client/index.html`（今僅 44 行 React 掛載點 `<div id="root">` + `/src/main.tsx`）；UI 須改置 React——`web-client/src/views/MissionControl.tsx`、`MissionTablet.tsx`、`web-client/src/components/`。框架無關之邏輯層（`protocol.ts`/`teleop_client.ts`/`settings.ts`、server C++）仍有效。
+- **可復用基建**：`auth-server/src/app.ts` 現存；**無 React staleness**，然 OTA over Docker-Compose 為 15 中最重之設計項。
