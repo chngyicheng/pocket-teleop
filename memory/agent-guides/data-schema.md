@@ -23,11 +23,13 @@
 {"type":"map","resolution":0.05,"width":480,"height":480,"origin_x":-12.0,"origin_y":-12.0,"cells":"u120f300o5..."}
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
 {"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
+{"type":"battery","percentage":84.0,"voltage":12.6,"current":-1.5,"charging":false}
 ```
 
 - `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
 - `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
 - `robot_length` and `robot_width` (meters) always present; `0` when unconfigured. The minimap draws a dashed footprint outline to scale when both are > 0 and the long axis would render ≥ 14 px (zoom-gated). ROS convention: length = x (forward/back), width = y (left/right).
+- `battery` message (`sensor_msgs/BatteryState`): broadcast at 1 Hz when a battery topic is publishing (omitted entirely otherwise — UI hides the badge). `percentage` is 0–100 (ROS 0–1 × 100; may be `null` if the robot reports NaN); `voltage`/`current` in V/A (`null` if non-finite); `charging` is `power_supply_status == CHARGING`. Client shows a BAT % readout with color tiers and a 60 s discharge-rate runtime estimate.
 - `disconnect_action` (status) reports the configured disconnect-after behavior: `stop` (default) | `hold` | `continue` | `return_home`. Client shows it read-only in the settings drawer. Missing field → treated as `stop` (backward compatible).
 - Client treats missing fields as `""` (strings) or `0` (footprint dims) for backwards compatibility.
 - `map` message (SLAM occupancy grid): cells are encoded as trinary RLE string (u=unknown, f=free, o=occupied, followed by run length; row-major order). Sent at ~0.5 Hz when available. Frame origin is world-relative. Cells within a crop window (configurable via `MAP_WINDOW_M`) are transmitted.
@@ -67,6 +69,7 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `map_topic` | `/map` | SLAM occupancy grid subscription (transient_local+reliable QoS) |
 | `map_window_m` | `24.0` | Side length (m) of the map crop window centered on the robot |
 | `scan_topic` | `/scan` | LaserScan subscription (sensor_data QoS) |
+| `battery_topic` | `/battery_state` | `sensor_msgs/BatteryState` subscription; broadcast at 1 Hz, omitted when no message |
 | `map_frame` | `map` | tf2 frame for the SLAM-corrected pose lookup |
 | `odom_frame` | `odom` | tf2 fallback frame when `map_frame` is unavailable |
 | `base_frame` | `base_link` | Robot base frame; pose target + scan yaw correction |
@@ -134,6 +137,7 @@ On watchdog timeout (operator's connection lost) the server branches on `disconn
 | `MAP_FRAME` | No (default: `map`) | tf2 frame for the SLAM-corrected pose lookup |
 | `MAP_WINDOW_M` | No (default: `24.0`) | Side length (m) of the transmitted map crop window, centered on the robot |
 | `SCAN_TOPIC` | No (default: `/scan`) | 2D LaserScan topic for the minimap obstacle overlay |
+| `BATTERY_TOPIC` | No (default: `/battery_state`) | `sensor_msgs/BatteryState` topic for the BAT readout; no such topic = no badge |
 | `ODOM_TOPIC` | No (default: `/odom`) | Odometry topic (minimap fallback when SLAM unavailable) |
 | `ODOM_FRAME` | No (default: `odom`) | tf2 fallback frame when `map` frame unavailable |
 | `BASE_FRAME` | No (default: `base_link`) | Robot base frame for pose/scan transforms |

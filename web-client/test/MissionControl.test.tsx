@@ -22,9 +22,13 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     mapGrid: null,
     mapPose: null,
     scan: null,
+    battery: null,
+    batteryEstimateMinutes: null,
     robotName: 'r1',
     robotNamespace: '/ns',
     robotType: 'diff',
+    robotLength: 0,
+    robotWidth: 0,
     gamepadTwist: { lx: 0, ly: 0, az: 0 },
     inputSource: 'idle',
     sendTwist: vi.fn(),
@@ -36,6 +40,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     setMaxLinear: vi.fn(),
     setMaxAngular: vi.fn(),
     gamepadConnected: false,
+    disconnectAction: 'stop',
     ...overrides,
   };
 }
@@ -973,5 +978,31 @@ describe('MissionControl', () => {
 
     // Gamepad indicator should not be present
     expect(() => screen.getByText('🎮 GP')).toThrow();
+  });
+
+  it('displays battery percentage from bridge.battery', () => {
+    const bridge = createFakeBridge({
+      battery: {
+        percentage: 12,
+        voltage: 11.0,
+        current: -2.1,
+        charging: false,
+      },
+      batteryEstimateMinutes: 30,
+    });
+    const stream = createFakeStream();
+    const onMenu = vi.fn();
+
+    render(
+      <MissionControl
+        bridge={bridge}
+        stream={stream}
+        onMenu={onMenu}
+        layout="phone-landscape"
+      />
+    );
+
+    // BAT readout should show the percentage value
+    expect(screen.getByText(/12%/)).toBeTruthy();
   });
 });

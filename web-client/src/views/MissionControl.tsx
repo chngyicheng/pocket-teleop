@@ -13,6 +13,7 @@ import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
 import { WhepStream } from '../hooks/useWhepStream.js';
+import { batteryReadoutModel } from '../battery_readout.js';
 
 export type MissionLayout = 'phone-landscape' | 'phone-portrait';
 
@@ -172,6 +173,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     bridge.latencyMs >= 0
       ? `${bridge.latencyMs} ms`
       : '— ms';
+
+  // Battery readout: compute display value and color tier from bridge data
+  const batModel = batteryReadoutModel(bridge.battery, bridge.batteryEstimateMinutes);
+  const batColor =
+    batModel.tier === 'ok'
+      ? p.ok
+      : batModel.tier === 'danger'
+        ? p.danger
+        : p.accent; // warn or none → amber
 
   // Connection state label. While reconnecting, show the live attempt counter
   // (bridge.retryCount, counts up 1→2→3…) instead of the placeholder text.
@@ -421,7 +431,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   value={latText}
                   color={p.accent}
                 />
-                <Readout label="BAT" value="—" color={p.accent} />
+                <Readout label="BAT" value={batModel.value} color={batColor} />
                 <Readout label="SIG" value="—" color={p.accent} />
               </div>
 
@@ -692,7 +702,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             value={latText}
             color={p.accent}
           />
-          <Readout label="BAT" value="—" color={p.accent} />
+          <Readout label="BAT" value={batModel.value} color={batColor} />
           <Readout label="SIG" value="—" color={p.accent} />
         </div>
 

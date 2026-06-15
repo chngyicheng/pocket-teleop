@@ -99,6 +99,33 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
       on_scan(msg);
     });
 
+  // Battery subscription
+  declare_parameter("battery_topic", std::string("/battery_state"));
+  const auto battery_topic = get_parameter("battery_topic").as_string();
+
+  battery_sub_ = create_subscription<sensor_msgs::msg::BatteryState>(
+    battery_topic, 10,
+    [this](const sensor_msgs::msg::BatteryState::SharedPtr msg) {
+      latest_battery_ = msg;
+    });
+
+  // Battery broadcast timer (1 Hz)
+  battery_timer_ = create_wall_timer(
+    BATTERY_INTERVAL,
+    [this]() {
+      if (!latest_battery_) return;
+
+      nlohmann::json battery = {
+        {"type", "battery"},
+        {"percentage", latest_battery_->percentage * 100.0},
+        {"voltage", latest_battery_->voltage},
+        {"current", latest_battery_->current},
+        {"charging", latest_battery_->power_supply_status ==
+                     sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_CHARGING}
+      };
+      server_->broadcast(battery.dump());
+    });
+
   declare_parameter("map_topic", std::string("/map"));
   declare_parameter("map_window_m", 24.0);
   const auto map_topic = get_parameter("map_topic").as_string();
@@ -178,6 +205,7 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   RCLCPP_INFO(get_logger(), "Subscribing to odom topic: %s", odom_topic.c_str());
   RCLCPP_INFO(get_logger(), "Subscribing to map topic: %s (window: %.1f m)", map_topic.c_str(), map_window_m);
   RCLCPP_INFO(get_logger(), "Subscribing to scan topic: %s", scan_topic.c_str());
+  RCLCPP_INFO(get_logger(), "Subscribing to battery topic: %s", battery_topic.c_str());
   RCLCPP_INFO(get_logger(), "Publishing to topic: %s", topic.c_str());
 }
 

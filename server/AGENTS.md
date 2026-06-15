@@ -66,8 +66,9 @@ Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, 
 {"type":"map","resolution":0.05,"width":480,"height":480,"origin_x":-12.0,"origin_y":-12.0,"cells":"u120f300o5..."}
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
 {"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
+{"type":"battery","percentage":84.0,"voltage":12.6,"current":-1.5,"charging":false}
 ```
-`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. `disconnect_action` in status = configured disconnect-after behavior (`stop`/`hold`/`continue`/`return_home`), shown read-only in the client. ROS convention: length = x (fwd/back), width = y (left/right).
+`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. `battery` = `sensor_msgs/BatteryState` at 1 Hz (percentage 0–100, voltage, current, charging; omitted when no battery message). `disconnect_action` in status = configured disconnect-after behavior (`stop`/`hold`/`continue`/`return_home`), shown read-only in the client. ROS convention: length = x (fwd/back), width = y (left/right).
 
 ### C++ result types (CommandHandler)
 
@@ -100,6 +101,7 @@ Dispatch via `std::holds_alternative<>`.
 | `map_topic` | `MAP_TOPIC` | `/map` | SLAM grid (transient_local+reliable QoS) |
 | `map_window_m` | `MAP_WINDOW_M` | `24.0` | Map crop window side (m), robot-centered |
 | `scan_topic` | `SCAN_TOPIC` | `/scan` | LaserScan (sensor_data QoS) |
+| `battery_topic` | `BATTERY_TOPIC` | `/battery_state` | `sensor_msgs/BatteryState`; 1 Hz broadcast, omitted when no message |
 | `map_frame` | `MAP_FRAME` | `map` | tf2 frame for SLAM pose lookup |
 | `odom_frame` | `ODOM_FRAME` | `odom` | tf2 fallback frame |
 | `base_frame` | `BASE_FRAME` | `base_link` | Pose target + scan yaw correction |

@@ -44,6 +44,15 @@ function makeBridge(): TeleopBridge {
     maxAngular: 1.0,
     setMaxLinear: vi.fn(),
     setMaxAngular: vi.fn(),
+    mapGrid: null,
+    mapPose: null,
+    scan: null,
+    battery: null,
+    batteryEstimateMinutes: null,
+    robotLength: 0,
+    robotWidth: 0,
+    gamepadConnected: false,
+    disconnectAction: 'stop',
   };
 }
 

@@ -8,6 +8,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <sensor_msgs/msg/battery_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
@@ -56,4 +57,10 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr scan_sub_;
   std::chrono::steady_clock::time_point last_scan_sent_{};
   static constexpr std::chrono::milliseconds SCAN_INTERVAL{200};   // 5 Hz
+
+  // Battery data
+  rclcpp::Subscription<sensor_msgs::msg::BatteryState>::SharedPtr battery_sub_;
+  sensor_msgs::msg::BatteryState::SharedPtr latest_battery_;
+  rclcpp::TimerBase::SharedPtr battery_timer_;
+  static constexpr std::chrono::milliseconds BATTERY_INTERVAL{1000}; // 1 Hz
 };

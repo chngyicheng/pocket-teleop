@@ -627,4 +627,103 @@ describe('parseMessage', () => {
       expect(result.disconnect_action).toBe('stop');
     }
   });
+
+  // battery message tests
+  it('parses battery message with valid percentage, voltage, current, charging', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":85,"voltage":24.5,"current":10.2,"charging":false}'
+    );
+    expect(result).toEqual({
+      type: 'battery',
+      percentage: 85,
+      voltage: 24.5,
+      current: 10.2,
+      charging: false,
+    });
+  });
+
+  it('parses battery message with percentage=null (JSON null for NaN from robot)', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":null,"voltage":24.5,"current":10.2,"charging":true}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.percentage).toBeNull();
+      expect(result.voltage).toBe(24.5);
+      expect(result.current).toBe(10.2);
+      expect(result.charging).toBe(true);
+    }
+  });
+
+  it('battery message with non-boolean charging returns unknown', () => {
+    const raw = '{"type":"battery","percentage":85,"voltage":24.5,"current":10.2,"charging":"yes"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('parses battery message with zero percentage', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":0,"voltage":20.0,"current":0,"charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.percentage).toBe(0);
+    }
+  });
+
+  it('parses battery message with 100 percentage', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":100,"voltage":25.2,"current":0,"charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.percentage).toBe(100);
+    }
+  });
+
+  it('battery message with non-finite percentage (not null) defaults to null', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":"invalid","voltage":24.5,"current":10.2,"charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.percentage).toBeNull();
+    }
+  });
+
+  it('battery message with non-finite voltage defaults to null', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":85,"voltage":"invalid","current":10.2,"charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.voltage).toBeNull();
+    }
+  });
+
+  it('battery message with non-finite current defaults to null', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":85,"voltage":24.5,"current":"invalid","charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.current).toBeNull();
+    }
+  });
+
+  it('battery message with missing charging field returns unknown', () => {
+    const raw = '{"type":"battery","percentage":85,"voltage":24.5,"current":10.2}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('parses battery message with negative voltage (discharge)', () => {
+    const result = parseMessage(
+      '{"type":"battery","percentage":85,"voltage":24.5,"current":-15.0,"charging":false}'
+    );
+    expect(result.type).toBe('battery');
+    if (result.type === 'battery') {
+      expect(result.current).toBe(-15.0);
+    }
+  });
 });
