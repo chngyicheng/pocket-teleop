@@ -16,7 +16,7 @@
 ## Message protocol — server → client
 
 ```json
-{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1","robot_length":0.281,"robot_width":0.306}
+{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1","robot_length":0.281,"robot_width":0.306,"disconnect_action":"stop"}
 {"type":"pong"}
 {"type":"error","message":"<reason>"}
 {"type":"estop_state","engaged":true}
@@ -28,6 +28,7 @@
 - `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
 - `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
 - `robot_length` and `robot_width` (meters) always present; `0` when unconfigured. The minimap draws a dashed footprint outline to scale when both are > 0 and the long axis would render ≥ 14 px (zoom-gated). ROS convention: length = x (forward/back), width = y (left/right).
+- `disconnect_action` (status) reports the configured disconnect-after behavior: `stop` (default) | `hold` | `continue` | `return_home`. Client shows it read-only in the settings drawer. Missing field → treated as `stop` (backward compatible).
 - Client treats missing fields as `""` (strings) or `0` (footprint dims) for backwards compatibility.
 - `map` message (SLAM occupancy grid): cells are encoded as trinary RLE string (u=unknown, f=free, o=occupied, followed by run length; row-major order). Sent at ~0.5 Hz when available. Frame origin is world-relative. Cells within a crop window (configurable via `MAP_WINDOW_M`) are transmitted.
 - `pose` message (tf2 transform): SLAM `map→base_link` pose frame when SLAM is active; falls back to `odom→base_link` (frame="odom") when SLAM unavailable. Sent at ~5 Hz.
@@ -53,6 +54,9 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 |---|---|---|
 | `port` | `9091` | WebSocket listen port (internal only — not exposed; auth-server proxies) |
 | `timeout_ms` | `500` | Watchdog timeout in ms |
+| `disconnect_action` | `stop` | Behavior when the watchdog fires (client gone): `stop` \| `hold` \| `continue` \| `return_home`. See note below |
+| `disconnect_action_param` | `0` | Milliseconds to keep republishing the last twist before zero+close, for `hold`/`continue` |
+| `return_home_service` | `/return_home` | `std_srvs/Trigger` service called once on disconnect when action is `return_home` |
 | `cmd_vel_topic` | `/cmd_vel` | Base ROS2 publish topic (overridden by `robot_namespace` if set) |
 | `robot_type` | `diff_drive` | Sent to client in status message on connect |
 | `robot_name` | `""` | Human-readable display name; sent to client in status message |
@@ -66,6 +70,14 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `map_frame` | `map` | tf2 frame for the SLAM-corrected pose lookup |
 | `odom_frame` | `odom` | tf2 fallback frame when `map_frame` is unavailable |
 | `base_frame` | `base_link` | Robot base frame; pose target + scan yaw correction |
+
+### Disconnect-after behavior (safety)
+
+On watchdog timeout (operator's connection lost) the server branches on `disconnect_action`:
+
+- **`stop`** (default, fail-stop) — publishes one zero `cmd_vel` and closes. Backward-compatible original behavior.
+- **`hold`** / **`continue`** — keeps republishing the **last** twist for `disconnect_action_param` ms, then zero+close. **⚠ Violates the fail-stop principle** — a lost link keeps the robot moving. Only for scenarios where an abrupt stop is itself unsafe (e.g. blocking a corridor). E-stop while holding republishes zero.
+- **`return_home`** — calls the `return_home_service` (`std_srvs/Trigger`) once, then zero+close. If the service is unavailable it degrades to `stop` (zero+close).
 
 ## auth-server endpoints
 
@@ -110,6 +122,9 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 
 | Variable | Required | Description |
 |---|---|---|
+| `DISCONNECT_ACTION` | No (default: `stop`) | Disconnect-after behavior: `stop` \| `hold` \| `continue` \| `return_home`. **`hold`/`continue` violate fail-stop — see "Disconnect-after behavior" above** |
+| `DISCONNECT_ACTION_PARAM` | No (default: `0`) | Hold/continue window in ms before zero+close |
+| `RETURN_HOME_SERVICE` | No (default: `/return_home`) | `std_srvs/Trigger` service triggered on disconnect when action is `return_home` |
 | `ROBOT_TYPE` | No (default: `diff_drive`) | Reported to client on connect; `diff_drive` or `holonomic` |
 | `ROBOT_NAME` | No (default: `""`) | Display name shown in UI; omit or leave empty for no label |
 | `ROBOT_NAMESPACE` | No (default: `""`) | ROS2 namespace; routes cmd_vel to `/<ns>/cmd_vel` when set |

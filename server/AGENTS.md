@@ -43,7 +43,7 @@ Owns: `src/`, `include/`, `test/`, `launch/`, `CMakeLists.txt`, `package.xml`, F
 - **No `rclcpp` in `CommandHandler` or `TeleopServer`** — they must compile and test without ROS2. Linking `rclcpp` into those test targets = bug.
 - **Token always via `TELEOP_TOKEN` env at runtime** — never in source or image, no default, no fallback. Missing token = hard failure. Never skip token validation on a WebSocket upgrade.
 - **One active client at a time** — second connection gets `already-connected` error.
-- **Watchdog fires once per session** (`timed_out_` flag); `ws_server_.close()` must run on the io_service thread, never the watchdog thread (websocketpp UB otherwise).
+- **Watchdog fires once per session** (`timed_out_` flag); `ws_server_.close()` must run on the io_service thread, never the watchdog thread (websocketpp UB otherwise). For `hold`/`continue` the watchdog enters a holding phase (republishes the cached last twist each tick until `disconnect_action_param` ms elapse) before the single zero+close. `return_home` invokes `return_home_callback_` (a `std_srvs/Trigger` call, injected by TeleopNode so TeleopServer stays ROS2-free) then zero+close.
 - **Test ports 19091 (`test_teleop_server`) / 19092 (`test_teleop_node`) only** — 9091 is the running container.
 
 ### Protocol — client → server
@@ -59,7 +59,7 @@ Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, 
 ### Protocol — server → client
 
 ```json
-{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1","robot_length":0.281,"robot_width":0.306}
+{"type":"status","connected":true,"robot_type":"diff_drive","robot_name":"My Robot","robot_namespace":"robot1","robot_length":0.281,"robot_width":0.306,"disconnect_action":"stop"}
 {"type":"pong"}
 {"type":"error","message":"<reason>"}
 {"type":"estop_state","engaged":true}
@@ -67,7 +67,7 @@ Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, 
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
 {"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
 ```
-`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. ROS convention: length = x (fwd/back), width = y (left/right).
+`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. `disconnect_action` in status = configured disconnect-after behavior (`stop`/`hold`/`continue`/`return_home`), shown read-only in the client. ROS convention: length = x (fwd/back), width = y (left/right).
 
 ### C++ result types (CommandHandler)
 
@@ -87,6 +87,9 @@ Dispatch via `std::holds_alternative<>`.
 |---|---|---|---|
 | `port` | — | `9091` | WebSocket listen port (internal only) |
 | `timeout_ms` | — | `500` | Watchdog timeout (ms) |
+| `disconnect_action` | `DISCONNECT_ACTION` | `stop` | Watchdog-fire behavior: `stop`/`hold`/`continue`/`return_home`. `hold`/`continue` **violate fail-stop** (keep republishing last twist) |
+| `disconnect_action_param` | `DISCONNECT_ACTION_PARAM` | `0` | `hold`/`continue` republish window (ms) before zero+close |
+| `return_home_service` | `RETURN_HOME_SERVICE` | `/return_home` | `std_srvs/Trigger` service called once for `return_home` (unavailable → degrades to stop) |
 | `cmd_vel_topic` | — | `/cmd_vel` | Base publish topic (overridden by namespace) |
 | `robot_type` | `ROBOT_TYPE` | `diff_drive` | `diff_drive` or `holonomic`; sent in status |
 | `robot_name` | `ROBOT_NAME` | `""` | Display name; sent in status |

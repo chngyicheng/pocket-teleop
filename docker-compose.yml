@@ -28,6 +28,11 @@ services:
       - MAP_FRAME=${MAP_FRAME:-}
       - ODOM_FRAME=${ODOM_FRAME:-}
       - BASE_FRAME=${BASE_FRAME:-}
+      # Disconnect-after behavior. Non-empty fallbacks so the launch file's
+      # int parse (DISCONNECT_ACTION_PARAM) never sees an empty string.
+      - DISCONNECT_ACTION=${DISCONNECT_ACTION:-stop}
+      - DISCONNECT_ACTION_PARAM=${DISCONNECT_ACTION_PARAM:-0}
+      - RETURN_HOME_SERVICE=${RETURN_HOME_SERVICE:-/return_home}
     env_file:
       - path: ./config/robot.env
         required: false
