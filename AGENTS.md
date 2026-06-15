@@ -82,6 +82,8 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md
 
+- **`git push` approval is PER-ACTION, never a standing session license.** A go-ahead like "merge and push" authorizes exactly that one push of the work in hand — it does NOT license pushing later commits made afterward. Every subsequent push needs its own fresh approval, no matter how small or docs-only the new commits are. Committing locally is fine without asking; after ANY commit, stop and ask before pushing, every time. When unsure whether a prior "push" still applies, it does not — ask.
+
 ## Child DOX Index
 
 Root owns project-wide rules, run stack, execution mode, handover state, and the document/plan indexes. Direct children own their subtree contracts:
