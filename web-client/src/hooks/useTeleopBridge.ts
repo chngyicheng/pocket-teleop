@@ -3,6 +3,7 @@ import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
 import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
+import { estimateRemainingMinutes, pruneSamples, type BatterySample } from '../battery_estimate.js';
 
 export interface MapGrid {
   cells: Uint8Array;
@@ -28,6 +29,13 @@ export interface ScanData {
   pose?: { frame: 'map' | 'odom'; x: number; y: number; heading: number };
 }
 
+export interface BatteryData {
+  percentage: number | null;
+  voltage: number | null;
+  current: number | null;
+  charging: boolean;
+}
+
 export interface TeleopBridge {
   connected: boolean;
   connectionState: ConnectionState;
@@ -37,6 +45,8 @@ export interface TeleopBridge {
   mapGrid: MapGrid | null;
   mapPose: MapPose | null;
   scan: ScanData | null;
+  battery: BatteryData | null;
+  batteryEstimateMinutes: number | null;
   robotName: string;
   robotNamespace: string;
   robotType: string;
@@ -84,6 +94,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
   const [gamepadConnected, setGamepadConnected] = useState(false);
   const [disconnectAction, setDisconnectAction] = useState('stop');
+  const [battery, setBattery] = useState<BatteryData | null>(null);
+  const [batteryEstimateMinutes, setBatteryEstimateMinutes] = useState<number | null>(null);
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -92,6 +104,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const clientRef = useRef<TeleopClient | null>(null);
   const lastGamepadActivityRef = useRef(0);
   const lastTouchActivityRef = useRef(0);
+  const batterySamplesRef = useRef<BatterySample[]>([]);
 
   const ACTIVITY_WINDOW_MS = 300;
   const IDLE_MS = 400;
@@ -177,6 +190,22 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
           setGamepadTwist({ lx, ly, az });
         }
       },
+      onBattery: (b) => {
+        setBattery(b);
+        if (b.percentage !== null) {
+          // Record this sample for rate estimation
+          const now = Date.now();
+          batterySamplesRef.current.push({ t: now, pct: b.percentage });
+          // Prune to 60s window
+          batterySamplesRef.current = pruneSamples(batterySamplesRef.current, now, 60000);
+          // Estimate remaining minutes
+          const estimate = estimateRemainingMinutes(batterySamplesRef.current, b.charging);
+          setBatteryEstimateMinutes(estimate.minutes);
+        } else if (b.charging) {
+          // No percentage available but charging
+          setBatteryEstimateMinutes(null);
+        }
+      },
     });
 
     clientRef.current = client;
@@ -259,6 +288,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     mapGrid,
     mapPose,
     scan,
+    battery,
+    batteryEstimateMinutes,
     robotName,
     robotNamespace,
     robotType,

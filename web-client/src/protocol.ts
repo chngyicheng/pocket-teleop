@@ -9,6 +9,7 @@ export type InboundMessage =
   | { type: 'pose'; frame: 'map' | 'odom'; x: number; y: number; heading: number }
   | { type: 'map'; resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }
   | { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }
+  | { type: 'battery'; percentage: number | null; voltage: number | null; current: number | null; charging: boolean }
   | { type: 'unknown'; raw: string };
 
 export function buildTwist(lx: number, ly: number, az: number): string {
@@ -156,6 +157,27 @@ export function parseMessage(raw: string): InboundMessage {
       }
 
       return result;
+    }
+    if (msg['type'] === 'battery') {
+      if (typeof msg['charging'] !== 'boolean') {
+        return { type: 'unknown', raw };
+      }
+      const percentage = typeof msg['percentage'] === 'number' && Number.isFinite(msg['percentage'])
+        ? msg['percentage']
+        : null;
+      const voltage = typeof msg['voltage'] === 'number' && Number.isFinite(msg['voltage'])
+        ? msg['voltage']
+        : null;
+      const current = typeof msg['current'] === 'number' && Number.isFinite(msg['current'])
+        ? msg['current']
+        : null;
+      return {
+        type: 'battery',
+        percentage,
+        voltage,
+        current,
+        charging: msg['charging'],
+      };
     }
     return { type: 'unknown', raw };
   } catch {

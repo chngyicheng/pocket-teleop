@@ -25,6 +25,7 @@ export interface TeleopClientOptions {
   onPose?: (frame: 'map' | 'odom', x: number, y: number, heading: number) => void;
   onMap?: (map: { resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }) => void;
   onScan?: (scan: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }) => void;
+  onBattery?: (battery: { percentage: number | null; voltage: number | null; current: number | null; charging: boolean }) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number) => void;
   onGamepadActivity?: () => void;
@@ -275,6 +276,13 @@ export class TeleopClient {
         scanData.pose = msg.pose;
       }
       this.options.onScan?.(scanData);
+    } else if (msg.type === 'battery') {
+      this.options.onBattery?.({
+        percentage: msg.percentage,
+        voltage: msg.voltage,
+        current: msg.current,
+        charging: msg.charging,
+      });
     }
   }
 
