@@ -183,6 +183,7 @@ Minimap rendering requires odometry; SLAM is optional:
 | `ODOM_TOPIC` | `/odom` | Odometry source; always used as fallback |
 | `MAP_TOPIC` | `/map` | SLAM occupancy grid topic |
 | `SCAN_TOPIC` | `/scan` | 2D lidar scan for the obstacle overlay |
+| `BATTERY_TOPIC` | `/battery_state` | `sensor_msgs/BatteryState`; shows a BAT % readout (green/amber/red + ⚡ charging). No such topic = no badge |
 | `MAP_FRAME` | `map` | Frame ID for SLAM origin |
 | `ODOM_FRAME` | `odom` | Frame ID for odometry origin |
 | `BASE_FRAME` | `base_link` | Robot base frame for pose/scan transforms |

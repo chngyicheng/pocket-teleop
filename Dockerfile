@@ -49,6 +49,7 @@ CMD ["/bin/bash", "-c", \
      ${MAP_TOPIC:+-p \"map_topic:=${MAP_TOPIC}\"} \
      ${MAP_WINDOW_M:+-p \"map_window_m:=${MAP_WINDOW_M}\"} \
      ${SCAN_TOPIC:+-p \"scan_topic:=${SCAN_TOPIC}\"} \
+     ${BATTERY_TOPIC:+-p \"battery_topic:=${BATTERY_TOPIC}\"} \
      ${MAP_FRAME:+-p \"map_frame:=${MAP_FRAME}\"} \
      ${ODOM_FRAME:+-p \"odom_frame:=${ODOM_FRAME}\"} \
      ${BASE_FRAME:+-p \"base_frame:=${BASE_FRAME}\"} \

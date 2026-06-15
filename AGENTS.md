@@ -115,7 +115,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Test baseline:** webclient **646** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **86**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **688** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **88**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
@@ -123,18 +123,21 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Disconnect behavior (SAFETY) shipped 2026-06-15** — `feat/disconnect-behavior` (646/96/20/86). `DISCONNECT_ACTION` env (`stop`/`hold`/`continue`/`return_home`) drives the watchdog; `hold`/`continue` flagged as fail-stop violations. **`return_home` auto-trigger is DISABLED** (operator decision): the `std_srvs/Trigger` client on `/return_home` is wired + ready, but the node callback currently logs and behaves as stop — re-enable is a one-line change in `teleop_node.cpp`. Wired through **both** prod paths (Dockerfile CMD + launch file) + compose env; read-only in Settings → Robot. No hardware-verify gate (server logic, unit-covered) but a real-robot smoke (timeout → expected behavior per mode) is worth doing before relying on it operationally.
 >
+> **Battery telemetry shipped 2026-06-15** — `feat/battery-telemetry` (688/96/20/88, chained off `feat/disconnect-behavior`). `BATTERY_TOPIC` (`sensor_msgs/BatteryState`, default `/battery_state`) → 1 Hz `battery` broadcast (omitted when no topic) → BAT % readout with color tiers (>80 green / 20–80 amber / <20 red / ⚡ charging) in both views; pure `battery_estimate.ts` keeps a 60 s window for a discharge-rate runtime estimate (in bridge as `batteryEstimateMinutes`, not yet surfaced — detail panel deferred). Wired through both prod paths (Dockerfile CMD + launch) + compose. Real-robot smoke (a battery topic → badge + tiers) worth doing.
+>
 > **Build these next in order (fastest-to-ship value first; estimates are dev-only, exclude hardware-verify):**
-> 1. **Battery telemetry** (~2 d) — fills the faked `BAT —` `<Readout>` (MissionControl.tsx:424/695); server C++ + `protocol.ts` exist. Plan: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
-> 2. **Network quality** (~2 d) — fills the faked `SIG —` `<Readout>`; client-side. Plan: `docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
-> 3. **Latency history graph** (~2–3 d) — `useTeleopBridge` already exposes `latencyMs`; pure React chart. Plan: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
-> 4. **Map view** (~3–5 d) — reuse the React MiniMap + `map_render.ts` transport (plan shrank); also unblocks geofence's editor. Plan: `docs/superpowers/plans/2026-05-06-map-view-implementation.md`
-> 5. **Geofence** (~4–6 d) — SAFETY; standalone logic module, but its visual polygon editor needs Map view first. Plan: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+> 1. **Network quality** (~2 d) — fills the faked `SIG —` `<Readout>`; client-side. Plan: `docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
+> 2. **Latency history graph** (~2–3 d) — `useTeleopBridge` already exposes `latencyMs`; pure React chart. Plan: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
+> 3. **Map view** (~3–5 d) — reuse the React MiniMap + `map_render.ts` transport (plan shrank); also unblocks geofence's editor. Plan: `docs/superpowers/plans/2026-05-06-map-view-implementation.md`
+> 4. **Geofence** (~4–6 d) — SAFETY; standalone logic module, but its visual polygon editor needs Map view first. Plan: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+>
+> **Known pre-existing debt (not from these features):** `npx tsc --noEmit` has reds in `web-client/test/useTeleopBridge.test.tsx` (a `FakeTeleopClient` missing ~29 `TeleopClient` members) — the green gate is vitest (`npm test`), and the prod build doesn't type-check test files, so it's latent. Worth a cleanup pass.
 >
 > **After geofence: on hold / unscheduled** — diagnostics, action macros, multi-camera, then the larger/hardware-or-infra items (PTZ + aux outputs need real hardware; session recording, multi-observer, bidirectional audio, OTA — defer + re-scope before estimating). Do not build PTZ/aux/audio blind — validate against hardware to avoid the "verified only in tests" trap.
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: disconnect-after behavior — SAFETY (646/96/20/86), scan↔map sync capture-pose overlay (634/96/20/75), robot config settings page + post-merge fixes (602/96/20/72).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: battery telemetry (688/96/20/88), disconnect-after behavior — SAFETY (646/96/20/86), scan↔map sync capture-pose overlay (634/96/20/75).
 
 ---
 
@@ -163,7 +166,7 @@ Full history + per-feature detail: [milestones.md](memory/agent-guides/milestone
 - Map view: `docs/superpowers/plans/2026-05-06-map-view-implementation.md` (can now reuse the minimap's map/pose/scan transport)
 - Multi-camera: `docs/superpowers/plans/2026-05-06-multi-camera-implementation.md`
 - Latency history graph: `docs/superpowers/plans/2026-05-06-latency-graph-implementation.md`
-- Battery telemetry: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
+- ~~Battery telemetry~~ — **shipped** 2026-06-15 (`feat/battery-telemetry`); plan: `docs/superpowers/plans/2026-05-06-battery-telemetry-implementation.md`
 - Diagnostics panel: `docs/superpowers/plans/2026-05-06-diagnostics-panel-implementation.md`
 - Network quality: `docs/superpowers/plans/2026-05-06-network-quality-implementation.md`
 
