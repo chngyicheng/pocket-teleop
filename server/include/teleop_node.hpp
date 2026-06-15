@@ -8,6 +8,7 @@
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include "teleop_server.hpp"
@@ -27,6 +28,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
   rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
+  rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr return_home_client_;
   rclcpp::TimerBase::SharedPtr map_timer_;
   std::unique_ptr<TeleopServer> server_;
   std::thread server_thread_;

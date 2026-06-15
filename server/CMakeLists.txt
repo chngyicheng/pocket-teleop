@@ -15,6 +15,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(nlohmann_json 3.2.0 REQUIRED)
@@ -40,7 +41,7 @@ target_link_libraries(teleop_node
   Boost::system
 )
 
-ament_target_dependencies(teleop_node rclcpp geometry_msgs nav_msgs sensor_msgs tf2 tf2_ros)
+ament_target_dependencies(teleop_node rclcpp geometry_msgs nav_msgs sensor_msgs std_srvs tf2 tf2_ros)
 
 install(TARGETS teleop_node DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
@@ -95,7 +96,7 @@ if(BUILD_TESTING)
     nlohmann_json::nlohmann_json
     Boost::system
   )
-  ament_target_dependencies(test_teleop_node rclcpp geometry_msgs nav_msgs sensor_msgs tf2 tf2_ros)
+  ament_target_dependencies(test_teleop_node rclcpp geometry_msgs nav_msgs sensor_msgs std_srvs tf2 tf2_ros)
 endif()
 
 ament_package()

@@ -5,6 +5,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include <tf2_ros/static_transform_broadcaster.h>
 
 #include <websocketpp/config/asio_no_tls_client.hpp>
@@ -281,4 +282,136 @@ TEST_F(TeleopNodeTest, ScanBroadcastReachesWsClient) {
     EXPECT_DOUBLE_EQ(ranges[0], 0.0);
   }
   EXPECT_TRUE(found) << "no scan message received over WebSocket";
+}
+
+TEST_F(TeleopNodeTest, DisconnectActionParameterization) {
+  // Test that disconnect_action parameter is correctly parsed and wired.
+  // This verifies the node correctly sets up the disconnect behavior.
+  rclcpp::NodeOptions opts;
+  opts.append_parameter_override("port", 19093);
+  opts.append_parameter_override("timeout_ms", 200);
+  opts.append_parameter_override("disconnect_action", "hold");
+  opts.append_parameter_override("disconnect_action_param", 300);
+  opts.append_parameter_override("map_topic", "/test_map");
+  opts.append_parameter_override("map_window_m", 4.0);
+
+  auto test_node = std::make_shared<TeleopNode>(opts);
+
+  // Verify node was created successfully with disconnect parameters
+  ASSERT_TRUE(test_node != nullptr);
+
+  std::thread spin_thread([&test_node]() {
+    rclcpp::spin(test_node);
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Test that the status message includes disconnect_action
+  std::vector<std::string> messages;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    messages.push_back(msg->get_payload());
+  });
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19093/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Keep connection alive briefly
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    client.stop();
+  });
+
+  client.run();
+  t.join();
+
+  rclcpp::shutdown();
+  if (spin_thread.joinable()) spin_thread.join();
+
+  // Check that status message was received with disconnect_action field
+  bool found_status = false;
+  for (const auto& text : messages) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (!j.is_discarded() && j.value("type", "") == "status") {
+      found_status = true;
+      EXPECT_EQ(j["disconnect_action"].get<std::string>(), "hold");
+      break;
+    }
+  }
+
+  EXPECT_TRUE(found_status) << "No status message with disconnect_action received";
+}
+
+TEST_F(TeleopNodeTest, ReturnHomeCallsService) {
+  // Test ReturnHome mode: service client should be called on disconnect
+  rclcpp::NodeOptions opts;
+  opts.append_parameter_override("port", 19094);
+  opts.append_parameter_override("timeout_ms", 200);
+  opts.append_parameter_override("disconnect_action", "return_home");
+  opts.append_parameter_override("return_home_service", "/test_return_home");
+  opts.append_parameter_override("map_topic", "/test_map");
+  opts.append_parameter_override("map_window_m", 4.0);
+
+  auto test_node = std::make_shared<TeleopNode>(opts);
+
+  std::vector<geometry_msgs::msg::Twist> msgs;
+  auto sub = test_node->create_subscription<geometry_msgs::msg::Twist>(
+    "/cmd_vel", 10,
+    [&msgs](geometry_msgs::msg::Twist::SharedPtr msg) {
+      msgs.push_back(*msg);
+    });
+
+  // Create a service server to receive return_home calls
+  bool service_called = false;
+  auto service = test_node->create_service<std_srvs::srv::Trigger>(
+    "/test_return_home",
+    [&service_called](const std::shared_ptr<std_srvs::srv::Trigger::Request>&,
+                      std::shared_ptr<std_srvs::srv::Trigger::Response> response) {
+      service_called = true;
+      response->success = true;
+      response->message = "home";
+    });
+
+  std::thread spin_thread([&test_node]() {
+    rclcpp::spin(test_node);
+  });
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Connect and let it timeout
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19094/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Connect silently for longer than timeout
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    client.stop();
+  });
+
+  client.run();
+  t.join();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  rclcpp::shutdown();
+  if (spin_thread.joinable()) spin_thread.join();
+
+  // Service should have been called
+  EXPECT_TRUE(service_called) << "return_home service was not called";
+
+  // Should eventually see zero velocity
+  ASSERT_FALSE(msgs.empty());
+  EXPECT_DOUBLE_EQ(msgs.back().linear.x, 0.0);
+  EXPECT_DOUBLE_EQ(msgs.back().linear.y, 0.0);
+  EXPECT_DOUBLE_EQ(msgs.back().angular.z, 0.0);
 }

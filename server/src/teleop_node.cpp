@@ -5,23 +5,30 @@
 TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   : Node("teleop_node", options) {
 
-  declare_parameter("port",            9091);
-  declare_parameter("timeout_ms",      500);
-  declare_parameter("cmd_vel_topic",   std::string("/cmd_vel"));
-  declare_parameter("robot_type",      std::string("diff_drive"));
-  declare_parameter("robot_name",      std::string(""));
-  declare_parameter("robot_namespace", std::string(""));
-  declare_parameter("robot_length_m",  0.0);
-  declare_parameter("robot_width_m",   0.0);
+  declare_parameter("port",                   9091);
+  declare_parameter("timeout_ms",             500);
+  declare_parameter("cmd_vel_topic",          std::string("/cmd_vel"));
+  declare_parameter("robot_type",             std::string("diff_drive"));
+  declare_parameter("robot_name",             std::string(""));
+  declare_parameter("robot_namespace",        std::string(""));
+  declare_parameter("robot_length_m",         0.0);
+  declare_parameter("robot_width_m",          0.0);
+  declare_parameter("disconnect_action",      std::string("stop"));
+  declare_parameter("disconnect_action_param", 0);
+  declare_parameter("return_home_service",    std::string("/return_home"));
 
-  const auto port            = get_parameter("port").as_int();
-  const auto timeout_ms      = get_parameter("timeout_ms").as_int();
-  const auto base_topic      = get_parameter("cmd_vel_topic").as_string();
-  const auto robot_type      = get_parameter("robot_type").as_string();
-  const auto robot_name      = get_parameter("robot_name").as_string();
-  const auto robot_namespace = get_parameter("robot_namespace").as_string();
-  const auto robot_length    = get_parameter("robot_length_m").as_double();
-  const auto robot_width     = get_parameter("robot_width_m").as_double();
+  const auto port                   = get_parameter("port").as_int();
+  const auto timeout_ms             = get_parameter("timeout_ms").as_int();
+  const auto base_topic             = get_parameter("cmd_vel_topic").as_string();
+  const auto robot_type             = get_parameter("robot_type").as_string();
+  const auto robot_name             = get_parameter("robot_name").as_string();
+  const auto robot_namespace        = get_parameter("robot_namespace").as_string();
+  const auto robot_length           = get_parameter("robot_length_m").as_double();
+  const auto robot_width            = get_parameter("robot_width_m").as_double();
+  const auto disconnect_action_str  = get_parameter("disconnect_action").as_string();
+  const auto disconnect_action_param = get_parameter("disconnect_action_param").as_int();
+  const auto return_home_service_name = get_parameter("return_home_service").as_string();
+  const auto disconnect_action = parse_disconnect_action(disconnect_action_str);
 
   std::string topic;
   if (robot_namespace.empty()) {
@@ -37,6 +44,9 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
 
   publisher_ = create_publisher<geometry_msgs::msg::Twist>(topic, 10);
 
+  // Create return_home service client
+  return_home_client_ = create_client<std_srvs::srv::Trigger>(return_home_service_name);
+
   server_ = std::make_unique<TeleopServer>(
     static_cast<int>(port),
     static_cast<int>(timeout_ms),
@@ -45,9 +55,18 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
     robot_namespace,
     robot_length,
     robot_width,
-    DisconnectAction::Stop,
-    0,
-    [this](double lx, double ly, double az) { publish_twist(lx, ly, az); });
+    disconnect_action,
+    disconnect_action_param,
+    [this](double lx, double ly, double az) { publish_twist(lx, ly, az); },
+    [this]() {
+      if (return_home_client_ && return_home_client_->service_is_ready()) {
+        auto req = std::make_shared<std_srvs::srv::Trigger::Request>();
+        return_home_client_->async_send_request(req);
+        RCLCPP_INFO(get_logger(), "return_home service call initiated");
+      } else {
+        RCLCPP_WARN(get_logger(), "return_home service unavailable; falling back to stop");
+      }
+    });
 
   declare_parameter("odom_topic", std::string("/odom"));
   const auto odom_topic = get_parameter("odom_topic").as_string();
