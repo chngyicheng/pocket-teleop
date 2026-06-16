@@ -166,6 +166,34 @@ export class TeleopClient {
     this.connection.disconnect();
   }
 
+  resume(): void {
+    if (this.intentionalDisconnect) {
+      return;
+    }
+
+    // User-initiated resume (tab foregrounded): reset exponential backoff so any
+    // reconnect — now, or one triggered by the probe ping below — starts fresh.
+    // The automatic scheduleRetry path deliberately leaves retryAttempt growing.
+    this.retryAttempt = 0;
+
+    // If reconnect is scheduled but waiting in exponential backoff, skip the wait.
+    if (this.retryTimeoutId !== null) {
+      this.reconnectNow();
+      return;
+    }
+
+    // If socket is still open, send a ping to quickly detect if the link is frozen.
+    if (this.connection.isOpen()) {
+      this.pingSentAt = Date.now();
+      this.connection.send(buildPing());
+      this.lastSentAt = Date.now();
+      return;
+    }
+
+    // Socket is closed and no retry pending — reconnect now.
+    this.reconnectNow();
+  }
+
   setGamepadProfile(profile: GamepadProfile): void {
     this.gamepadHandler.setProfile(profile);
   }
@@ -321,20 +349,32 @@ export class TeleopClient {
     }
   }
 
+  private reconnectNow(): void {
+    // Reset publish state before reconnecting — do not resume stale motion.
+    // NOTE: retryAttempt is intentionally NOT reset here — the scheduleRetry timer
+    // calls this, and exponential backoff must keep growing across failed retries
+    // (reset only on a successful 'status' message, or by user-initiated resume()).
+    this.repeatTwist = null;
+    this.zeroFramesLeft = 0;
+    this.retryPending = false;
+    this.missedPongs = 0;
+    this.pingSentAt = 0;
+    if (this.retryTimeoutId !== null) {
+      clearTimeout(this.retryTimeoutId);
+      this.retryTimeoutId = null;
+    }
+    this.connection.connect(this.url);
+    this.startKeepalive();
+    this.startPublisher();
+    this.gamepadHandler.setEnabled(true);
+  }
+
   private scheduleRetry(): void {
     this.retryAttempt += 1;
     this.options.onReconnecting?.(this.retryAttempt);
     const delay = Math.min(this.retryIntervalMs * 2 ** (this.retryAttempt - 1), 30_000);
     this.retryTimeoutId = setTimeout(() => {
-      this.retryTimeoutId = null;
-      this.retryPending = false;
-      // Reset publish state before reconnecting — do not resume stale motion.
-      this.repeatTwist = null;
-      this.zeroFramesLeft = 0;
-      this.connection.connect(this.url);
-      this.startKeepalive();
-      this.startPublisher();
-      this.gamepadHandler.setEnabled(true);
+      this.reconnectNow();
     }, delay);
   }
 

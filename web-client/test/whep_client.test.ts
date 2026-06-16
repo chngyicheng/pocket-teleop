@@ -498,4 +498,191 @@ describe('WhepClient', () => {
       expect(pc.getStats.mock.calls.length).toBe(callsBefore);
     });
   });
+
+  describe('resume()', () => {
+    it('rebuilds PC and resets retry delay when called', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+      });
+      client.start();
+      await flushPromises();
+
+      const pc1 = latestPc();
+
+      // Trigger a retry delay to advance.
+      latestPc()._fireConnectionStateChange('failed');
+      await flushPromises();
+
+      // Resume should rebuild the PC (new instance).
+      client.resume();
+      await flushPromises();
+
+      const pc2 = latestPc();
+      expect(pc2).not.toBe(pc1); // New PC created
+    });
+
+    it('should not retry if stopped', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose: vi.fn(),
+      });
+      client.start();
+      await flushPromises();
+
+      client.stop();
+      const beforeCount = MockRTCPeerConnection._instances.length;
+
+      client.resume(); // Should no-op if stopped
+
+      expect(MockRTCPeerConnection._instances.length).toBe(beforeCount);
+    });
+  });
+
+  describe('disconnected grace period', () => {
+    it('should not retry if reconnected within grace period', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onClose = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose, onStateChange: vi.fn(),
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._fireTrack(new MediaStream());
+
+      // Transition to disconnected.
+      pc._fireConnectionStateChange('disconnected');
+      await flushPromises();
+
+      // Reconnect before grace expires (< 2s).
+      await vi.advanceTimersByTimeAsync(1000);
+      pc._fireConnectionStateChange('connected');
+      await flushPromises();
+
+      // onClose should not have been called.
+      expect(onClose).not.toHaveBeenCalled();
+
+      client.stop();
+    });
+
+    it('should retry if disconnected grace period expires without reconnect', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onClose = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose, onStateChange: vi.fn(),
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._fireTrack(new MediaStream());
+
+      // Transition to disconnected.
+      pc._fireConnectionStateChange('disconnected');
+      await flushPromises();
+
+      // Let grace period expire (> 2s).
+      await vi.advanceTimersByTimeAsync(2100);
+      await flushPromises();
+
+      // onClose should have fired.
+      expect(onClose).toHaveBeenCalled();
+
+      client.stop();
+    });
+  });
+
+  describe('fps stall watchdog', () => {
+    it('should trigger retry if framesDecoded does not advance for STALL_POLL_LIMIT polls', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onClose = vi.fn();
+      const onStats = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose, onStats,
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._fireTrack(new MediaStream());
+      await flushPromises();
+
+      // Set framesDecoded to a fixed value; it won't advance.
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', {
+          type: 'inbound-rtp',
+          kind: 'video',
+          framesPerSecond: 15,
+          frameWidth: 1920,
+          frameHeight: 1080,
+          framesDecoded: 100, // Fixed value
+        }],
+      ]);
+
+      // Poll 1: baseline (stallPolls = 0, record 100).
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+      expect(onClose).not.toHaveBeenCalled();
+
+      // Poll 2: framesDecoded = 100 again (stallPolls = 1).
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+      expect(onClose).not.toHaveBeenCalled();
+
+      // Poll 3: framesDecoded = 100 again (stallPolls = 2).
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+      expect(onClose).not.toHaveBeenCalled();
+
+      // Poll 4: framesDecoded = 100 again (stallPolls >= STALL_POLL_LIMIT = 3) → onClose + retry.
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+      expect(onClose).toHaveBeenCalled();
+
+      client.stop();
+    });
+
+    it('should reset stall counter if framesDecoded advances', async () => {
+      mockFetch.mockResolvedValue(makeOkResponse());
+      const onClose = vi.fn();
+      const onStats = vi.fn();
+      const client = new WhepClient(TEST_URL, {
+        onStream: vi.fn(), onError: vi.fn(), onClose, onStats,
+      });
+      client.start();
+      await flushPromises();
+
+      const pc = latestPc();
+      pc._fireTrack(new MediaStream());
+      await flushPromises();
+
+      // Poll 1: framesDecoded = 100.
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', { type: 'inbound-rtp', kind: 'video', framesPerSecond: 15, frameWidth: 1920, frameHeight: 1080, framesDecoded: 100 }],
+      ]);
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      // Poll 2: framesDecoded = 100 (stallPolls = 1).
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      // Poll 3: framesDecoded = 150 (advances, reset stallPolls to 0).
+      pc._statsReport = new Map<string, unknown>([
+        ['ir', { type: 'inbound-rtp', kind: 'video', framesPerSecond: 15, frameWidth: 1920, frameHeight: 1080, framesDecoded: 150 }],
+      ]);
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      // Poll 4: framesDecoded = 150 again (stallPolls = 1, not yet critical).
+      vi.advanceTimersByTime(1_000);
+      await flushPromises();
+
+      expect(onClose).not.toHaveBeenCalled();
+
+      client.stop();
+    });
+  });
 });

@@ -32,6 +32,8 @@ export interface WhepCallbacks {
 const BASE_RETRY_MS  = 3_000;
 const MAX_RETRY_MS   = 30_000;
 const STATS_INTERVAL_MS = 1_000;
+const DISCONNECT_GRACE_MS = 2_000;
+const STALL_POLL_LIMIT = 3;
 
 export class WhepClient {
   private readonly url:       string;
@@ -39,8 +41,11 @@ export class WhepClient {
   private pc:         RTCPeerConnection | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private statsTimer: ReturnType<typeof setInterval> | null = null;
+  private disconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private retryDelay  = BASE_RETRY_MS;
   private stopped     = false;
+  private lastFramesDecoded: number | null = null;
+  private stallPolls = 0;
 
   constructor(url: string, callbacks: WhepCallbacks) {
     this.url       = url;
@@ -61,10 +66,23 @@ export class WhepClient {
     this._closePc();
   }
 
+  /** Resume from suspend — rebuild PC and clear retry backoff. */
+  resume(): void {
+    if (this.stopped) {
+      return;
+    }
+    this.retryDelay = BASE_RETRY_MS;
+    this._clearRetry();
+    void this._connect();
+  }
+
   // ── Internal ────────────────────────────────────────────────────────────
 
   private async _connect(): Promise<void> {
     this._closePc();
+    this._clearDisconnectTimer();
+    this.lastFramesDecoded = null;
+    this.stallPolls = 0;
     if (this.stopped) return;
 
     this.callbacks.onStateChange?.('connecting');
@@ -86,8 +104,23 @@ export class WhepClient {
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+        this._clearDisconnectTimer();
         this.callbacks.onClose();
         this._scheduleRetry();
+      } else if (pc.connectionState === 'disconnected') {
+        // Grace period: wait DISCONNECT_GRACE_MS before tearing down.
+        // If reconnected within grace, cancel the timer.
+        if (this.disconnectTimer === null) {
+          this.disconnectTimer = setTimeout(() => {
+            if (this.pc === pc && pc.connectionState !== 'connected' && pc.connectionState !== 'completed') {
+              this._clearDisconnectTimer();
+              this.callbacks.onClose();
+              this._scheduleRetry();
+            }
+          }, DISCONNECT_GRACE_MS);
+        }
+      } else if (pc.connectionState === 'connected' || pc.connectionState === 'completed') {
+        this._clearDisconnectTimer();
       }
     };
 
@@ -165,10 +198,19 @@ export class WhepClient {
     }
   }
 
+  private _clearDisconnectTimer(): void {
+    if (this.disconnectTimer !== null) {
+      clearTimeout(this.disconnectTimer);
+      this.disconnectTimer = null;
+    }
+  }
+
   // ── Live video stats ─────────────────────────────────────────────────────
 
   /** Begin sampling decoded-video stats once the track is live. */
   private _startStats(pc: RTCPeerConnection): void {
+    this.lastFramesDecoded = null;
+    this.stallPolls = 0;
     if (!this.callbacks.onStats) return;
     this._clearStats();
     this.statsTimer = setInterval(() => { void this._pollStats(pc); }, STATS_INTERVAL_MS);
@@ -181,6 +223,7 @@ export class WhepClient {
       const report = await pc.getStats();
       if (this.pc !== pc) return;
       let stats: VideoStats | null = null;
+      let framesDecoded: number | null = null;
       report.forEach((r: Record<string, unknown>) => {
         const kind = r.kind ?? r.mediaType; // newer browsers expose `kind`
         if (r.type === 'inbound-rtp' && kind === 'video') {
@@ -189,9 +232,30 @@ export class WhepClient {
             width:  typeof r.frameWidth === 'number' ? r.frameWidth : null,
             height: typeof r.frameHeight === 'number' ? r.frameHeight : null,
           };
+          if (typeof r.framesDecoded === 'number') {
+            framesDecoded = r.framesDecoded;
+          }
         }
       });
       if (stats) this.callbacks.onStats?.(stats);
+
+      // fps-stall watchdog: if framesDecoded hasn't advanced, increment stall counter.
+      if (framesDecoded !== null) {
+        if (this.lastFramesDecoded !== null && framesDecoded === this.lastFramesDecoded) {
+          this.stallPolls += 1;
+          if (this.stallPolls >= STALL_POLL_LIMIT) {
+            // Frames haven't advanced for STALL_POLL_LIMIT polls — rebuild.
+            this.stallPolls = 0;
+            this._clearStats();
+            this.callbacks.onClose();
+            this._scheduleRetry();
+            return;
+          }
+        } else {
+          this.stallPolls = 0;
+        }
+        this.lastFramesDecoded = framesDecoded;
+      }
     } catch {
       // getStats can transiently reject while the pc is tearing down; ignore.
     }
@@ -206,6 +270,7 @@ export class WhepClient {
 
   private _closePc(): void {
     this._clearStats();
+    this._clearDisconnectTimer();
     this.pc?.close();
     this.pc = null;
   }

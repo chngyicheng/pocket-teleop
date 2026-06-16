@@ -35,4 +35,8 @@ export class Connection {
       this.ws.send(msg);
     }
   }
+
+  isOpen(): boolean {
+    return this.ws !== null && this.ws.readyState === 1;
+  }
 }
