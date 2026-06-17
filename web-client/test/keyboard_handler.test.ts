@@ -165,4 +165,38 @@ describe('KeyboardHandler', () => {
     expect(twists).toHaveLength(0);
     kh.stop();
   });
+
+  it('does not register key when input element is focused (editable-field guard)', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
+    vi.advanceTimersByTime(200);
+    // Poll fires and sends zero (because 'w' was not registered due to guard)
+    expect(twists).toHaveLength(1);
+    expect(twists[0]).toEqual([0, 0, 0]);
+    document.body.removeChild(input);
+    kh.stop();
+  });
+
+  it('does not register key when contentEditable element is focused', () => {
+    const twists: [number, number, number][] = [];
+    const kh = new KeyboardHandler({ onTwist: (lx, ly, az) => twists.push([lx, ly, az]) });
+    kh.start();
+    const div = document.createElement('div');
+    // Set contentEditable via setAttribute to ensure it's properly recognized
+    div.setAttribute('contenteditable', 'true');
+    document.body.appendChild(div);
+    div.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
+    vi.advanceTimersByTime(200);
+    // Poll fires and sends zero (because 'w' was not registered due to guard)
+    expect(twists).toHaveLength(1);
+    expect(twists[0]).toEqual([0, 0, 0]);
+    document.body.removeChild(div);
+    kh.stop();
+  });
 });

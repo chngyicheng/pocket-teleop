@@ -1,5 +1,6 @@
 import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
+import { KeyboardHandler } from './keyboard_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
@@ -62,6 +63,7 @@ export interface TeleopClientOptions {
 export class TeleopClient {
   private readonly connection: Connection;
   private readonly gamepadHandler: GamepadHandler;
+  private readonly keyboardHandler: KeyboardHandler;
   private keepaliveId: ReturnType<typeof setInterval> | null = null;
   private publishId: ReturnType<typeof setInterval> | null = null;
   private retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -118,6 +120,7 @@ export class TeleopClient {
         this.stopKeepalive();
         this.stopPublisher();
         this.gamepadHandler.setEnabled(false);
+        this.keyboardHandler.setEnabled(false);
         if (this.intentionalDisconnect) {
           this.options.onClose?.(code, reason);
           return;
@@ -156,6 +159,9 @@ export class TeleopClient {
     this.gamepadHandler.attach();
     this.gamepadHandler.start();
     this.gamepadHandler.setEnabled(false);
+    this.keyboardHandler = new KeyboardHandler({
+      onTwist: (lx, ly, az) => this.sendTwist(lx, ly, az, 'keyboard'),
+    });
   }
 
   connect(url: string): void {
@@ -178,6 +184,8 @@ export class TeleopClient {
     this.startKeepalive();
     this.startPublisher();
     this.gamepadHandler.setEnabled(true);
+    this.keyboardHandler.start();
+    this.keyboardHandler.setEnabled(true);
   }
 
   disconnect(): void {
@@ -189,6 +197,7 @@ export class TeleopClient {
     this.stopKeepalive();
     this.stopPublisher();
     this.gamepadHandler.detach();
+    this.keyboardHandler.stop();
     this.connection.disconnect();
   }
 
@@ -440,6 +449,8 @@ export class TeleopClient {
     this.startKeepalive();
     this.startPublisher();
     this.gamepadHandler.setEnabled(true);
+    this.keyboardHandler.start();
+    this.keyboardHandler.setEnabled(true);
   }
 
   private scheduleRetry(): void {
@@ -485,6 +496,7 @@ export class TeleopClient {
     this.stopKeepalive();
     this.stopPublisher();
     this.gamepadHandler.setEnabled(false);
+    this.keyboardHandler.setEnabled(false);
     this.pingSentAt = 0;
     this.missedPongs = 0;
     this.options.onClose?.(4000, 'pong timeout');

@@ -25,17 +25,32 @@ export class KeyboardHandler {
 
     this.boundKeyDown = (e: KeyboardEvent) => {
       if (!this.enabled) return;
+      // While typing in a form field WASD/arrows must edit text, not drive the robot.
+      if (KeyboardHandler.isEditableFieldFocused()) return;
       this.keysDown.add(e.key);
       this.onActivityCb?.();
     };
     this.boundKeyUp = (e: KeyboardEvent) => {
       if (!this.enabled) return;
+      if (KeyboardHandler.isEditableFieldFocused()) return;
       this.keysDown.delete(e.key);
       // Fire immediately — don't wait for next poll interval.
       // Ensures zero velocity is published the moment the last key is released.
       const twist = this.computeTwist();
       this.onTwistCb(twist.lx, twist.ly, twist.az);
     };
+  }
+
+  /**
+   * True when an editable element (input/textarea/select/contentEditable) holds
+   * focus. `getAttribute('contenteditable')` backstops `isContentEditable`, which
+   * jsdom does not implement.
+   */
+  private static isEditableFieldFocused(): boolean {
+    const el = typeof document !== 'undefined' ? document.activeElement : null;
+    if (!(el instanceof HTMLElement)) return false;
+    return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ||
+           el.isContentEditable || el.getAttribute('contenteditable') === 'true';
   }
 
   start(): void {
