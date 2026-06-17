@@ -158,6 +158,7 @@ Full history + per-feature detail: [milestones.md](memory/agent-guides/milestone
 ### Feature plan pool (waiting on user to pick priority)
 
 **Safety + control**
+- Input arbitration (gamepad>keyboard>touch; keyboard re-wire is the last task): `docs/superpowers/plans/2026-06-16-input-arbitration-implementation.md`
 - Geofence: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
 
 **Observation**
