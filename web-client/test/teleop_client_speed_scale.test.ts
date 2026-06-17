@@ -162,8 +162,8 @@ describe('TeleopClient speed scaling', () => {
     clientWithCallback.sendTwist(1, 0, 0);
 
     const shaped = shapeAxis(1);
-    expect(onTwist).toHaveBeenCalledWith(shaped, 0, 0); // should NOT be scaled
-    expect(onTwist).not.toHaveBeenCalledWith(shaped * 0.5, 0, 0);
+    expect(onTwist).toHaveBeenCalledWith(shaped, 0, 0, 'touch'); // should NOT be scaled; source='touch' is default
+    expect(onTwist).not.toHaveBeenCalledWith(shaped * 0.5, 0, 0, 'touch');
 
     clientWithCallback.disconnect();
   });

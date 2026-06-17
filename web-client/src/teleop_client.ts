@@ -14,6 +14,22 @@ const PUBLISH_INTERVAL_MS = 50;
  */
 const STOP_REPEATS = 10;
 
+/** Input source types for arbitration */
+export type InputSource = 'gamepad' | 'keyboard' | 'touch';
+
+/** Ownership window: source must send input within this time to retain ownership */
+const ACTIVE_WINDOW_MS = 400;
+
+/** Priority mapping: higher value = higher priority */
+const SOURCE_PRIORITY: Record<InputSource, number> = {
+  gamepad: 3,
+  keyboard: 2,
+  touch: 1,
+};
+
+/** Get numeric priority for a source */
+const priority = (source: InputSource): number => SOURCE_PRIORITY[source];
+
 export interface TeleopClientOptions {
   onStatus?: (connected: boolean, robotType: string, robotName: string, robotNamespace: string, robotLength: number, robotWidth: number, disconnectAction: string) => void;
   onError?: (message: string) => void;
@@ -28,7 +44,7 @@ export interface TeleopClientOptions {
   onScan?: (scan: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }) => void;
   onBattery?: (battery: { percentage: number | null; voltage: number | null; current: number | null; charging: boolean }) => void;
   onButton?: (action: string) => void;
-  onTwist?: (lx: number, ly: number, az: number) => void;
+  onTwist?: (lx: number, ly: number, az: number, source: InputSource) => void;
   onGamepadActivity?: () => void;
   onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
@@ -82,6 +98,12 @@ export class TeleopClient {
   /** True while e-stop is latched; sendTwist is a no-op in this state. */
   private estopEngaged = false;
 
+  // Input arbitration state
+  /** Currently active input source (holds ownership) */
+  private activeSource: InputSource | null = null;
+  /** Timestamp of last input from the active source */
+  private lastActiveAt = 0;
+
   constructor(options: TeleopClientOptions = {}) {
     this.options = options;
     this.retryIntervalMs = options.retryIntervalMs ?? 5000;
@@ -121,7 +143,7 @@ export class TeleopClient {
       },
     });
     this.gamepadHandler = new GamepadHandler({
-      onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az),
+      onTwist:    (lx, ly, az) => this.sendTwist(lx, ly, az, 'gamepad'),
       onButton:   (action) => this.handleGamepadButton(action),
       onActivity: () => this.options.onGamepadActivity?.(),
       onConnectionChange: (connected, id) => this.options.onGamepadConnected?.(connected, id),
@@ -148,6 +170,9 @@ export class TeleopClient {
     this.pingSentAt = 0;
     this.rttSamples = [];
     this.pingWindow = [];
+    // Reset arbitration state: do not resume stale ownership
+    this.activeSource = null;
+    this.lastActiveAt = 0;
     this.connection.connect(url);
     this.startKeepalive();
     this.startPublisher();
@@ -257,12 +282,48 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
   }
 
-  sendTwist(lx: number, ly: number, az: number): void {
+  sendTwist(lx: number, ly: number, az: number, source: InputSource = 'touch'): void {
     // While e-stop is latched, all motion commands are suppressed
     if (this.estopEngaged) {
       return;
     }
 
+    // ========== INPUT ARBITRATION ==========
+    // Check if input is non-zero or zero from owner
+    const isNonZeroInput = lx !== 0 || ly !== 0 || az !== 0;
+    const now = Date.now();
+
+    if (isNonZeroInput) {
+      // Non-zero input: apply arbitration rules
+      const owner = this.activeSource;
+      const windowExpired = owner === null || now - this.lastActiveAt >= ACTIVE_WINDOW_MS;
+
+      if (windowExpired) {
+        // No current owner or window expired: this source acquires ownership
+        this.activeSource = source;
+        this.lastActiveAt = now;
+      } else if (source === owner) {
+        // Same source: continue and refresh window
+        this.lastActiveAt = now;
+      } else if (priority(source) >= priority(owner)) {
+        // Higher (or equal) priority: seize ownership — last writer wins on ties
+        this.activeSource = source;
+        this.lastActiveAt = now;
+      } else {
+        // Lower priority and owner still active: reject this input
+        return;
+      }
+    } else {
+      // Zero input: only owner can send it; others rejected
+      if (source !== this.activeSource) {
+        return; // Non-owner zero is rejected
+      }
+      // Owner releasing: send zero and release ownership
+      this.activeSource = null;
+      this.lastActiveAt = 0;
+    }
+
+    // ========== SHAPE & SEND ==========
     // Shape all three axes: deadzone + cubic curve for fine control
     const shapedLx = shapeAxis(lx);
     const shapedLy = shapeAxis(ly);
@@ -271,8 +332,8 @@ export class TeleopClient {
     // Immediate one-shot send with scaling applied
     this.sendScaledTwist(shapedLx, shapedLy, shapedAz);
     this.lastSentAt = Date.now();
-    // Emit shaped-normalized (un-scaled) values to HUD
-    this.options.onTwist?.(shapedLx, shapedLy, shapedAz);
+    // Emit shaped-normalized (un-scaled) values to HUD, with source
+    this.options.onTwist?.(shapedLx, shapedLy, shapedAz, source);
 
     // Update continuous-publish state (store shaped-normalized, not pre-scaled)
     if (shapedLx !== 0 || shapedLy !== 0 || shapedAz !== 0) {
@@ -359,6 +420,9 @@ export class TeleopClient {
     this.retryPending = false;
     this.missedPongs = 0;
     this.pingSentAt = 0;
+    // Reset arbitration state: do not resume stale ownership
+    this.activeSource = null;
+    this.lastActiveAt = 0;
     if (this.retryTimeoutId !== null) {
       clearTimeout(this.retryTimeoutId);
       this.retryTimeoutId = null;
