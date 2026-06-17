@@ -13,6 +13,7 @@ class FakeTeleopClient {
   maxAngular = 1.0;
   opts: TeleopClientOptions;
   private networkStats: NetworkStats | null = null;
+  resume = vi.fn();
 
   constructor(opts: TeleopClientOptions = {}) {
     this.opts = opts;
@@ -868,5 +869,45 @@ describe('useTeleopBridge', () => {
     expect(result.current.networkQuality).toBe(4);
 
     vi.useRealTimers();
+  });
+
+  it('calls client.resume() when tab becomes visible (visibilitychange)', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(fakeClient.resume).not.toHaveBeenCalled();
+
+    act(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(fakeClient.resume).toHaveBeenCalledOnce();
+  });
+
+  it('does not call client.resume() when tab is hidden (visibilitychange)', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'hidden',
+        configurable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(fakeClient.resume).not.toHaveBeenCalled();
   });
 });

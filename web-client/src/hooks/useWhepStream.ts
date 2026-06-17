@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { WhepState, WhepCallbacks, VideoStats } from '../whep_client.js';
 
 export interface WhepStream {
@@ -24,9 +24,11 @@ export function useWhepStream(opts: UseWhepStreamOpts): WhepStream {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<VideoStats | null>(null);
 
+  const clientRef = useRef<{ start(): void; stop(): void; resume(): void } | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    let client: { start(): void; stop(): void } | null = null;
+    let client: { start(): void; stop(): void; resume(): void } | null = null;
 
     // Use requestIdleCallback if available, else setTimeout
     const schedule = (typeof requestIdleCallback === 'function') ? requestIdleCallback : (fn: () => void) => setTimeout(fn, 0);
@@ -66,6 +68,7 @@ export function useWhepStream(opts: UseWhepStreamOpts): WhepStream {
       }
 
       if (!cancelled && client) {
+        clientRef.current = client;
         client.start();
       }
     });
@@ -74,8 +77,34 @@ export function useWhepStream(opts: UseWhepStreamOpts): WhepStream {
       cancelled = true;
       cancel(handle as any);
       if (client) client.stop();
+      clientRef.current = null;
     };
   }, [opts.url, opts.WhepClientCtor]);
+
+  // Handle tab visibility change and bfcache restoration
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        clientRef.current?.resume();
+      }
+    };
+
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        clientRef.current?.resume();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, []);
 
   return {
     stream,

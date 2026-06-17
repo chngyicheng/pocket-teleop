@@ -30,7 +30,8 @@ React UI
         │                          odom, eStop/resetEstop, sendTwist, gamepadTwist, inputSource,
         │                          gamepadConnected, maxLinear/maxAngular, robot dims, battery,
         │                          networkQuality/networkStats — getNetworkStats() polled @1 Hz)
-        ├── useWhepStream.ts    ← wraps WhepClient; lazy start (requestIdleCallback) + code-split
+        ├── useWhepStream.ts    ← wraps WhepClient; lazy start (requestIdleCallback) + code-split;
+        │                          calls client.resume() on visibilitychange/pageshow (foreground)
         └── useSessionStatus.ts ← poll /auth/session-status + throttled /auth/heartbeat + banner
 
 Transport / logic (framework-free TS — no React imports):
@@ -59,7 +60,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `index.html` | Vite entry shell — instant `#boot-splash` + `<div id="root">` |
 | `protocol.ts` | Message types + serializers (twist, estop/estop_reset/estop_state, ping, odom); inbound parser with `Number.isFinite` guards |
 | `connection.ts` | WebSocket open/close/send; fires callbacks |
-| `teleop_client.ts` | Orchestrates modules; 20 Hz publish + zero-burst; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal; tracks last-20 RTT + 20-ping loss window → `getNetworkStats()` |
+| `teleop_client.ts` | Orchestrates modules; 20 Hz publish + zero-burst; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal; tracks last-20 RTT + 20-ping loss window → `getNetworkStats()`; `resume()` skips backoff / probe-pings on foreground |
 | `network_quality.ts` | Pure `computeQuality(stats)→0–4` from RTT/jitter/loss component scores (min aggregation); non-finite/negative → worst |
 | `network_readout.ts` | Pure quality→`{quality,tier}` (none/danger/warn/ok); component layer maps tier→palette (mirrors `battery_readout.ts`) |
 | `input_shaping.ts` | `shapeAxis(v)` — deadzone 0.1 + cubic curve at the `sendTwist` choke |
@@ -68,7 +69,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `touch_joystick.ts` | `TouchJoystick` — floating touch joystick, jsdom-testable |
 | `settings.ts` | `SettingsRouter` + namespace/video-url localStorage; `loadMaxSpeed`/`saveMaxSpeed` + clamp (lin 0.1–2.0 / ang 0.1–3.0) |
 | `video_source.ts` | RTSP/UDP/SRT/MJPEG validate + `buildMtxSource` + apply (MediaMTX config API) |
-| `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; getStats@1Hz; backoff retry |
+| `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; getStats@1Hz; backoff retry; `'disconnected'` 2 s grace; fps-stall watchdog (framesDecoded flat 3 polls → rebuild); `resume()` rebuilds PC on foreground |
 | `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate); scan capture-pose world overlay (`scanToScreenPoints` fuses capture+current pose, `worldToScreenPoint`, `selectScanCapturePose` frame-match fallback) |
 | `sw_register.ts` | Prod-only injectable SW registration wrapper |
 | `perf_beacon.ts` | Navigation/Paint/resource timing → `POST /perf` |
@@ -76,6 +77,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 ## Local Contracts
 
 - **Transport/logic modules stay framework-free** — no React imports in `teleop_client.ts`, `connection.ts`, `protocol.ts`, the handlers, `whep_client.ts`, `map_*`. React touches them only through `hooks/`.
+- **The browser tab holds the live connections, not the server** — the `/ws` WebSocket and the WHEP `RTCPeerConnection` both live in the page; a backgrounded tab gets timers throttled / page suspended, so both degrade. `useTeleopBridge` + `useWhepStream` each listen for `visibilitychange`→visible and bfcache `pageshow` and call the client's `resume()` to recover fast instead of waiting out backoff. Both hooks duplicate the ~8-line listener block — intentional, not worth a shared hook.
 - **Live stream never touches the service worker** — `/ws`, `/video`, `/whep`, `/auth`, `/perf`, `/mediamtx-api` are in `navigateFallbackDenylist` and match no runtimeCaching. SW is `autoUpdate`; nginx serves `/sw.js` no-cache; `sw_register.ts` is prod-only + injectable. WS upgrades aren't fetch events, WHEP is POST, video is WebRTC/UDP — none reach the SW.
 - **`Protocol` inbound parser guards every numeric field with `Number.isFinite`** — non-finite telemetry must not reach render. Treat missing status fields as `""` / `0` (footprint dims) for back-compat.
 - **`4001` WS close = terminal** (idle-timeout kill) — no retry; bridge redirects to login.

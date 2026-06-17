@@ -260,6 +260,31 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.url, opts.TeleopClientCtor]);
 
+  // Handle tab visibility change and bfcache restoration
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        clientRef.current?.resume();
+      }
+    };
+
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        clientRef.current?.resume();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+    };
+  }, []);
+
   const sendTwist = (lx: number, ly: number, az: number) => {
     lastTouchActivityRef.current = Date.now();
     setInputSource('touch');

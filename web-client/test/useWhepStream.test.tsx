@@ -6,6 +6,7 @@ import type { WhepCallbacks, WhepState } from '../src/whep_client.js';
 // Fake WhepClient for testing
 class FakeWhepClient {
   callbacks: WhepCallbacks;
+  resume = vi.fn();
 
   constructor(_url: string, callbacks: WhepCallbacks) {
     this.callbacks = callbacks;
@@ -327,5 +328,62 @@ describe('useWhepStream', () => {
 
     // start should never be called because the component unmounted before the callback
     expect(startSpy.called).toBe(false);
+  });
+
+  it('calls client.resume() when tab becomes visible (visibilitychange)', () => {
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          fakeClient = new FakeWhepClient(url, callbacks);
+          return fakeClient;
+        },
+      })
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(fakeClient.resume).not.toHaveBeenCalled();
+
+    act(() => {
+      Object.defineProperty(document, 'visibilityState', {
+        value: 'visible',
+        configurable: true,
+      });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(fakeClient.resume).toHaveBeenCalledOnce();
+  });
+
+  it('calls client.resume() when pageshow with persisted:true (bfcache restoration)', () => {
+    const { result } = renderHook(() =>
+      useWhepStream({
+        url: 'http://localhost/whep',
+        WhepClientCtor: (url, callbacks) => {
+          fakeClient = new FakeWhepClient(url, callbacks);
+          return fakeClient;
+        },
+      })
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(fakeClient.resume).not.toHaveBeenCalled();
+
+    act(() => {
+      const e = new Event('pageshow') as any;
+      Object.defineProperty(e, 'persisted', {
+        value: true,
+        configurable: true,
+      });
+      window.dispatchEvent(e);
+    });
+
+    expect(fakeClient.resume).toHaveBeenCalledOnce();
   });
 });
