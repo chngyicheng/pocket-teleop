@@ -22,8 +22,12 @@ class FakeTeleopClient {
   connect(_url: string) {}
   disconnect() {}
 
-  sendTwist(lx: number, ly: number, az: number) {
+  sendTwist(lx: number, ly: number, az: number, source?: string) {
     this.twists.push([lx, ly, az]);
+    // Fire onInputSource callback to match TeleopClient behavior
+    if (lx !== 0 || ly !== 0 || az !== 0) {
+      this.opts.onInputSource?.(source ?? 'touch');
+    }
   }
 
   engageEstop() {
@@ -368,8 +372,8 @@ describe('useTeleopBridge', () => {
     );
 
     act(() => {
-      fakeClient.opts.onGamepadActivity?.();
-      fakeClient.opts.onTwist?.(0.5, 0, 0.3);
+      fakeClient.opts.onInputSource?.('gamepad');
+      fakeClient.opts.onTwist?.(0.5, 0, 0.3, 'gamepad');
     });
 
     expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
@@ -385,8 +389,8 @@ describe('useTeleopBridge', () => {
     );
 
     act(() => {
-      fakeClient.opts.onGamepadActivity?.();
-      fakeClient.opts.onTwist?.(0.5, 0, 0.3);
+      fakeClient.opts.onInputSource?.('gamepad');
+      fakeClient.opts.onTwist?.(0.5, 0, 0.3, 'gamepad');
     });
 
     expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
@@ -400,7 +404,7 @@ describe('useTeleopBridge', () => {
     expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
   });
 
-  it('inputSource reverts to idle after IDLE_MS with no activity', () => {
+  it('inputSource follows client onInputSource to idle', () => {
     const { result } = renderHook(() =>
       useTeleopBridge({
         url: 'ws://localhost/ws',
@@ -408,27 +412,18 @@ describe('useTeleopBridge', () => {
       })
     );
 
-    // Enable fake timers
-    vi.useFakeTimers();
+    act(() => {
+      fakeClient.opts.onInputSource?.('gamepad');
+    });
 
-    try {
-      act(() => {
-        fakeClient.opts.onGamepadActivity?.();
-        fakeClient.opts.onTwist?.(0.5, 0, 0.3);
-      });
+    expect(result.current.inputSource).toBe('gamepad');
 
-      expect(result.current.inputSource).toBe('gamepad');
+    act(() => {
+      fakeClient.opts.onInputSource?.('idle');
+    });
 
-      // Advance time past IDLE_MS (400 ms) + interval check (~150 ms) = 600 ms
-      act(() => {
-        vi.advanceTimersByTime(600);
-      });
-
-      expect(result.current.inputSource).toBe('idle');
-      expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
-    } finally {
-      vi.useRealTimers();
-    }
+    expect(result.current.inputSource).toBe('idle');
+    expect(result.current.gamepadTwist).toEqual({ lx: 0, ly: 0, az: 0 });
   });
 
   it('initializes maxLinear and maxAngular to 1.0 by default', () => {
@@ -909,5 +904,61 @@ describe('useTeleopBridge', () => {
     });
 
     expect(fakeClient.resume).not.toHaveBeenCalled();
+  });
+
+  it('gamepad input sets inputSource to gamepad', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.inputSource).toBe('idle');
+
+    act(() => {
+      fakeClient.opts.onInputSource?.('gamepad');
+    });
+
+    expect(result.current.inputSource).toBe('gamepad');
+  });
+
+  it('touch input sets inputSource to touch', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.inputSource).toBe('idle');
+
+    act(() => {
+      result.current.sendTwist(0.1, 0, 0);
+    });
+
+    expect(result.current.inputSource).toBe('touch');
+  });
+
+  it('onTwist with source=touch does not update gamepadTwist', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.opts.onInputSource?.('gamepad');
+      fakeClient.opts.onTwist?.(0.5, 0, 0.3, 'gamepad');
+    });
+
+    expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
+
+    act(() => {
+      fakeClient.opts.onTwist?.(0.2, 0.1, 0, 'touch');
+    });
+
+    expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
   });
 });

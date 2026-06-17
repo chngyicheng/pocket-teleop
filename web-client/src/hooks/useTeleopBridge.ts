@@ -60,7 +60,7 @@ export interface TeleopBridge {
   estopEngaged: boolean;
   resetEstop: () => void;
   gamepadTwist: { lx: number; ly: number; az: number };
-  inputSource: 'touch' | 'gamepad' | 'idle';
+  inputSource: 'gamepad' | 'keyboard' | 'touch' | 'idle';
   maxLinear: number;
   maxAngular: number;
   setMaxLinear: (v: number) => void;
@@ -94,7 +94,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [robotWidth, setRobotWidth] = useState(0);
   const [estopEngaged, setEstopEngaged] = useState(false);
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
-  const [inputSource, setInputSource] = useState<'touch' | 'gamepad' | 'idle'>('idle');
+  const [inputSource, setInputSource] = useState<'gamepad' | 'keyboard' | 'touch' | 'idle'>('idle');
   const [gamepadConnected, setGamepadConnected] = useState(false);
   const [disconnectAction, setDisconnectAction] = useState('stop');
   const [battery, setBattery] = useState<BatteryData | null>(null);
@@ -107,14 +107,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [maxAngular, setMaxAngularState] = useState(initialMaxSpeed.maxAngular);
 
   const clientRef = useRef<TeleopClient | null>(null);
-  const lastGamepadActivityRef = useRef(0);
-  const lastTouchActivityRef = useRef(0);
   const batterySamplesRef = useRef<BatterySample[]>([]);
   const hasNetworkDataRef = useRef(false);
-
-  const ACTIVITY_WINDOW_MS = 300;
-  const IDLE_MS = 400;
-  const IDLE_CHECK_INTERVAL_MS = 150;
 
   useEffect(() => {
     const factory = opts.TeleopClientCtor ?? ((o: TeleopClientOptions) => new TeleopClient(o));
@@ -184,16 +178,14 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onError: () => {
         // Error handling integrated via connection state changes
       },
-      onGamepadActivity: () => {
-        lastGamepadActivityRef.current = Date.now();
-        setInputSource('gamepad');
-      },
       onGamepadConnected: (connected) => {
         setGamepadConnected(connected);
       },
-      onTwist: (lx, ly, az) => {
-        const now = Date.now();
-        if (now - lastGamepadActivityRef.current < ACTIVITY_WINDOW_MS) {
+      onInputSource: (source) => {
+        setInputSource(source);
+      },
+      onTwist: (lx, ly, az, source) => {
+        if (source === 'gamepad') {
           setGamepadTwist({ lx, ly, az });
         }
       },
@@ -220,24 +212,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     // Apply persisted speed limits on connect
     client.setMaxSpeed(maxLinear, maxAngular);
 
-    // Set up idle reversion interval
-    const idleCheckInterval = setInterval(() => {
-      const now = Date.now();
-      const gamepadDelta = now - lastGamepadActivityRef.current;
-      const touchDelta = now - lastTouchActivityRef.current;
-
-      let newSource: 'touch' | 'gamepad' | 'idle';
-      if (gamepadDelta < IDLE_MS && gamepadDelta <= touchDelta) {
-        newSource = 'gamepad';
-      } else if (touchDelta < IDLE_MS) {
-        newSource = 'touch';
-      } else {
-        newSource = 'idle';
-      }
-
-      setInputSource((prev) => (prev !== newSource ? newSource : prev));
-    }, IDLE_CHECK_INTERVAL_MS);
-
     // Set up network quality stats polling interval
     const networkStatsInterval = setInterval(() => {
       if (hasNetworkDataRef.current && clientRef.current?.getNetworkStats) {
@@ -250,7 +224,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     }, 1000);
 
     return () => {
-      clearInterval(idleCheckInterval);
       clearInterval(networkStatsInterval);
       client.disconnect();
     };
@@ -286,10 +259,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   }, []);
 
   const sendTwist = (lx: number, ly: number, az: number) => {
-    lastTouchActivityRef.current = Date.now();
-    setInputSource('touch');
     if (clientRef.current) {
-      clientRef.current.sendTwist(lx, ly, az);
+      clientRef.current.sendTwist(lx, ly, az, 'touch');
     }
   };
 

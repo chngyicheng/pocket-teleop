@@ -45,6 +45,7 @@ export interface TeleopClientOptions {
   onBattery?: (battery: { percentage: number | null; voltage: number | null; current: number | null; charging: boolean }) => void;
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number, source: InputSource) => void;
+  onInputSource?: (source: InputSource | 'idle') => void;
   onGamepadActivity?: () => void;
   onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
@@ -288,6 +289,9 @@ export class TeleopClient {
       return;
     }
 
+    // Record prior source state to detect changes
+    const prevSource = this.activeSource;
+
     // ========== INPUT ARBITRATION ==========
     // Check if input is non-zero or zero from owner
     const isNonZeroInput = lx !== 0 || ly !== 0 || az !== 0;
@@ -334,6 +338,11 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
     // Emit shaped-normalized (un-scaled) values to HUD, with source
     this.options.onTwist?.(shapedLx, shapedLy, shapedAz, source);
+
+    // Fire onInputSource callback if activeSource changed
+    if (this.activeSource !== prevSource) {
+      this.options.onInputSource?.(this.activeSource ?? 'idle');
+    }
 
     // Update continuous-publish state (store shaped-normalized, not pre-scaled)
     if (shapedLx !== 0 || shapedLy !== 0 || shapedAz !== 0) {
