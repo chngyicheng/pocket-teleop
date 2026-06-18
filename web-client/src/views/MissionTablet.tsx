@@ -149,6 +149,23 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // so the operator can keep driving with the big map open.
   const [mapExpanded, setMapExpanded] = useState(false);
 
+  // While the map is expanded, temporarily close both rails so the video goes fullscreen
+  // behind the translucent map; restore the prior open/closed state on exit. Keyed on
+  // mapExpanded only (not leftOpen/rightOpen) so the snapshot isn't clobbered.
+  const prevRailsRef = useRef<{ left: boolean; right: boolean } | null>(null);
+  useEffect(() => {
+    if (mapExpanded) {
+      prevRailsRef.current = { left: leftOpen, right: rightOpen };
+      setLeftOpen(false);
+      setRightOpen(false);
+    } else if (prevRailsRef.current) {
+      setLeftOpen(prevRailsRef.current.left);
+      setRightOpen(prevRailsRef.current.right);
+      prevRailsRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapExpanded]);
+
   // A long phone in landscape (very wide aspect) renders this tablet layout but
   // is short vertically, so the corner joystick zones overlap the side rails and
   // a full-size zone blocks the rail's touch-scroll. There, use a *smaller*

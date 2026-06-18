@@ -779,10 +779,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({ expandable, onExpandedChange, 
           background: 'rgba(0,0,0,0.6)',
         }}
       />
-      {/* Expanded map view — sits above backdrop */}
+      {/* Expanded map view — sits above backdrop. bg is forced translucent (regardless of the
+          collapsed instance's bg) so the video feed shows through in every layout, matching
+          the portrait minimap. */}
       <div style={{ position: 'relative', zIndex: 1 }}>
         <MiniMapView
           {...props}
+          bg="rgba(8,10,14,0.7)"
           size={expandedSize}
           onTap={() => setExpanded(false)}
         />

@@ -1009,4 +1009,31 @@ describe('MissionControl', () => {
     // BAT readout should show the percentage value
     expect(screen.getByText(/12%/)).toBeTruthy();
   });
+
+  it('landscape: expanding the map closes both rails (fullscreen video) and restores them on collapse', () => {
+    const cells = new Uint8Array(10000);
+    const bridge = createFakeBridge({
+      mapGrid: { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 },
+      mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+    });
+    const { container } = render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+    );
+
+    const root = container.firstChild as HTMLElement;
+    expect(root.style.gridTemplateColumns).toBe('180px 1fr 180px');
+
+    // Expand the minimap (tap its container)
+    const map = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(map!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(map!, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+    // Both rails collapsed → video fullscreen
+    expect(root.style.gridTemplateColumns).toBe('0px 1fr 0px');
+
+    // Collapse → rails restored to their prior open state
+    fireEvent.click(document.querySelector('[data-testid="minimap-backdrop"]')!);
+    expect(root.style.gridTemplateColumns).toBe('180px 1fr 180px');
+  });
 });

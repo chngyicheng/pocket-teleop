@@ -123,6 +123,24 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const [mapExpanded, setMapExpanded] = useState(false);
   const joystickZIndex = mapExpanded ? 250 : undefined;
 
+  // While the map is expanded (landscape only), temporarily close both rails so the video
+  // goes fullscreen behind the translucent map; restore the prior open/closed state on exit.
+  // Keyed on mapExpanded only (not leftOpen/rightOpen) so the snapshot isn't clobbered.
+  const prevRailsRef = useRef<{ left: boolean; right: boolean } | null>(null);
+  useEffect(() => {
+    if (!isLandscape) return;
+    if (mapExpanded) {
+      prevRailsRef.current = { left: leftOpen, right: rightOpen };
+      setLeftOpen(false);
+      setRightOpen(false);
+    } else if (prevRailsRef.current) {
+      setLeftOpen(prevRailsRef.current.left);
+      setRightOpen(prevRailsRef.current.right);
+      prevRailsRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapExpanded, isLandscape]);
+
   // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
   // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
   // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).

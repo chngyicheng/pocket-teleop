@@ -878,4 +878,26 @@ describe('MissionTablet', () => {
     // Gamepad indicator should not be present
     expect(() => screen.getByText('🎮 GP')).toThrow();
   });
+
+  it('expanding the map closes both rails (fullscreen video) and restores them on collapse', () => {
+    const cells = new Uint8Array(10000);
+    const bridge = createFakeBridge({
+      mapGrid: { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 },
+      mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+    });
+    render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+    const root = document.querySelector('[style*="grid-template-columns"]') as HTMLElement;
+    expect(root.style.gridTemplateColumns).toBe('220px 1fr 240px');
+
+    const map = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(map!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(map!, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+    expect(root.style.gridTemplateColumns).toBe('0px 1fr 0px');
+
+    fireEvent.click(document.querySelector('[data-testid="minimap-backdrop"]')!);
+    expect(root.style.gridTemplateColumns).toBe('220px 1fr 240px');
+  });
 });
