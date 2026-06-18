@@ -792,6 +792,161 @@ describe('MiniMap', () => {
     // translate(size/2, size/2) = translate(50 50) - SVG omits commas in JS-generated transforms
     expect(gTransform).toContain('translate(50 50)');
   });
+
+  // ─── MiniMap expand/collapse tests ──────────────────────────────────────────
+
+  it('tap (single pointer down+up at same position) expands when expandable=true', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Expanded overlay should appear
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="minimap-backdrop"]')).toBeTruthy();
+  });
+
+  it('clicking backdrop collapses the expanded overlay', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    // Tap to expand
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    expect(wrapper).toBeTruthy();
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+
+    // Click backdrop to collapse
+    const backdrop = document.querySelector('[data-testid="minimap-backdrop"]');
+    expect(backdrop).toBeTruthy();
+    fireEvent.click(backdrop!);
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
+
+  it('two-finger pinch does not trigger expand (pinch suppresses tap)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Two fingers down — second finger clears tap start
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 40, clientY: 50 });
+    fireEvent.pointerDown(wrapper!, { pointerId: 2, clientX: 60, clientY: 50 });
+    // Release both
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 40, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 2, clientX: 60, clientY: 50 });
+
+    // No expanded overlay
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
+
+  it('wheel zoom (deltaY < 0) shrinks metersAcross (zooms in)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        metersAcross={10}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    // Read initial value
+    const canvasBefore = container.querySelector('[data-testid="minimap-canvas"]') as HTMLElement;
+    const metersBefore = parseFloat(canvasBefore?.getAttribute('data-meters-across') ?? '10');
+
+    // Dispatch native wheel event (scroll up = zoom in)
+    fireEvent.wheel(wrapper!, { deltaY: -100 });
+
+    const canvasAfter = container.querySelector('[data-testid="minimap-canvas"]') as HTMLElement;
+    const metersAfter = parseFloat(canvasAfter?.getAttribute('data-meters-across') ?? '10');
+
+    expect(metersAfter).toBeLessThan(metersBefore);
+  });
+
+  it('tap expands even without mapGrid/mapPose (odom/no-map mode)', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={null}
+        mapPose={null}
+      />
+    );
+
+    const wrapper = container.querySelector('div');
+    expect(wrapper).toBeTruthy();
+
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Should expand despite no map
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+  });
+
+  it('collapsed minimap testids remain unique (minimap-grid etc. not duplicated when not expanded)', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={null}
+        mapPose={null}
+      />
+    );
+
+    // When not expanded, there should be exactly one minimap-grid
+    const grids = container.querySelectorAll('[data-testid="minimap-grid"]');
+    expect(grids.length).toBe(1);
+    // No expanded overlay
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────

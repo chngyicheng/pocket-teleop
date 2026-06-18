@@ -61,6 +61,8 @@ export interface MiniMapProps {
   metersAcross?: number;
   robotLength?: number;
   robotWidth?: number;
+  /** When true, a tap on the minimap expands it to a full-screen overlay. */
+  expandable?: boolean;
 }
 
 export interface CompassProps {
@@ -350,7 +352,13 @@ export const Joystick: React.FC<JoystickProps> = ({
 
 // ─── MiniMap ──────────────────────────────────────────────────────────────────
 
-export const MiniMap: React.FC<MiniMapProps> = ({
+/** Internal props for MiniMapView — extends public MiniMapProps with an onTap callback. */
+interface MiniMapViewProps extends MiniMapProps {
+  onTap?: () => void;
+}
+
+/** Internal component that owns all the map rendering, pinch-zoom, tap detection, and wheel-zoom logic. */
+const MiniMapView: React.FC<MiniMapViewProps> = ({
   pos,
   heading,
   size = 92,
@@ -366,6 +374,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   metersAcross = 10,
   robotLength = 0,
   robotWidth = 0,
+  onTap,
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -373,6 +382,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ startDist: number; startM: number } | null>(null);
+  const tapStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const [viewM, setViewM] = useState(metersAcross);
 
   // Build offscreen canvas when mapGrid changes
@@ -449,18 +459,45 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     if (trailRef.current.length > 80) trailRef.current.shift();
   }, [pos.x, pos.y]);
 
-  // Pinch-to-zoom gesture handlers (map mode only)
+  // Wheel zoom — map mode only; native listener so we can call preventDefault.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const handler = (e: WheelEvent) => {
+      if (!mapGrid || !mapPose) return; // no map: allow scroll to pass through
+      e.preventDefault();
+      const maxM = Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2;
+      const factor = e.deltaY < 0 ? 1 / 1.1 : 1.1;
+      setViewM((prev) => Math.min(Math.max(prev * factor, 1.0), maxM));
+    };
+
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [mapGrid, mapPose]);
+
+  // Pointer handlers — pointer bookkeeping and tap detection run unconditionally;
+  // pinch math is gated on map mode.
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!mapGrid || !mapPose) return; // pinch disabled outside map mode
-
+      // Unconditional: register pointer and track tap start
       pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (pointersRef.current.size === 2) {
-        const pointers = Array.from(pointersRef.current.values());
-        const dx = pointers[1].x - pointers[0].x;
-        const dy = pointers[1].y - pointers[0].y;
-        const startDist = Math.hypot(dx, dy);
-        pinchRef.current = { startDist, startM: viewM };
+
+      if (pointersRef.current.size === 1) {
+        // First finger — potential tap
+        tapStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+      } else if (pointersRef.current.size === 2) {
+        // Second finger — this is a pinch, not a tap
+        tapStartRef.current = null;
+
+        // Pinch math only in map mode
+        if (mapGrid && mapPose) {
+          const pointers = Array.from(pointersRef.current.values());
+          const dx = pointers[1].x - pointers[0].x;
+          const dy = pointers[1].y - pointers[0].y;
+          const startDist = Math.hypot(dx, dy);
+          pinchRef.current = { startDist, startM: viewM };
+        }
       }
     },
     [mapGrid, mapPose, viewM]
@@ -494,14 +531,28 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     [mapGrid, mapPose]
   );
 
-  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    pointersRef.current.delete(e.pointerId);
-    if (pointersRef.current.size < 2) {
-      pinchRef.current = null;
-    }
-  }, []);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Check tap before deleting pointer
+      if (onTap && tapStartRef.current && pointersRef.current.size === 1) {
+        const { x, y, t } = tapStartRef.current;
+        const dist = Math.hypot(e.clientX - x, e.clientY - y);
+        const dt = Date.now() - t;
+        if (dist < 10 && dt < 400) {
+          onTap();
+        }
+      }
+      tapStartRef.current = null;
+      pointersRef.current.delete(e.pointerId);
+      if (pointersRef.current.size < 2) {
+        pinchRef.current = null;
+      }
+    },
+    [onTap]
+  );
 
   const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    tapStartRef.current = null;
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) {
       pinchRef.current = null;
@@ -509,6 +560,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   }, []);
 
   const handlePointerLeave = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    tapStartRef.current = null;
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) {
       pinchRef.current = null;
@@ -551,6 +603,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         position: 'relative',
         overflow: 'hidden',
         touchAction: mapGrid && mapPose ? 'none' : undefined,
+        cursor: onTap ? 'pointer' : undefined,
       }}
     >
       {/* Canvas (map + scan) — only if mapGrid && mapPose */}
@@ -680,6 +733,60 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         {labelText}
       </div>
     </div>
+  );
+};
+
+/** Public MiniMap component. When expandable=true, a tap opens a fixed full-screen overlay. */
+export const MiniMap: React.FC<MiniMapProps> = ({ expandable, ...props }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  const expandedSize = Math.min(
+    typeof window !== 'undefined' ? window.innerWidth : 400,
+    typeof window !== 'undefined' ? window.innerHeight : 400,
+  ) * 0.85;
+
+  return (
+    <>
+      {/* Collapsed view — always rendered */}
+      <MiniMapView
+        {...props}
+        onTap={expandable ? () => setExpanded(true) : undefined}
+      />
+
+      {/* Expanded overlay — rendered into document body via portal-like fixed positioning */}
+      {expandable && expanded && (
+        <div
+          data-testid="minimap-expanded"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Backdrop */}
+          <div
+            data-testid="minimap-backdrop"
+            onClick={() => setExpanded(false)}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0,0,0,0.6)',
+            }}
+          />
+          {/* Expanded map view — sits above backdrop */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <MiniMapView
+              {...props}
+              size={expandedSize}
+              onTap={() => setExpanded(false)}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
