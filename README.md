@@ -20,7 +20,7 @@
 ## Highlights
 
 - **Phone-first Mission Control UI** — touch joysticks, live telemetry, and a heads-up video feed that adapt across phone (portrait/landscape) and tablet/foldable layouts.
-- **Multiple input sources** — gamepad (USB/Bluetooth), on-screen touch joysticks, and keyboard, with input shaping (deadzone + response curve) for smooth low-speed control.
+- **Multiple input sources** — gamepad (USB/Bluetooth), on-screen touch joysticks, and keyboard. Inputs are arbitrated so a single source owns control at a time (gamepad > keyboard > touch), with deadzone + response-curve shaping and acceleration limiting for smooth, jerk-free motion.
 - **Adjustable speed limits** — per-axis linear/angular caps, set live from the UI and persisted.
 - **Latching E-STOP** — from the on-screen button, the spacebar, or the gamepad left bumper; one shared latch across every source.
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
@@ -145,8 +145,10 @@ the WebSocket upgrade, so the UI loads but nothing connects.
 |---|---|---|
 | **Gamepad** | left stick = forward/back + rotate, right stick = strafe | E-STOP on the left bumper (LB). Deadzone + response curve applied. |
 | **Touch joysticks** | left zone = drive, right zone = strafe | Bottom-corner hold-zones; the knob mirrors gamepad input when a pad is active. |
-| **Keyboard** | arrows / WASD | Spacebar = E-STOP. |
+| **Keyboard** | WASD = drive (W/S forward/back, A/D rotate), ← / → = strafe | Each key drives at the full configured speed; keys are ignored while you're typing in a text field. Spacebar = E-STOP. |
 
+- **Input priority:** if several inputs are active at once, one owns control — gamepad beats keyboard beats touch. A higher-priority source sitting idle (say, a connected pad with its stick centred) won't block a lower one.
+- **Smooth motion:** the robot ramps up to speed (~0.5 s) and slows to a stop (~0.2 s) instead of lurching. **E-STOP skips the ramp and stops immediately.**
 - **Speed limits:** set the max linear (m/s) and angular (rad/s) caps live from the left rail's **SPEED** panel; the value is shaped, scaled, and shown as the published `cmd_vel`.
 - **E-STOP:** latches across all sources — engage from any one, reset from any one.
 
