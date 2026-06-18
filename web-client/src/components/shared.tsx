@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import type { WhepState } from '../whep_client.js';
 import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose } from '../map_render.js';
 
@@ -355,6 +356,8 @@ export const Joystick: React.FC<JoystickProps> = ({
 /** Internal props for MiniMapView — extends public MiniMapProps with an onTap callback. */
 interface MiniMapViewProps extends MiniMapProps {
   onTap?: () => void;
+  /** Hide via visibility (keeps layout footprint) — used to hide the collapsed view while expanded. */
+  hidden?: boolean;
 }
 
 /** Internal component that owns all the map rendering, pinch-zoom, tap detection, and wheel-zoom logic. */
@@ -375,6 +378,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
   robotLength = 0,
   robotWidth = 0,
   onTap,
+  hidden = false,
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -604,6 +608,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         overflow: 'hidden',
         touchAction: mapGrid && mapPose ? 'none' : undefined,
         cursor: onTap ? 'pointer' : undefined,
+        visibility: hidden ? 'hidden' : undefined,
       }}
     >
       {/* Canvas (map + scan) — only if mapGrid && mapPose */}
@@ -736,7 +741,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
   );
 };
 
-/** Public MiniMap component. When expandable=true, a tap opens a fixed full-screen overlay. */
+/** Public MiniMap component. When expandable=true, a tap opens a full-screen overlay. */
 export const MiniMap: React.FC<MiniMapProps> = ({ expandable, ...props }) => {
   const [expanded, setExpanded] = useState(false);
 
@@ -745,47 +750,53 @@ export const MiniMap: React.FC<MiniMapProps> = ({ expandable, ...props }) => {
     typeof window !== 'undefined' ? window.innerHeight : 400,
   ) * 0.85;
 
+  const overlay = (
+    <div
+      data-testid="minimap-expanded"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 200,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {/* Backdrop */}
+      <div
+        data-testid="minimap-backdrop"
+        onClick={() => setExpanded(false)}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(0,0,0,0.6)',
+        }}
+      />
+      {/* Expanded map view — sits above backdrop */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <MiniMapView
+          {...props}
+          size={expandedSize}
+          onTap={() => setExpanded(false)}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {/* Collapsed view — always rendered */}
+      {/* Collapsed view — hidden (keeps its layout footprint) while expanded so it
+          doesn't show through the semi-transparent backdrop. */}
       <MiniMapView
         {...props}
+        hidden={expandable && expanded}
         onTap={expandable ? () => setExpanded(true) : undefined}
       />
 
-      {/* Expanded overlay — rendered into document body via portal-like fixed positioning */}
-      {expandable && expanded && (
-        <div
-          data-testid="minimap-expanded"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 200,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {/* Backdrop */}
-          <div
-            data-testid="minimap-backdrop"
-            onClick={() => setExpanded(false)}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(0,0,0,0.6)',
-            }}
-          />
-          {/* Expanded map view — sits above backdrop */}
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <MiniMapView
-              {...props}
-              size={expandedSize}
-              onTap={() => setExpanded(false)}
-            />
-          </div>
-        </div>
-      )}
+      {/* Expanded overlay — portaled to <body> so it escapes any transformed/clipping
+          ancestor (e.g. the CollapsibleRail's translateX panel) and fills the viewport. */}
+      {expandable && expanded && typeof document !== 'undefined' &&
+        createPortal(overlay, document.body)}
     </>
   );
 };

@@ -947,6 +947,40 @@ describe('MiniMap', () => {
     // No expanded overlay
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
   });
+
+  it('expanded overlay is portaled to document.body (escapes a transformed ancestor)', () => {
+    // Wrap MiniMap in a transformed/clipping ancestor like the CollapsibleRail panel.
+    const { container } = render(
+      <div style={{ transform: 'translateX(0)', overflow: 'hidden' }}>
+        <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable={true} mapGrid={null} mapPose={null} />
+      </div>
+    );
+
+    const collapsed = container.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    expect(collapsed).toBeTruthy();
+    fireEvent.pointerDown(collapsed!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed!, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const overlay = document.querySelector('[data-testid="minimap-expanded"]');
+    expect(overlay).toBeTruthy();
+    // Portaled to <body>, not nested inside the transformed ancestor (which is in `container`).
+    expect(overlay!.parentElement).toBe(document.body);
+    expect(container.contains(overlay)).toBe(false);
+  });
+
+  it('collapsed minimap is hidden (visibility) while expanded so it does not show through the backdrop', () => {
+    const { container } = render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable={true} mapGrid={null} mapPose={null} />
+    );
+
+    const collapsed = container.querySelector('div') as HTMLElement;
+    expect(collapsed.style.visibility).not.toBe('hidden');
+
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    expect(collapsed.style.visibility).toBe('hidden');
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────
