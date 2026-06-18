@@ -968,6 +968,31 @@ describe('MiniMap', () => {
     expect(container.contains(overlay)).toBe(false);
   });
 
+  it('fires onExpandedChange(true) on expand and (false) on collapse', () => {
+    const onExpandedChange = vi.fn();
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        mapGrid={null}
+        mapPose={null}
+        onExpandedChange={onExpandedChange}
+      />
+    );
+
+    // Initial mount fires once with false
+    expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+
+    const collapsed = container.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(collapsed!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed!, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(onExpandedChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.click(document.querySelector('[data-testid="minimap-backdrop"]')!);
+    expect(onExpandedChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('collapsed minimap is hidden (visibility) while expanded so it does not show through the backdrop', () => {
     const { container } = render(
       <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable={true} mapGrid={null} mapPose={null} />

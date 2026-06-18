@@ -64,6 +64,8 @@ export interface MiniMapProps {
   robotWidth?: number;
   /** When true, a tap on the minimap expands it to a full-screen overlay. */
   expandable?: boolean;
+  /** Fires whenever the expanded state changes — lets the view raise the joysticks above the overlay. */
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 export interface CompassProps {
@@ -742,8 +744,13 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
 };
 
 /** Public MiniMap component. When expandable=true, a tap opens a full-screen overlay. */
-export const MiniMap: React.FC<MiniMapProps> = ({ expandable, ...props }) => {
+export const MiniMap: React.FC<MiniMapProps> = ({ expandable, onExpandedChange, ...props }) => {
   const [expanded, setExpanded] = useState(false);
+
+  // Notify the view so it can raise the joysticks above the overlay while expanded.
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   const expandedSize = Math.min(
     typeof window !== 'undefined' ? window.innerWidth : 400,

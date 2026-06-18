@@ -117,6 +117,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const knobSize = 50;
   const variant = 'zone' as const; // hold-zone by default
 
+  // When the minimap is expanded into its overlay (zIndex 200, portaled to body),
+  // raise the joysticks above it (zIndex 250) so the operator can keep driving while
+  // viewing the map. Only while expanded — a static raise would paint over the drawer.
+  const [mapExpanded, setMapExpanded] = useState(false);
+  const joystickZIndex = mapExpanded ? 250 : undefined;
+
   // Gamepad input mapping: invert the knob-to-twist calculation to render truth.
   // DRIVE: knob (x, y) → twist (lx=-y, az=-x), so twist → knob is (x=-az, y=-lx).
   // STRAFE: knob x → twist ly, so twist → knob is (x=ly, y=0).
@@ -356,7 +362,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             cursor: 'pointer',
             flex: '0 0 auto',
             whiteSpace: 'nowrap',
-            zIndex: 10,
+            // position+zIndex so the stop control stays tappable above the expanded-map
+            // overlay (zIndex 200, full-viewport) while driving with the map open.
+            position: 'relative',
+            zIndex: mapExpanded ? 260 : 10,
             animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
@@ -530,6 +539,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               side="left"
               size={zone}
               controlsDisabled={controlsDisabled}
+              zIndex={joystickZIndex}
               variant={variant}
               baseSize={baseSize}
               knobSize={knobSize}
@@ -549,6 +559,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               side="right"
               size={zone}
               controlsDisabled={controlsDisabled}
+              zIndex={joystickZIndex}
               variant={variant}
               axes="x"
               baseSize={baseSize}
@@ -592,6 +603,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 robotLength={bridge.robotLength}
                 robotWidth={bridge.robotWidth}
                 expandable
+                onExpandedChange={setMapExpanded}
               />
 
               {/* HEADING */}
@@ -747,7 +759,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           <MiniMap
             pos={navPose}
             heading={navPose.heading}
-            size={isLandscape ? 110 : 88}
+            size={isLandscape ? 110 : 128}
             color={p.accent}
             bg="rgba(8,10,14,0.7)"
             border={p.border}
@@ -757,6 +769,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             robotLength={bridge.robotLength}
             robotWidth={bridge.robotWidth}
             expandable
+            onExpandedChange={setMapExpanded}
           />
           <Compass
             heading={odomPos.heading}
@@ -774,6 +787,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           side="left"
           size={zone}
           controlsDisabled={controlsDisabled}
+          zIndex={joystickZIndex}
           variant={variant}
           baseSize={baseSize}
           knobSize={knobSize}
@@ -793,6 +807,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           side="right"
           size={zone}
           controlsDisabled={controlsDisabled}
+          zIndex={joystickZIndex}
           variant={variant}
           axes="x"
           baseSize={baseSize}

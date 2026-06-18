@@ -145,6 +145,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // Collapsible rails state
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+  // Raise the joysticks above the expanded-minimap overlay (zIndex 200) only while expanded,
+  // so the operator can keep driving with the big map open.
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   // A long phone in landscape (very wide aspect) renders this tablet layout but
   // is short vertically, so the corner joystick zones overlap the side rails and
@@ -426,7 +429,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             cursor: 'pointer',
             whiteSpace: 'nowrap',
             flexShrink: 0,
-            zIndex: 10,
+            // position+zIndex so the stop control stays tappable above the expanded-map
+            // overlay (zIndex 200) while driving with the map open.
+            position: 'relative',
+            zIndex: mapExpanded ? 260 : 10,
             animation: estopEngaged ? 'pulse 1s ease-in-out infinite alternate' : 'none',
           }}
         >
@@ -669,6 +675,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             robotLength={bridge.robotLength}
             robotWidth={bridge.robotWidth}
             expandable
+            onExpandedChange={setMapExpanded}
           />
 
           <SidePanel title="HEADING">
@@ -704,7 +711,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="left"
         size={joySize}
-        zIndex={5}
+        zIndex={mapExpanded ? 250 : 5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         baseSize={joyBase}
@@ -723,7 +730,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="right"
         size={joySize}
-        zIndex={5}
+        zIndex={mapExpanded ? 250 : 5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         axes="x"
