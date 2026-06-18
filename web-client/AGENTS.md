@@ -71,6 +71,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `video_source.ts` | RTSP/UDP/SRT/MJPEG validate + `buildMtxSource` + apply (MediaMTX config API) |
 | `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; getStats@1Hz; backoff retry; `'disconnected'` 2 s grace; fps-stall watchdog (framesDecoded flat 3 polls → rebuild); `resume()` rebuilds PC on foreground |
 | `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate); scan capture-pose world overlay (`scanToScreenPoints` fuses capture+current pose, `worldToScreenPoint`, `selectScanCapturePose` frame-match fallback) |
+| `MiniMap` (shared.tsx) | `expandable` prop: tap to expand to fixed full-screen overlay; tap overlay or backdrop to collapse. Scrollwheel zooms (map mode only). Portrait phone placement: bottom-center above joysticks (bottom: 204). Internal `MiniMapView` owns all render/gesture/zoom logic; outer `MiniMap` wrapper holds `expanded` state and renders the overlay. |
 | `sw_register.ts` | Prod-only injectable SW registration wrapper |
 | `perf_beacon.ts` | Navigation/Paint/resource timing → `POST /perf` |
 
@@ -86,6 +87,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 - **E-STOP product decisions (do NOT re-ask)**: stays tappable on top while the drawer is open; label `■ STOP` → `■ RESET` when engaged.
 - **SettingsDrawer server-backed config** (GET/PUT `/auth/robot-config`): split across two sections, each with its own Save issuing a **partial PUT** (merged server-side) → restart-required toast + per-field errors (red, P.danger). **Video section** owns `VIDEO_TOPIC`/`VIDEO_TOPIC_TYPE` (grouped under the runtime "Source" mode/URL/Apply picker, since the topic is only used when Source = ROS2). **Robot section** owns identity + footprint (ROBOT_TYPE, ROBOT_NAME, ROBOT_NAMESPACE, ROBOT_LENGTH_M, ROBOT_WIDTH_M). Replaces deprecated namespace localStorage. Drawer height uses `dvh` (mobile-scrollable).
 - Footprint: minimap draws a to-scale dashed outline when both dims > 0 and the long axis renders ≥ 14 px; axis-aligned in map mode, heading-rotated in odom fallback.
+- **MiniMap expandable**: `expandable` prop renders an expand-on-tap interaction. Tap detection is unconditional (works in odom/no-map mode) — pointer bookkeeping and tap detection run always; pinch math and wheel zoom are gated on map mode. A two-finger touch clears the tap start so pinch never triggers expand. The expanded overlay uses `position:fixed, zIndex:200`. Portrait phone: minimap+compass placed bottom-center at `bottom:204` (joystick zone=190 + 14 gap) so the minimap floats above the joystick zones without overlap.
 
 ### Inbound message types consumed
 

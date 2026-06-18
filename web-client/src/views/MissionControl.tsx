@@ -591,6 +591,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 scan={bridge.scan}
                 robotLength={bridge.robotLength}
                 robotWidth={bridge.robotWidth}
+                expandable
               />
 
               {/* HEADING */}
@@ -722,9 +723,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
         </div>
 
-        {/* Bottom-right mini-map + compass */}
+        {/* Landscape: bottom-right mini-map + compass; Portrait: bottom-center above joysticks */}
         <div
-          style={{
+          style={isLandscape ? {
             position: 'absolute',
             bottom: 8,
             right: 8,
@@ -732,6 +733,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             flexDirection: 'column',
             gap: 6,
             alignItems: 'flex-end',
+          } : {
+            position: 'absolute',
+            bottom: 204,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            alignItems: 'center',
           }}
         >
           <MiniMap
@@ -746,6 +756,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             scan={bridge.scan}
             robotLength={bridge.robotLength}
             robotWidth={bridge.robotWidth}
+            expandable
           />
           <Compass
             heading={odomPos.heading}
