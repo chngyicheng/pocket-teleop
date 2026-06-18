@@ -3,7 +3,7 @@
 // ArrowLeft/Right: right joystick (ly = strafe).
 // ArrowUp/Down: unused.
 export interface KeyboardHandlerOptions {
-  velocity?: number;        // constant value emitted while key held (default 0.5)
+  velocity?: number;        // constant value emitted while key held (default 1.0)
   onTwist: (lx: number, ly: number, az: number) => void;
   onActivity?: () => void;  // fires on any keydown, regardless of enabled state
 }
@@ -19,7 +19,7 @@ export class KeyboardHandler {
   private readonly boundKeyUp:   (e: KeyboardEvent) => void;
 
   constructor(options: KeyboardHandlerOptions) {
-    this.velocity    = options.velocity ?? 0.5;
+    this.velocity    = options.velocity ?? 1.0;
     this.onTwistCb   = options.onTwist;
     this.onActivityCb = options.onActivity;
 

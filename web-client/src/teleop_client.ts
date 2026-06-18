@@ -10,10 +10,15 @@ import type { NetworkStats } from './network_quality.js';
 const PUBLISH_INTERVAL_MS = 50;
 
 /**
- * Number of zero-twist frames sent after a joystick release before the
- * publisher goes silent.  10 × 50 ms = 500 ms of explicit stop.
+ * Velocity slew-rate (acceleration) limiter timings. The published command
+ * steps toward the target each tick instead of jumping, so the robot never
+ * jerks. Accel is gentle, decel is sharper (stops feel prompt + safer).
+ *   ACCEL_TIME_MS — time to ramp an axis from 0 → full (0.1/tick at 20 Hz)
+ *   DECEL_TIME_MS — time to ramp an axis from full → 0 (0.25/tick at 20 Hz)
+ * E-STOP bypasses the limiter and zeroes instantly.
  */
-const STOP_REPEATS = 10;
+const ACCEL_TIME_MS = 500;
+const DECEL_TIME_MS = 200;
 
 /** Input source types for arbitration */
 export type InputSource = 'gamepad' | 'keyboard' | 'touch';
@@ -47,6 +52,12 @@ export interface TeleopClientOptions {
   onButton?: (action: string) => void;
   onTwist?: (lx: number, ly: number, az: number, source: InputSource) => void;
   onInputSource?: (source: InputSource | 'idle') => void;
+  /**
+   * Fires every publisher tick with the actual slew-limited command being sent
+   * (normalized, pre-scale) plus the source that owns control. The HUD reads
+   * this to show real published cmd_vel for any source, including the ramp.
+   */
+  onPublish?: (lx: number, ly: number, az: number, source: InputSource | 'idle') => void;
   onGamepadActivity?: () => void;
   onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
@@ -81,6 +92,10 @@ export class TeleopClient {
   private readonly maxMissedPongs: number;
   private readonly options: TeleopClientOptions;
 
+  // Slew-rate limiter per-tick steps (normalized units), derived from the tick rate.
+  private readonly accelStep: number;
+  private readonly decelStep: number;
+
   // Zombie-link detection: counts pings sent with no pong reply in between.
   private missedPongs = 0;
 
@@ -92,11 +107,11 @@ export class TeleopClient {
   private maxLinear = 1.0;
   private maxAngular = 1.0;
 
-  // Continuous-publish state
-  /** Non-null while a joystick is held; the values to repeat each tick. */
-  private repeatTwist: { lx: number; ly: number; az: number } | null = null;
-  /** Counts down from STOP_REPEATS after a release, sending zeros each tick. */
-  private zeroFramesLeft = 0;
+  // Continuous-publish state (slew-rate limited)
+  /** Desired command (shaped-normalized) the active source last requested. */
+  private targetTwist = { lx: 0, ly: 0, az: 0 };
+  /** Actual command being published, ramped toward targetTwist each tick. */
+  private currentTwist = { lx: 0, ly: 0, az: 0 };
 
   /** True while e-stop is latched; sendTwist is a no-op in this state. */
   private estopEngaged = false;
@@ -113,6 +128,8 @@ export class TeleopClient {
     this.keepaliveIntervalMs = options.keepaliveIntervalMs ?? 200;
     this.publishIntervalMs = options.publishIntervalMs ?? PUBLISH_INTERVAL_MS;
     this.maxMissedPongs = options.maxMissedPongs ?? 3;
+    this.accelStep = this.publishIntervalMs / ACCEL_TIME_MS;
+    this.decelStep = this.publishIntervalMs / DECEL_TIME_MS;
     this.connection = new Connection({
       onMessage: (raw) => this.handleMessage(raw),
       onOpen: () => { /* retryAttempt is reset in handleMessage on status */ },
@@ -170,8 +187,8 @@ export class TeleopClient {
     this.retryAttempt = 0;
     this.retryPending = false;
     // Fresh/reconnected session must not blindly resume stale motion.
-    this.repeatTwist = null;
-    this.zeroFramesLeft = 0;
+    this.targetTwist = { lx: 0, ly: 0, az: 0 };
+    this.currentTwist = { lx: 0, ly: 0, az: 0 };
     this.estopEngaged = false;
     this.missedPongs = 0;
     this.pingSentAt = 0;
@@ -280,9 +297,10 @@ export class TeleopClient {
   engageEstop(): void {
     this.connection.send(buildEstop());
     this.estopEngaged = true;
-    // Clear publisher motion state so the continuous publisher stops sending
-    this.repeatTwist = null;
-    this.zeroFramesLeft = 0;
+    // E-STOP bypasses the slew limiter: force motion to zero instantly so there
+    // is no decel ramp, and a later reset cannot resume stale motion.
+    this.targetTwist = { lx: 0, ly: 0, az: 0 };
+    this.currentTwist = { lx: 0, ly: 0, az: 0 };
     this.lastSentAt = Date.now();
   }
 
@@ -336,15 +354,12 @@ export class TeleopClient {
       this.lastActiveAt = 0;
     }
 
-    // ========== SHAPE & SEND ==========
+    // ========== SHAPE ==========
     // Shape all three axes: deadzone + cubic curve for fine control
     const shapedLx = shapeAxis(lx);
     const shapedLy = shapeAxis(ly);
     const shapedAz = shapeAxis(az);
 
-    // Immediate one-shot send with scaling applied
-    this.sendScaledTwist(shapedLx, shapedLy, shapedAz);
-    this.lastSentAt = Date.now();
     // Emit shaped-normalized (un-scaled) values to HUD, with source
     this.options.onTwist?.(shapedLx, shapedLy, shapedAz, source);
 
@@ -353,16 +368,28 @@ export class TeleopClient {
       this.options.onInputSource?.(this.activeSource ?? 'idle');
     }
 
-    // Update continuous-publish state (store shaped-normalized, not pre-scaled)
-    if (shapedLx !== 0 || shapedLy !== 0 || shapedAz !== 0) {
-      // Joystick held: repeat this command on every publisher tick
-      this.repeatTwist = { lx: shapedLx, ly: shapedLy, az: shapedAz };
-      this.zeroFramesLeft = 0;
-    } else {
-      // Joystick released: stop repeating and initiate stop burst
-      this.repeatTwist = null;
-      this.zeroFramesLeft = STOP_REPEATS;
-    }
+    // Set the desired command; the publisher ramps currentTwist toward it each
+    // tick (slew-rate limited). This is the single point all sources flow through,
+    // so the limiter and the actual send live in startPublisher, not here. A
+    // release (all-zero) simply sets the target to zero and the publisher
+    // decelerates smoothly to a stop.
+    this.targetTwist = { lx: shapedLx, ly: shapedLy, az: shapedAz };
+  }
+
+  /**
+   * Step a single axis from its current value toward the target by one tick,
+   * bounded by the accel or decel step. Accelerating = moving away from zero in
+   * the same direction; everything else (slowing, or reversing through zero)
+   * uses the sharper decel step.
+   */
+  private rampAxis(current: number, target: number): number {
+    if (current === target) return current;
+    const accelerating =
+      current === 0 ||
+      (Math.sign(target) === Math.sign(current) && Math.abs(target) > Math.abs(current));
+    const step = accelerating ? this.accelStep : this.decelStep;
+    if (current < target) return Math.min(current + step, target);
+    return Math.max(current - step, target);
   }
 
   private handleMessage(raw: string): void {
@@ -433,8 +460,8 @@ export class TeleopClient {
     // NOTE: retryAttempt is intentionally NOT reset here — the scheduleRetry timer
     // calls this, and exponential backoff must keep growing across failed retries
     // (reset only on a successful 'status' message, or by user-initiated resume()).
-    this.repeatTwist = null;
-    this.zeroFramesLeft = 0;
+    this.targetTwist = { lx: 0, ly: 0, az: 0 };
+    this.currentTwist = { lx: 0, ly: 0, az: 0 };
     this.retryPending = false;
     this.missedPongs = 0;
     this.pingSentAt = 0;
@@ -516,10 +543,10 @@ export class TeleopClient {
   /**
    * Publisher tick: runs every publishIntervalMs while connected.
    *
-   * Priority:
-   *   1. repeatTwist non-null → resend the held command (continuous 20 Hz)
-   *   2. zeroFramesLeft > 0  → send explicit zero (stop burst)
-   *   3. otherwise           → silent (keepalive ping still fires separately)
+   * Each tick ramps currentTwist toward targetTwist (slew-rate limited) and
+   * publishes it. It keeps sending while moving, plus exactly one terminal zero
+   * on the tick motion reaches rest (so the robot always receives a stop), then
+   * goes silent. The decel ramp replaces the old fixed zero-burst.
    *
    * The publisher does NOT send pings; that remains the keepalive's job so
    * latency measurement continues to work independently.
@@ -527,16 +554,22 @@ export class TeleopClient {
   private startPublisher(): void {
     this.stopPublisher();
     this.publishId = setInterval(() => {
-      if (this.repeatTwist !== null) {
-        const { lx, ly, az } = this.repeatTwist;
-        this.sendScaledTwist(lx, ly, az);
+      // E-STOP forced currentTwist to zero and suppresses motion entirely.
+      if (this.estopEngaged) return;
+      const wasNonZero = this.currentTwist.lx !== 0 || this.currentTwist.ly !== 0 || this.currentTwist.az !== 0;
+      this.currentTwist = {
+        lx: this.rampAxis(this.currentTwist.lx, this.targetTwist.lx),
+        ly: this.rampAxis(this.currentTwist.ly, this.targetTwist.ly),
+        az: this.rampAxis(this.currentTwist.az, this.targetTwist.az),
+      };
+      const isNonZero = this.currentTwist.lx !== 0 || this.currentTwist.ly !== 0 || this.currentTwist.az !== 0;
+      // Send while moving, and once more on the tick we settle to rest (terminal
+      // zero). When both are zero we are idle — stay silent; keepalive pings.
+      if (isNonZero || wasNonZero) {
+        this.sendScaledTwist(this.currentTwist.lx, this.currentTwist.ly, this.currentTwist.az);
         this.lastSentAt = Date.now();
-      } else if (this.zeroFramesLeft > 0) {
-        this.connection.send(buildTwist(0, 0, 0));
-        this.zeroFramesLeft -= 1;
-        this.lastSentAt = Date.now();
+        this.options.onPublish?.(this.currentTwist.lx, this.currentTwist.ly, this.currentTwist.az, this.activeSource ?? 'idle');
       }
-      // else: idle — publisher is silent; keepalive ping fires when needed.
     }, this.publishIntervalMs);
   }
 

@@ -12,7 +12,7 @@ describe('KeyboardHandler', () => {
     activityCount = 0;
     vi.useFakeTimers();
     handler = new KeyboardHandler({
-      velocity: 0.5,
+      velocity: 1.0,
       onTwist: (lx, ly, az) => twistCalls.push({ lx, ly, az }),
       onActivity: () => { activityCount += 1; },
     });
@@ -28,37 +28,37 @@ describe('KeyboardHandler', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
     vi.advanceTimersByTime(200);
     expect(twistCalls).toHaveLength(1);
-    expect(twistCalls[0]).toEqual({ lx: 0.5, ly: 0, az: 0 });
+    expect(twistCalls[0]).toEqual({ lx: 1.0, ly: 0, az: 0 });
   });
 
   it('S key produces negative lx', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: -0.5, ly: 0, az: 0 });
+    expect(twistCalls[0]).toEqual({ lx: -1.0, ly: 0, az: 0 });
   });
 
   it('A key produces positive az (turn left = CCW)', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: 0, ly: 0, az: 0.5 });
+    expect(twistCalls[0]).toEqual({ lx: 0, ly: 0, az: 1.0 });
   });
 
   it('D key produces negative az (turn right = CW)', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: 0, ly: 0, az: -0.5 });
+    expect(twistCalls[0]).toEqual({ lx: 0, ly: 0, az: -1.0 });
   });
 
   it('ArrowLeft key produces negative ly (strafe left)', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: 0, ly: -0.5, az: 0 });
+    expect(twistCalls[0]).toEqual({ lx: 0, ly: -1.0, az: 0 });
   });
 
   it('ArrowRight key produces positive ly (strafe right)', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: 0, ly: 0.5, az: 0 });
+    expect(twistCalls[0]).toEqual({ lx: 0, ly: 1.0, az: 0 });
   });
 
   it('ArrowUp and ArrowDown are ignored', () => {
@@ -72,7 +72,7 @@ describe('KeyboardHandler', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true }));
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'd', bubbles: true }));
     vi.advanceTimersByTime(200);
-    expect(twistCalls[0]).toEqual({ lx: 0.5, ly: 0, az: -0.5 });
+    expect(twistCalls[0]).toEqual({ lx: 1.0, ly: 0, az: -1.0 });
   });
 
   it('key release returns axis to zero', () => {

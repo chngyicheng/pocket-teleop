@@ -2,9 +2,8 @@
  * teleop_client_continuous_publish.test.ts — BUG 1 regression guard
  *
  * Verifies that TeleopClient publishes cmd_vel continuously (20 Hz) while a
- * joystick is held, sends a burst of zero-twists on release, then goes silent.
- *
- * TDD: these tests MUST be written (and red) before the implementation.
+ * joystick is held, decelerates smoothly to a terminal zero on release (the
+ * slew limiter replaced the old fixed zero-burst), then goes silent.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -101,38 +100,34 @@ describe('TeleopClient continuous publish (BUG 1)', () => {
   });
 
   // -------------------------------------------------------------------------
-  // TEST 2 — stop burst then silence on release
+  // TEST 2 — decelerate to zero on release, ending with a terminal zero, then silence
   // -------------------------------------------------------------------------
-  it('sends a burst of zero-twists after release then goes completely silent', () => {
-    // Simulate sending a non-zero twist (held)
-    client.sendTwist(0.5, 0, 0);
-    vi.advanceTimersByTime(100); // some ticks while held
+  it('ramps down to a terminal zero after release then goes completely silent', () => {
+    // Hold full speed and let the slew limiter ramp up.
+    client.sendTwist(1, 0, 0);
+    vi.advanceTimersByTime(700); // reach full
 
-    // Release — send explicit zero
+    // Release — the publisher now decelerates smoothly (the old fixed zero-burst
+    // is replaced by the decel ramp), ending with exactly one zero, then silence.
     capturedSend.mockClear();
     client.sendTwist(0, 0, 0);
-    capturedSend.mockClear(); // clear the immediate zero send
 
-    // Advance 600 ms → covers the full stop-burst window (STOP_REPEATS * 50ms = 500ms)
-    vi.advanceTimersByTime(600);
-    const stopBurstSends = twistSends();
+    vi.advanceTimersByTime(600); // cover the decel ramp
+    const sends = twistSends();
+    expect(sends.length).toBeGreaterThan(0);
 
-    // Must have sent at least STOP_REPEATS zero-twists
-    // (STOP_REPEATS = 10, each carrying linear_x/y/az = 0)
-    expect(stopBurstSends.length).toBeGreaterThanOrEqual(10);
-    for (const s of stopBurstSends) {
-      expect(s.linear_x).toBe(0);
-      expect(s.linear_y).toBe(0);
-      expect(s.angular_z).toBe(0);
+    // Decel is monotonic non-increasing and lands on exactly zero.
+    for (let i = 1; i < sends.length; i++) {
+      expect(sends[i].linear_x).toBeLessThanOrEqual(sends[i - 1].linear_x + 1e-9);
     }
+    expect(sends[sends.length - 1].linear_x).toBe(0);
+    // Decel (~0.25/tick) is sharper than accel: reaches rest within ~6 ticks.
+    expect(sends.length).toBeLessThanOrEqual(6);
 
-    // After the burst exhausts, publisher must go silent.
-    // Reset counter and advance 400 ms more — expect NO further twist sends.
+    // After settling to rest the publisher must go silent.
     capturedSend.mockClear();
     vi.advanceTimersByTime(400);
-
-    const afterSilence = twistSendCount();
-    expect(afterSilence).toBe(0);
+    expect(twistSendCount()).toBe(0);
   });
 
   // -------------------------------------------------------------------------
@@ -154,15 +149,14 @@ describe('TeleopClient continuous publish (BUG 1)', () => {
   it('suppresses republish when input is below deadzone', () => {
     // Send a value below deadzone (0.05 < 0.1); shapeAxis(0.05) returns 0
     client.sendTwist(0.05, 0, 0);
-    capturedSend.mockClear(); // clear the immediate send
+    capturedSend.mockClear();
 
-    // Advance 200 ms — publisher should send zero-burst (from stop-repeats)
-    // because shapeAxis(0.05) === 0, so the repeat state is null and zeroFramesLeft
-    // is set to STOP_REPEATS.
-    vi.advanceTimersByTime(600); // enough to cover stop-burst window
+    // shapeAxis(0.05) === 0, so the target is zero and currentTwist never leaves
+    // rest — the publisher stays silent (no creep republish).
+    vi.advanceTimersByTime(600);
 
     const sends = twistSends();
-    // All sends must be zeros (from the stop-burst, not from creep-republish)
+    // Any send that does occur must be zero (never a creep-republish).
     for (const s of sends) {
       expect(s.linear_x).toBe(0);
       expect(s.linear_y).toBe(0);

@@ -2,11 +2,10 @@
  * teleop_client_speed_scale.test.ts — speed scaling at send time
  *
  * Verifies that TeleopClient applies maxLinear/maxAngular scaling factors
- * at the choke point (immediate send + continuous publisher ticks), without
- * pre-scaling the stored repeatTwist state. Changing maxSpeed mid-hold takes
- * effect on the next tick; onTwist emits shaped-normalized values (un-scaled).
- *
- * TDD: write red, then implement.
+ * at the publisher send choke, without pre-scaling the stored target state.
+ * The publisher is slew-rate limited, so a held command ramps up before
+ * reaching its steady scaled value. Changing maxSpeed mid-hold takes effect on
+ * the next tick; onTwist emits shaped-normalized values (un-scaled).
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -67,37 +66,39 @@ describe('TeleopClient speed scaling', () => {
   });
 
   // -------------------------------------------------------------------------
-  // TEST 1 — immediate send with linear scaling
+  // TEST 1 — linear scaling at the publisher (steady state after ramp-up)
   // -------------------------------------------------------------------------
-  it('applies linear maxLinear scaling to immediate sendTwist', () => {
+  it('applies linear maxLinear scaling to the published command', () => {
     client.setMaxSpeed(0.5, 1.0);
 
     client.sendTwist(1, 0, 0);
+    vi.advanceTimersByTime(800); // let the slew limiter ramp to full
 
     const shaped = shapeAxis(1);
     const expected = shaped * 0.5;
 
     const sends = twistSends();
     expect(sends.length).toBeGreaterThan(0);
-    const [first] = sends;
-    expect(first.linear_x).toBeCloseTo(expected, 5);
+    const last = sends[sends.length - 1];
+    expect(last.linear_x).toBeCloseTo(expected, 5);
   });
 
   // -------------------------------------------------------------------------
-  // TEST 2 — immediate send with angular scaling
+  // TEST 2 — angular scaling at the publisher (steady state after ramp-up)
   // -------------------------------------------------------------------------
-  it('applies angular maxAngular scaling to immediate sendTwist', () => {
+  it('applies angular maxAngular scaling to the published command', () => {
     client.setMaxSpeed(1.0, 3.0);
 
     client.sendTwist(0, 0, 1);
+    vi.advanceTimersByTime(800); // let the slew limiter ramp to full
 
     const shaped = shapeAxis(1);
     const expected = shaped * 3.0;
 
     const sends = twistSends();
     expect(sends.length).toBeGreaterThan(0);
-    const [first] = sends;
-    expect(first.angular_z).toBeCloseTo(expected, 5);
+    const last = sends[sends.length - 1];
+    expect(last.angular_z).toBeCloseTo(expected, 5);
   });
 
   // -------------------------------------------------------------------------
@@ -175,14 +176,15 @@ describe('TeleopClient speed scaling', () => {
     client.setMaxSpeed(0.5, 2.0);
 
     client.sendTwist(0.8, 0.8, 0.8);
+    vi.advanceTimersByTime(800); // let the slew limiter ramp to full
 
     const shaped = shapeAxis(0.8);
     const sends = twistSends();
-    const [first] = sends;
+    const last = sends[sends.length - 1];
 
-    expect(first.linear_x).toBeCloseTo(shaped * 0.5, 5);
-    expect(first.linear_y).toBeCloseTo(shaped * 0.5, 5);
-    expect(first.angular_z).toBeCloseTo(shaped * 2.0, 5);
+    expect(last.linear_x).toBeCloseTo(shaped * 0.5, 5);
+    expect(last.linear_y).toBeCloseTo(shaped * 0.5, 5);
+    expect(last.angular_z).toBeCloseTo(shaped * 2.0, 5);
   });
 
   // -------------------------------------------------------------------------
