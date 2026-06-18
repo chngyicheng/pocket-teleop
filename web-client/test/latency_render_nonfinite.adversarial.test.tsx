@@ -40,6 +40,7 @@ function makeBridge(latencyMs: number | null): TeleopBridge {
     estopEngaged: false,
     resetEstop: vi.fn(),
     gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    publishedTwist: { lx: 0, ly: 0, az: 0 },
     inputSource: 'idle',
     maxLinear: 1.0,
     maxAngular: 1.0,

@@ -238,11 +238,12 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
   const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
 
-  // HUD velocity: gamepad twist when the pad is active, else touch state.
-  // Published cmd_vel = normalized (shaped) × max.
-  const dispLx = gamepadActive ? bridge.gamepadTwist.lx : lx;
-  const dispLy = gamepadActive ? bridge.gamepadTwist.ly : ly;
-  const dispAz = gamepadActive ? bridge.gamepadTwist.az : az;
+  // HUD velocity: the actual slew-limited command published to the robot, for
+  // whichever source owns control (all sources funnel through one publisher).
+  // Published cmd_vel = normalized (ramped) × max.
+  const dispLx = bridge.publishedTwist.lx;
+  const dispLy = bridge.publishedTwist.ly;
+  const dispAz = bridge.publishedTwist.az;
   const pubLinear = Math.hypot(dispLx, dispLy) * bridge.maxLinear;
   const pubAngular = dispAz * bridge.maxAngular;
 

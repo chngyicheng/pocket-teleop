@@ -60,6 +60,8 @@ export interface TeleopBridge {
   estopEngaged: boolean;
   resetEstop: () => void;
   gamepadTwist: { lx: number; ly: number; az: number };
+  /** Actual slew-limited command published to the robot (normalized, any source). */
+  publishedTwist: { lx: number; ly: number; az: number };
   inputSource: 'gamepad' | 'keyboard' | 'touch' | 'idle';
   maxLinear: number;
   maxAngular: number;
@@ -94,6 +96,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [robotWidth, setRobotWidth] = useState(0);
   const [estopEngaged, setEstopEngaged] = useState(false);
   const [gamepadTwist, setGamepadTwist] = useState({ lx: 0, ly: 0, az: 0 });
+  const [publishedTwist, setPublishedTwist] = useState({ lx: 0, ly: 0, az: 0 });
   const [inputSource, setInputSource] = useState<'gamepad' | 'keyboard' | 'touch' | 'idle'>('idle');
   const [gamepadConnected, setGamepadConnected] = useState(false);
   const [disconnectAction, setDisconnectAction] = useState('stop');
@@ -188,6 +191,11 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
         if (source === 'gamepad') {
           setGamepadTwist({ lx, ly, az });
         }
+      },
+      onPublish: (lx, ly, az) => {
+        // Actual slew-limited command sent each publisher tick, for any source —
+        // drives the VELOCITY bars + numeric readout so they show real cmd_vel.
+        setPublishedTwist({ lx, ly, az });
       },
       onBattery: (b) => {
         setBattery(b);
@@ -317,6 +325,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     estopEngaged,
     resetEstop,
     gamepadTwist,
+    publishedTwist,
     inputSource,
     maxLinear,
     maxAngular,

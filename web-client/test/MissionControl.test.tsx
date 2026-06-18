@@ -32,6 +32,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     robotLength: 0,
     robotWidth: 0,
     gamepadTwist: { lx: 0, ly: 0, az: 0 },
+    publishedTwist: { lx: 0, ly: 0, az: 0 },
     inputSource: 'idle',
     sendTwist: vi.fn(),
     eStop: vi.fn(),

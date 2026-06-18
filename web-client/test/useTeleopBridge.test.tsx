@@ -961,4 +961,36 @@ describe('useTeleopBridge', () => {
 
     expect(result.current.gamepadTwist).toEqual({ lx: 0.5, ly: 0, az: 0.3 });
   });
+
+  it('initializes publishedTwist to zero', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.publishedTwist).toEqual({ lx: 0, ly: 0, az: 0 });
+  });
+
+  it('onPublish updates publishedTwist with the actual command for any source', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // The slew-limited publisher reports a touch-owned command mid-ramp.
+    act(() => {
+      fakeClient.opts.onPublish?.(0.3, 0, 0.1, 'touch');
+    });
+    expect(result.current.publishedTwist).toEqual({ lx: 0.3, ly: 0, az: 0.1 });
+
+    // A later keyboard-owned command flows through the same readout.
+    act(() => {
+      fakeClient.opts.onPublish?.(1.0, 0, 0, 'keyboard');
+    });
+    expect(result.current.publishedTwist).toEqual({ lx: 1.0, ly: 0, az: 0 });
+  });
 });

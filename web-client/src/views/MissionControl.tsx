@@ -124,11 +124,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const driveExternal = { x: -bridge.gamepadTwist.az, y: -bridge.gamepadTwist.lx };
   const strafeExternal = { x: bridge.gamepadTwist.ly, y: 0 };
 
-  // HUD velocity: show the gamepad twist when the pad is the active source,
-  // else the touch-joystick state (drives the VELOCITY bars).
-  const dispLx = gamepadActive ? bridge.gamepadTwist.lx : lx;
-  const dispLy = gamepadActive ? bridge.gamepadTwist.ly : ly;
-  const dispAz = gamepadActive ? bridge.gamepadTwist.az : az;
+  // HUD velocity: show the actual slew-limited command published to the robot,
+  // for whichever source owns control (all sources funnel through one publisher),
+  // so the VELOCITY bars reflect real cmd_vel including the acceleration ramp.
+  const dispLx = bridge.publishedTwist.lx;
+  const dispLy = bridge.publishedTwist.ly;
+  const dispAz = bridge.publishedTwist.az;
 
   // DRIVE joystick: lx (forward) + az (rotate)
   const handleDriveMove = (x: number, y: number) => {
