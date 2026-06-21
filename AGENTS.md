@@ -109,7 +109,9 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ## Handover state — continue from here
 
-> **LATEST (2026-06-18) — start here.** **MiniMap expandable + portrait reposition** — merged to `main` and pushed. `MiniMap` `expandable`: tap → translucent full-screen overlay (scrollwheel/pinch zoom, tap backdrop/map to collapse); portrait minimap moved bottom-center above the joysticks; while expanded the joysticks + E-STOP stay live for drive-with-map-open and landscape/tablet go fullscreen (rails auto-close + restore). Contract: [web-client/AGENTS.md](web-client/AGENTS.md); detail: [milestones.md](memory/agent-guides/milestones.md). **Test baseline: webclient 790 / auth 96 / video-bridge 20 / C++ 88.**
+> **LATEST (2026-06-22) — start here.** **nav2 waypoint send** — built on the `feat/nav2-waypoint-*` chain (6 tasks, Haiku + trophy TDD, per-task worktrees); **NOT yet merged to `main`** (awaiting operator hardware-verify on a real nav2 stack, then merge approval). Tap the expanded minimap → place a waypoint (marker + heading dial) → "Send Waypoint" issues a `NavigateToPose` action goal; control bar offers Pause/Resume/Stop by nav state; E-STOP cancels + clears the goal; the nav2 global path overlays the minimap. `NAV_ACTION` is web-editable (Settings → Robot), `NAV_PATH_TOPIC`/`NAV_GOAL_FRAME` are `.env`-level. Contracts: [server/AGENTS.md](server/AGENTS.md), [web-client/AGENTS.md](web-client/AGENTS.md), [auth-server/AGENTS.md](auth-server/AGENTS.md); detail: [milestones.md](memory/agent-guides/milestones.md); per-feature rationale + the full hardware-verify list: [deviations.md](memory/agent-guides/deviations.md) + plan `docs/superpowers/plans/2026-06-21-nav2-waypoint-implementation.md`. **Recovered after a mid-run host crash** that left task 1 unbuilt — controller fixed 2 compile bugs + added the missing `ros-humble-nav2-msgs` Dockerfile dep. **Test baseline: webclient 843 / auth 98 / video-bridge 20 / C++ 106.**
+>
+> **Prior (2026-06-18):** MiniMap expandable + portrait reposition — merged to `main` and pushed (webclient 790 / auth 96 / vb 20 / C++ 88).
 >
 > **Recently shipped** (all merged to `main` + pushed; detail in [milestones.md](memory/agent-guides/milestones.md), contracts in the child AGENTS.md): velocity slew-rate limiter + full-speed keyboard + unified HUD velocity, input arbitration (gamepad>keyboard>touch), network quality indicator, connection-resume-on-foreground.
 >
@@ -127,7 +129,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Deployment must-do (host):** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` — else video ICE fails.
 >
-> **Test baseline:** webclient **790** pass / **11** skipped / auth **96** / video-bridge **20** / C++ **88**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **843** pass / **11** skipped / auth **98** / video-bridge **20** / C++ **106**. Docker only; `--build` required after edits. Known non-regression reds: auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Subagent/worktree gotchas:** (0) subagents never run git — controller stages by explicit path (a blanket `git add` once swept 2754 files). (1) a Haiku's cwd can pin to the main repo instead of the worktree — check `git status` in BOTH; it may "re-create" files already on the branch (transfer only new wiring). (2) Docker may leave root-owned `node_modules` in a worktree — `docker run --rm -v <path>:/w alpine chown -R 1000:1000 /w` before `git worktree remove`.
 >
@@ -142,7 +144,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: over-engineering cleanup — deleted dead battery runtime-estimate + hand-rolled SW-register wrapper, ~150 LOC / 2 files cut (790/96/20/88); MiniMap expandable + portrait reposition (808/96/20/88), velocity slew-rate limiter + full-speed keyboard + unified HUD velocity (797/96/20/88), input arbitration gamepad>keyboard>touch (787/96/20/88).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: nav2 waypoint send — `NavigateToPose` action goal from the expanded minimap, pause/resume (cancel+resend), E-STOP cancels, global-path overlay; per-task worktrees, recovered from a mid-run crash (843/98/20/106; not yet merged — hardware-verify pending); over-engineering cleanup — deleted dead battery runtime-estimate + hand-rolled SW-register wrapper, ~150 LOC / 2 files cut (790/96/20/88); MiniMap expandable + portrait reposition (808/96/20/88), velocity slew-rate limiter + full-speed keyboard + unified HUD velocity (797/96/20/88).
 
 ---
 
@@ -166,7 +168,7 @@ Full history + per-feature detail: [milestones.md](memory/agent-guides/milestone
 **Safety + control**
 - ~~Input arbitration (gamepad>keyboard>touch)~~ **DONE 2026-06-18** (`feat/input-arbitration-*`, baseline 787): `docs/superpowers/plans/2026-06-16-input-arbitration-implementation.md`
 - Geofence: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
-- nav2 waypoint send (tap expanded minimap → `NavigateToPose` action goal; pause/resume; global path on minimap; E-STOP cancels; frame ENV-level): `docs/superpowers/plans/2026-06-21-nav2-waypoint-implementation.md`
+- ~~nav2 waypoint send (tap expanded minimap → `NavigateToPose` action goal; pause/resume; global path on minimap; E-STOP cancels; frame ENV-level)~~ **DONE 2026-06-22, awaiting hardware-verify + merge** (`feat/nav2-waypoint-*`, baseline 843/98/20/106): `docs/superpowers/plans/2026-06-21-nav2-waypoint-implementation.md`
 
 **Observation**
 - Map view: `docs/superpowers/plans/2026-05-06-map-view-implementation.md` (can now reuse the minimap's map/pose/scan transport)
