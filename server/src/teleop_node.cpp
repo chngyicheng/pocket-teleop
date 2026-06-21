@@ -47,6 +47,11 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   // Create return_home service client
   return_home_client_ = create_client<std_srvs::srv::Trigger>(return_home_service_name);
 
+  // Declare nav parameters
+  declare_parameter("nav_action", std::string("/navigate_to_pose"));
+  declare_parameter("goal_frame", std::string("map"));
+  declare_parameter("nav_path_topic", std::string("/plan"));
+
   server_ = std::make_unique<TeleopServer>(
     static_cast<int>(port),
     static_cast<int>(timeout_ms),
@@ -66,7 +71,11 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
       // call here (see git history / AGENTS.md "Disconnect-after behavior").
       RCLCPP_WARN(get_logger(),
         "disconnect=return_home: auto-trigger disabled; stopping instead");
-    });
+    },
+    [this](double x, double y, double h) { nav_goal_callback(x, y, h); },
+    [this]() { nav_pause_callback(); },
+    [this]() { nav_resume_callback(); },
+    [this]() { nav_cancel_callback(); });
 
   declare_parameter("odom_topic", std::string("/odom"));
   const auto odom_topic = get_parameter("odom_topic").as_string();
@@ -124,6 +133,20 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
                      sensor_msgs::msg::BatteryState::POWER_SUPPLY_STATUS_CHARGING}
       };
       server_->broadcast(battery.dump());
+    });
+
+  // Navigation action client
+  const auto nav_action = get_parameter("nav_action").as_string();
+  const auto goal_frame = get_parameter("goal_frame").as_string();
+  nav_action_client_ = rclcpp_action::create_client<nav2_msgs::action::NavigateToPose>(
+    this, nav_action);
+
+  // Navigation path subscription
+  const auto nav_path_topic = get_parameter("nav_path_topic").as_string();
+  nav_path_sub_ = create_subscription<nav_msgs::msg::Path>(
+    nav_path_topic, 10,
+    [this](const nav_msgs::msg::Path::SharedPtr msg) {
+      on_nav_path(msg);
     });
 
   declare_parameter("map_topic", std::string("/map"));
@@ -207,6 +230,8 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions& options)
   RCLCPP_INFO(get_logger(), "Subscribing to scan topic: %s", scan_topic.c_str());
   RCLCPP_INFO(get_logger(), "Subscribing to battery topic: %s", battery_topic.c_str());
   RCLCPP_INFO(get_logger(), "Publishing to topic: %s", topic.c_str());
+  RCLCPP_INFO(get_logger(), "Navigation action: %s, frame: %s", nav_action.c_str(), goal_frame.c_str());
+  RCLCPP_INFO(get_logger(), "Subscribing to nav path topic: %s", nav_path_topic.c_str());
 }
 
 TeleopNode::~TeleopNode() {
@@ -365,4 +390,202 @@ void TeleopNode::on_scan(const sensor_msgs::msg::LaserScan::SharedPtr& msg) {
 
   auto scan_msg = map_codec::build_scan_message(decimated, msg->range_max, scan_pose);
   server_->broadcast(scan_msg.dump());
+}
+
+geometry_msgs::msg::PoseStamped TeleopNode::build_goal_pose(
+    double x, double y, double heading,
+    const std::string& frame,
+    rclcpp::Time stamp) {
+  geometry_msgs::msg::PoseStamped pose;
+  pose.header.frame_id = frame;
+  pose.header.stamp = stamp;
+  pose.pose.position.x = x;
+  pose.pose.position.y = y;
+  pose.pose.position.z = 0.0;
+
+  // Heading (yaw) → quaternion: z = sin(heading/2), w = cos(heading/2), x = y = 0
+  const double h_half = heading / 2.0;
+  pose.pose.orientation.x = 0.0;
+  pose.pose.orientation.y = 0.0;
+  pose.pose.orientation.z = std::sin(h_half);
+  pose.pose.orientation.w = std::cos(h_half);
+
+  return pose;
+}
+
+void TeleopNode::nav_goal_callback(double x, double y, double heading) {
+  const auto goal_frame = get_parameter("goal_frame").as_string();
+  const auto now = this->get_clock()->now();
+
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
+    stored_goal_ = build_goal_pose(x, y, heading, goal_frame, now);
+    paused_ = false;
+  }
+
+  send_stored_goal_();
+
+  nlohmann::json nav_state = {
+    {"type", "nav_state"},
+    {"state", "active"}
+  };
+  server_->broadcast(nav_state.dump());
+}
+
+void TeleopNode::nav_pause_callback() {
+  NavigateToPoseClient::GoalHandle::SharedPtr goal;
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
+    if (!active_goal_handle_) return;
+    goal = active_goal_handle_;   // keep stored_goal_ for resume
+    paused_ = true;
+    active_goal_handle_ = nullptr;
+  }
+
+  // async_cancel_goal outside lock to avoid deadlock
+  if (goal && nav_action_client_ && nav_action_client_->action_server_is_ready()) {
+    nav_action_client_->async_cancel_goal(goal);
+  }
+
+  nlohmann::json nav_state = {
+    {"type", "nav_state"},
+    {"state", "paused"}
+  };
+  server_->broadcast(nav_state.dump());
+}
+
+void TeleopNode::nav_resume_callback() {
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
+    if (!paused_ || !stored_goal_) return;
+    paused_ = false;
+  }
+
+  send_stored_goal_();
+
+  nlohmann::json nav_state = {
+    {"type", "nav_state"},
+    {"state", "active"}
+  };
+  server_->broadcast(nav_state.dump());
+}
+
+void TeleopNode::nav_cancel_callback() {
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
+    if (active_goal_handle_) {
+      if (nav_action_client_ && nav_action_client_->action_server_is_ready()) {
+        nav_action_client_->async_cancel_goal(active_goal_handle_);
+      }
+      active_goal_handle_ = nullptr;
+    }
+    stored_goal_ = std::nullopt;
+    paused_ = false;
+  }
+
+  nlohmann::json nav_state = {
+    {"type", "nav_state"},
+    {"state", "idle"}
+  };
+  server_->broadcast(nav_state.dump());
+}
+
+void TeleopNode::send_stored_goal_() {
+  std::lock_guard<std::mutex> lock(nav_mutex_);
+
+  if (!stored_goal_ || !nav_action_client_) return;
+  if (!nav_action_client_->action_server_is_ready()) {
+    RCLCPP_WARN(get_logger(), "NavigateToPose action server not ready; discarding goal");
+    return;
+  }
+
+  auto goal_msg = nav2_msgs::action::NavigateToPose::Goal();
+  goal_msg.pose = *stored_goal_;
+
+  auto goal_options = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>::SendGoalOptions();
+  goal_options.goal_response_callback =
+    [this](NavigateToPoseClient::GoalHandle::SharedPtr goal_handle) {
+      on_nav_goal_response(goal_handle);
+    };
+  goal_options.result_callback =
+    [this](const NavigateToPoseClient::WrappedResult& result) {
+      on_nav_goal_result(result);
+    };
+
+  nav_action_client_->async_send_goal(goal_msg, goal_options);
+}
+
+void TeleopNode::on_nav_goal_response(
+    NavigateToPoseClient::GoalHandle::SharedPtr goal_handle) {
+  if (!goal_handle) {
+    RCLCPP_WARN(get_logger(), "NavigateToPose goal rejected");
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(nav_mutex_);
+  active_goal_handle_ = goal_handle;
+}
+
+void TeleopNode::on_nav_goal_result(
+    const NavigateToPoseClient::WrappedResult& result) {
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
+    if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
+      RCLCPP_INFO(get_logger(), "NavigateToPose goal succeeded");
+      active_goal_handle_ = nullptr;
+      stored_goal_ = std::nullopt;
+      paused_ = false;
+    } else if (result.code == rclcpp_action::ResultCode::ABORTED) {
+      RCLCPP_WARN(get_logger(), "NavigateToPose goal aborted");
+      active_goal_handle_ = nullptr;
+      stored_goal_ = std::nullopt;
+      paused_ = false;
+    } else if (result.code == rclcpp_action::ResultCode::CANCELED) {
+      // Do not update state — let pause/cancel callback handle it
+      return;
+    }
+  }
+
+  nlohmann::json nav_state = {
+    {"type", "nav_state"},
+    {"state", "idle"}
+  };
+  server_->broadcast(nav_state.dump());
+}
+
+void TeleopNode::on_nav_path(const nav_msgs::msg::Path::SharedPtr& msg) {
+  const auto now = std::chrono::steady_clock::now();
+  if (now - last_nav_path_sent_ < NAV_PATH_INTERVAL) return;
+
+  // Decimate path
+  std::vector<std::pair<double, double>> points;
+  for (const auto& pose_stamped : msg->poses) {
+    points.push_back({pose_stamped.pose.position.x, pose_stamped.pose.position.y});
+  }
+
+  // Simple decimation: keep first, last, and evenly space in between
+  std::vector<std::pair<double, double>> decimated;
+  if (points.empty()) {
+    // Empty path → broadcast empty points to clear line
+  } else if (points.size() <= NAV_PATH_MAX_POINTS) {
+    decimated = points;
+  } else {
+    decimated.push_back(points.front());
+    const int step = static_cast<int>(points.size()) / (NAV_PATH_MAX_POINTS - 1);
+    for (int i = step; i < static_cast<int>(points.size()) - 1; i += step) {
+      decimated.push_back(points[i]);
+    }
+    decimated.push_back(points.back());
+  }
+
+  nlohmann::json nav_path = {
+    {"type", "nav_path"},
+    {"points", nlohmann::json::array()}
+  };
+  for (const auto& [x, y] : decimated) {
+    nav_path["points"].push_back(nlohmann::json::array({x, y}));
+  }
+
+  server_->broadcast(nav_path.dump());
+  last_nav_path_sent_ = now;
 }

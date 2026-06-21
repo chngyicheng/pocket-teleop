@@ -53,8 +53,12 @@ Owns: `src/`, `include/`, `test/`, `launch/`, `CMakeLists.txt`, `package.xml`, F
 {"type":"ping"}
 {"type":"estop"}
 {"type":"estop_reset"}
+{"type":"nav_goal","x":1.5,"y":-2.0,"heading":0.785}
+{"type":"nav_pause"}
+{"type":"nav_resume"}
+{"type":"nav_cancel"}
 ```
-Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, not clamp. `linear_y` always present (diff-drive sends `0.0`). `estop` latches: publishes one zero `cmd_vel`, then ignores `twist` until `estop_reset`; pings still keep-alive; latch clears on fresh connection.
+Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, not clamp. `linear_y` always present (diff-drive sends `0.0`). `estop` latches: publishes one zero `cmd_vel`, **cancels + clears any nav goal**, then ignores `twist` until `estop_reset`; pings still keep-alive; latch clears on fresh connection. `nav_goal` (x/y/heading, all finite; frame stamped server-side from `goal_frame`) sends a `NavigateToPose` action goal — **autonomous motion; ignored while e-stopped**. `nav_pause` cancels but keeps the stored goal; `nav_resume` re-sends it (re-plans from current pose; ignored while e-stopped); `nav_cancel` cancels + clears. Pause/cancel always honored.
 
 ### Protocol — server → client
 
@@ -67,8 +71,10 @@ Values clamped to `[-1.0,1.0]` inclusive — out-of-range returns `ParseError`, 
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
 {"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
 {"type":"battery","percentage":84.0,"voltage":12.6,"current":-1.5,"charging":false}
+{"type":"nav_state","state":"idle"}
+{"type":"nav_path","points":[[1.0,2.0],[1.1,2.1]]}
 ```
-`robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. `battery` = `sensor_msgs/BatteryState` at 1 Hz (percentage 0–100, voltage, current, charging; omitted when no battery message). `disconnect_action` in status = configured disconnect-after behavior (`stop`/`hold`/`continue`/`return_home`), shown read-only in the client. ROS convention: length = x (fwd/back), width = y (left/right).
+`nav_state` = nav goal state machine (`idle`/`active`/`paused`), broadcast on change. `nav_path` = decimated nav2 global plan (`nav_msgs/Path` on `nav_path_topic`, ≤64 `[x,y]` map-frame points; empty array clears). `robot_name`/`robot_namespace` always present (`""` when unset). `robot_length`/`robot_width` (m) always present, `0` = unconfigured. `map` = trinary RLE (u/f/o + run length, row-major), ~0.5 Hz. `pose` = tf2 `map→base_link`, falls back to `odom→base_link`, ~5 Hz. `scan` = base_link-fixed pointcloud, ≤120 pts (0 = invalid), **optional capture pose** (pose_x/pose_y/pose_heading/pose_frame, frame = "map" or "odom"; omitted if tf lookup fails—backward compatible), ~5 Hz. `battery` = `sensor_msgs/BatteryState` at 1 Hz (percentage 0–100, voltage, current, charging; omitted when no battery message). `disconnect_action` in status = configured disconnect-after behavior (`stop`/`hold`/`continue`/`return_home`), shown read-only in the client. ROS convention: length = x (fwd/back), width = y (left/right).
 
 ### C++ result types (CommandHandler)
 
@@ -77,8 +83,13 @@ struct TwistCommand      { double linear_x; double linear_y; double angular_z; }
 struct PingCommand       {};
 struct EStopCommand      {};
 struct EStopResetCommand {};
+struct NavGoalCommand    { double x; double y; double heading; };
+struct NavPauseCommand   {};
+struct NavResumeCommand  {};
+struct NavCancelCommand  {};
 struct ParseError        { std::string message; };
-using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand, ParseError>;
+using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand,
+                                 NavGoalCommand, NavPauseCommand, NavResumeCommand, NavCancelCommand, ParseError>;
 ```
 Dispatch via `std::holds_alternative<>`.
 
@@ -105,6 +116,9 @@ Dispatch via `std::holds_alternative<>`.
 | `map_frame` | `MAP_FRAME` | `map` | tf2 frame for SLAM pose lookup |
 | `odom_frame` | `ODOM_FRAME` | `odom` | tf2 fallback frame |
 | `base_frame` | `BASE_FRAME` | `base_link` | Pose target + scan yaw correction |
+| `nav_action` | `NAV_ACTION` | `/navigate_to_pose` | `nav2_msgs/NavigateToPose` action name for the goal client |
+| `goal_frame` | `NAV_GOAL_FRAME` | `map` | `frame_id` stamped on nav goals (server-side; client sends no frame) |
+| `nav_path_topic` | `NAV_PATH_TOPIC` | `/plan` | nav2 global plan (`nav_msgs/Path`); decimated → `nav_path` broadcast |
 
 ## Work Guidance
 

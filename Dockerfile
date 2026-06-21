@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     libwebsocketpp-dev \
     libboost-system-dev \
     nlohmann-json3-dev \
+    ros-humble-nav2-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros2_ws/src/pocket_teleop
@@ -20,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     libboost-system1.74.0 \
     # Pinned to 1.74 — the Boost soname shipped with ros:humble (Ubuntu 22.04 Jammy).
     # If the base image is ever changed, verify and update this pin to avoid runtime soname mismatches.
+    ros-humble-nav2-msgs \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /ros2_ws/install /ros2_ws/install

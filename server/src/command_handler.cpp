@@ -47,6 +47,35 @@ ParseResult CommandHandler::parse(const std::string& json_message) {
       return TwistCommand{lx, ly, az};
     }
 
+    if (type == "nav_goal") {
+      for (const char* field : {"x", "y", "heading"}) {
+        if (!j.contains(field) || !j[field].is_number()) {
+          return ParseError{std::string("missing or invalid field: ") + field};
+        }
+      }
+      const double x = j["x"];
+      const double y = j["y"];
+      const double heading = j["heading"];
+
+      if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(heading)) {
+        return ParseError{"non-finite numeric value"};
+      }
+
+      return NavGoalCommand{x, y, heading};
+    }
+
+    if (type == "nav_pause") {
+      return NavPauseCommand{};
+    }
+
+    if (type == "nav_resume") {
+      return NavResumeCommand{};
+    }
+
+    if (type == "nav_cancel") {
+      return NavCancelCommand{};
+    }
+
     return ParseError{"unknown type: " + type};
 
   } catch (const nlohmann::json::exception& e) {

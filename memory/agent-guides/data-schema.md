@@ -7,11 +7,17 @@
 {"type":"ping"}
 {"type":"estop"}
 {"type":"estop_reset"}
+{"type":"nav_goal","x":1.5,"y":-2.0,"heading":0.785}
+{"type":"nav_pause"}
+{"type":"nav_resume"}
+{"type":"nav_cancel"}
 ```
 
 - Values clamped to `[-1.0, 1.0]` inclusive — out-of-range returns `ParseError`, not clamp.
 - `linear_y` always present in twist messages even for differential drive (client sends `0.0`).
-- `estop` latches the server: it publishes a single zero `cmd_vel` and then **ignores all incoming `twist` messages** until `estop_reset`. Pings still work and keep the connection alive while latched. The latch clears on a fresh connection.
+- `estop` latches the server: it publishes a single zero `cmd_vel` and then **ignores all incoming `twist` messages** until `estop_reset`. Pings still work and keep the connection alive while latched. The latch clears on a fresh connection. **`estop` also cancels any active nav goal and clears the stored goal** (so a later `nav_resume` cannot re-drive).
+- `nav_goal` sends a `NavigateToPose` action goal (x/y/heading in the server's `goal_frame`, default `map`; the client never sends a frame — the server stamps it). `heading` is yaw (rad). All three fields must be finite numbers or the message is rejected. **Ignored while e-stopped.** Triggers autonomous motion.
+- `nav_pause` cancels the in-flight goal but **keeps** it stored; `nav_resume` re-sends the stored goal (nav2 re-plans from the current pose). `nav_cancel` cancels and clears the stored goal. `nav_pause`/`nav_cancel` are always honored (they stop motion); `nav_resume` is ignored while e-stopped.
 
 ## Message protocol — server → client
 
@@ -24,8 +30,12 @@
 {"type":"pose","frame":"map","x":1.5,"y":-0.5,"heading":0.78}
 {"type":"scan","angle_min":0.0,"angle_increment":0.052,"range_max":3.5,"ranges":[2.79,1.74],"pose_x":1.5,"pose_y":-0.5,"pose_heading":0.78,"pose_frame":"map"}
 {"type":"battery","percentage":84.0,"voltage":12.6,"current":-1.5,"charging":false}
+{"type":"nav_state","state":"idle"}
+{"type":"nav_path","points":[[1.0,2.0],[1.1,2.1]]}
 ```
 
+- `nav_state` reports the nav goal state machine: `idle` | `active` | `paused`. Broadcast on every state change (and intended for re-send on client connect so the UI re-syncs). E-STOP, `nav_cancel`, and goal success/abort all drive it to `idle`.
+- `nav_path` is the nav2 global plan (`nav_msgs/Path`, topic `nav_path_topic`, default `/plan`), decimated to ≤ 64 `[x,y]` points in the map frame for overlay on the minimap. An empty `points` array clears the line.
 - `estop_state` confirms the latch state to the client (sent in reply to `estop`/`estop_reset`); the UI shows an engaged banner + RESET affordance while `engaged` is true.
 - `robot_name` and `robot_namespace` always present in status messages (empty string `""` when not configured).
 - `robot_length` and `robot_width` (meters) always present; `0` when unconfigured. The minimap draws a dashed footprint outline to scale when both are > 0 and the long axis would render ≥ 14 px (zoom-gated). ROS convention: length = x (forward/back), width = y (left/right).
@@ -43,9 +53,15 @@ struct TwistCommand      { double linear_x; double linear_y; double angular_z; }
 struct PingCommand       {};
 struct EStopCommand      {};
 struct EStopResetCommand {};
+struct NavGoalCommand    { double x; double y; double heading; };
+struct NavPauseCommand   {};
+struct NavResumeCommand  {};
+struct NavCancelCommand  {};
 struct ParseError        { std::string message; };
 
-using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand, ParseError>;
+using ParseResult = std::variant<TwistCommand, PingCommand, EStopCommand, EStopResetCommand,
+                                 NavGoalCommand, NavPauseCommand, NavResumeCommand, NavCancelCommand,
+                                 ParseError>;
 ```
 
 Callers use `std::holds_alternative<>` to dispatch on variant.
@@ -73,6 +89,9 @@ Callers use `std::holds_alternative<>` to dispatch on variant.
 | `map_frame` | `map` | tf2 frame for the SLAM-corrected pose lookup |
 | `odom_frame` | `odom` | tf2 fallback frame when `map_frame` is unavailable |
 | `base_frame` | `base_link` | Robot base frame; pose target + scan yaw correction |
+| `nav_action` | `/navigate_to_pose` | `nav2_msgs/NavigateToPose` action name the goal client connects to |
+| `goal_frame` | `map` | `header.frame_id` the server stamps on every nav goal (client never sends a frame) |
+| `nav_path_topic` | `/plan` | nav2 global plan (`nav_msgs/Path`) subscription; decimated + broadcast as `nav_path` |
 
 ### Disconnect-after behavior (safety)
 

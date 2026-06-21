@@ -22,6 +22,8 @@ std::string disconnect_action_to_string(DisconnectAction a);
 class TeleopServer {
 public:
   using PublishCallback = std::function<void(double, double, double)>;
+  using NavGoalCallback = std::function<void(double, double, double)>;
+  using NavCommandCallback = std::function<void()>;
 
   TeleopServer(int port,
                int timeout_ms,
@@ -33,7 +35,11 @@ public:
                DisconnectAction disconnect_action,
                int disconnect_param_ms,
                PublishCallback callback,
-               std::function<void()> return_home_callback = nullptr);
+               std::function<void()> return_home_callback = nullptr,
+               NavGoalCallback nav_goal_callback = nullptr,
+               NavCommandCallback nav_pause_callback = nullptr,
+               NavCommandCallback nav_resume_callback = nullptr,
+               NavCommandCallback nav_cancel_callback = nullptr);
   ~TeleopServer();
 
   void start();  // blocks until stop() is called
@@ -61,6 +67,10 @@ private:
   const int disconnect_param_ms_;
   PublishCallback publish_callback_;
   std::function<void()> return_home_callback_;
+  NavGoalCallback nav_goal_callback_;
+  NavCommandCallback nav_pause_callback_;
+  NavCommandCallback nav_resume_callback_;
+  NavCommandCallback nav_cancel_callback_;
 
   WsServer ws_server_;
   CommandHandler command_handler_;
