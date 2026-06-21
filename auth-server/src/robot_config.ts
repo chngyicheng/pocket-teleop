@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-// Seven allowlist keys
+// Eight allowlist keys
 const ALLOWLIST_KEYS = [
   'ROBOT_TYPE',
   'ROBOT_NAME',
@@ -9,6 +9,7 @@ const ALLOWLIST_KEYS = [
   'ROBOT_WIDTH_M',
   'VIDEO_TOPIC',
   'VIDEO_TOPIC_TYPE',
+  'NAV_ACTION',
 ];
 
 // Parse env file content: skip empty lines and # comments, split on first =
@@ -51,6 +52,7 @@ export function readRobotConfig(filePath: string): Record<string, string> {
     ROBOT_WIDTH_M: '',
     VIDEO_TOPIC: '',
     VIDEO_TOPIC_TYPE: 'compressed',
+    NAV_ACTION: '',
   };
 
   if (!fs.existsSync(filePath)) {
@@ -192,6 +194,22 @@ export function validateRobotConfig(
       errors['VIDEO_TOPIC_TYPE'] = 'Must be "compressed" or "raw"';
     } else {
       values['VIDEO_TOPIC_TYPE'] = String(videoTopicType);
+    }
+  }
+
+  // Validate NAV_ACTION if provided: ROS topic/action path or empty, no newline/=
+  if ('NAV_ACTION' in input) {
+    const navAction = input['NAV_ACTION'];
+    const actionStr = String(navAction);
+    if (actionStr.length === 0) {
+      values['NAV_ACTION'] = '';
+    } else if (actionStr.includes('\n') || actionStr.includes('=')) {
+      errors['NAV_ACTION'] = 'Cannot contain newline or =';
+    } else if (!/^[a-zA-Z0-9_/~]/.test(actionStr)) {
+      // Basic ROS action validation: starts with allowed char
+      errors['NAV_ACTION'] = 'Invalid ROS action path';
+    } else {
+      values['NAV_ACTION'] = actionStr;
     }
   }
 
