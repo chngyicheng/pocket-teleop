@@ -3,7 +3,6 @@ import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
 import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
-import { estimateRemainingMinutes, pruneSamples, type BatterySample } from '../battery_estimate.js';
 import { computeQuality, type NetworkStats } from '../network_quality.js';
 
 export interface MapGrid {
@@ -47,7 +46,6 @@ export interface TeleopBridge {
   mapPose: MapPose | null;
   scan: ScanData | null;
   battery: BatteryData | null;
-  batteryEstimateMinutes: number | null;
   networkQuality: number | null;
   networkStats: NetworkStats | null;
   robotName: string;
@@ -101,7 +99,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [gamepadConnected, setGamepadConnected] = useState(false);
   const [disconnectAction, setDisconnectAction] = useState('stop');
   const [battery, setBattery] = useState<BatteryData | null>(null);
-  const [batteryEstimateMinutes, setBatteryEstimateMinutes] = useState<number | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number | null>(null);
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
 
@@ -110,7 +107,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [maxAngular, setMaxAngularState] = useState(initialMaxSpeed.maxAngular);
 
   const clientRef = useRef<TeleopClient | null>(null);
-  const batterySamplesRef = useRef<BatterySample[]>([]);
   const hasNetworkDataRef = useRef(false);
 
   useEffect(() => {
@@ -199,19 +195,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onBattery: (b) => {
         setBattery(b);
-        if (b.percentage !== null) {
-          // Record this sample for rate estimation
-          const now = Date.now();
-          batterySamplesRef.current.push({ t: now, pct: b.percentage });
-          // Prune to 60s window
-          batterySamplesRef.current = pruneSamples(batterySamplesRef.current, now, 60000);
-          // Estimate remaining minutes
-          const estimate = estimateRemainingMinutes(batterySamplesRef.current, b.charging);
-          setBatteryEstimateMinutes(estimate.minutes);
-        } else if (b.charging) {
-          // No percentage available but charging
-          setBatteryEstimateMinutes(null);
-        }
       },
     });
 
@@ -312,7 +295,6 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     mapPose,
     scan,
     battery,
-    batteryEstimateMinutes,
     networkQuality,
     networkStats,
     robotName,

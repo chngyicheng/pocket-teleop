@@ -50,7 +50,6 @@ function makeBridge(latencyMs: number | null): TeleopBridge {
     mapPose: null,
     scan: null,
     battery: null,
-    batteryEstimateMinutes: null,
     robotLength: 0,
     robotWidth: 0,
     gamepadConnected: false,

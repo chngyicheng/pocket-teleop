@@ -2,7 +2,7 @@
  * battery_readout.test.ts — batteryReadoutModel unit tests
  *
  * Tests the pure function that computes battery readout display value + color tier
- * based on percentage, voltage, current, charging state, and time estimate.
+ * based on percentage and charging state.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -14,7 +14,7 @@ describe('batteryReadoutModel', () => {
   // Null battery tests
   // -------------------------------------------------------------------------
   it('returns em-dash and none tier when battery is null', () => {
-    const result = batteryReadoutModel(null, null);
+    const result = batteryReadoutModel(null);
     expect(result.value).toBe('—');
     expect(result.tier).toBe('none');
   });
@@ -29,7 +29,7 @@ describe('batteryReadoutModel', () => {
       current: -1.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('—');
     expect(result.tier).toBe('none');
   });
@@ -44,7 +44,7 @@ describe('batteryReadoutModel', () => {
       current: -1.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('—');
     expect(result.tier).toBe('none');
   });
@@ -56,7 +56,7 @@ describe('batteryReadoutModel', () => {
       current: -1.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('—');
     expect(result.tier).toBe('none');
   });
@@ -68,7 +68,7 @@ describe('batteryReadoutModel', () => {
       current: -1.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('—');
     expect(result.tier).toBe('none');
   });
@@ -83,7 +83,7 @@ describe('batteryReadoutModel', () => {
       current: 2.0,
       charging: true,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('⚡50%');
     expect(result.tier).toBe('ok');
   });
@@ -95,7 +95,7 @@ describe('batteryReadoutModel', () => {
       current: 1.5,
       charging: true,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('⚡95%');
     expect(result.tier).toBe('ok');
   });
@@ -107,7 +107,7 @@ describe('batteryReadoutModel', () => {
       current: 1.0,
       charging: true,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('⚡1%');
     expect(result.tier).toBe('ok');
   });
@@ -122,7 +122,7 @@ describe('batteryReadoutModel', () => {
       current: -1.2,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('85%');
     expect(result.tier).toBe('ok');
   });
@@ -134,7 +134,7 @@ describe('batteryReadoutModel', () => {
       current: -1.2,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('81%');
     expect(result.tier).toBe('ok');
   });
@@ -146,7 +146,7 @@ describe('batteryReadoutModel', () => {
       current: -1.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('80%');
     expect(result.tier).toBe('warn');
   });
@@ -158,7 +158,7 @@ describe('batteryReadoutModel', () => {
       current: -1.8,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('50%');
     expect(result.tier).toBe('warn');
   });
@@ -170,7 +170,7 @@ describe('batteryReadoutModel', () => {
       current: -2.0,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('20%');
     expect(result.tier).toBe('warn');
   });
@@ -182,7 +182,7 @@ describe('batteryReadoutModel', () => {
       current: -2.1,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('19%');
     expect(result.tier).toBe('danger');
   });
@@ -194,7 +194,7 @@ describe('batteryReadoutModel', () => {
       current: -2.2,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('10%');
     expect(result.tier).toBe('danger');
   });
@@ -206,7 +206,7 @@ describe('batteryReadoutModel', () => {
       current: -2.5,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('0%');
     expect(result.tier).toBe('danger');
   });
@@ -221,7 +221,7 @@ describe('batteryReadoutModel', () => {
       current: -1.2,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('85%');
   });
 
@@ -232,23 +232,7 @@ describe('batteryReadoutModel', () => {
       current: -1.2,
       charging: false,
     };
-    const result = batteryReadoutModel(battery, null);
+    const result = batteryReadoutModel(battery);
     expect(result.value).toBe('86%');
-  });
-
-  // -------------------------------------------------------------------------
-  // estimateMinutes parameter is accepted but not reflected in value (reserved for future use)
-  // -------------------------------------------------------------------------
-  it('accepts estimateMinutes parameter without affecting value', () => {
-    const battery: BatteryData = {
-      percentage: 50,
-      voltage: 11.5,
-      current: -1.8,
-      charging: false,
-    };
-    const result1 = batteryReadoutModel(battery, null);
-    const result2 = batteryReadoutModel(battery, 30);
-    expect(result1.value).toBe(result2.value);
-    expect(result1.tier).toBe(result2.tier);
   });
 });

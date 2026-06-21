@@ -2,7 +2,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import { reportPerf } from './perf_beacon.js';
-import { registerServiceWorker } from './sw_register.js';
 import './index.css';
 
 const container = document.getElementById('app');
@@ -12,5 +11,3 @@ createRoot(container).render(<React.StrictMode><App /></React.StrictMode>);
 // After the first paint commits (double rAF), report UI-ready timing to /perf.
 requestAnimationFrame(() => requestAnimationFrame(() => reportPerf()));
 
-// Register service worker for app-shell precaching.
-registerServiceWorker();

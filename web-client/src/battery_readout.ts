@@ -23,14 +23,8 @@ export interface BatteryReadoutModel {
  *   - pct > 80 → pct + '%' / 'ok'
  *   - pct >= 20 → pct + '%' / 'warn'
  *   - pct < 20 → pct + '%' / 'danger'
- *
- * estimateMinutes is accepted as a parameter but reserved for future use
- * (currently does not affect the returned value).
  */
-export function batteryReadoutModel(
-  battery: BatteryData | null,
-  estimateMinutes: number | null
-): BatteryReadoutModel {
+export function batteryReadoutModel(battery: BatteryData | null): BatteryReadoutModel {
   // Null battery or null percentage → placeholder
   if (battery === null || battery.percentage === null) {
     return { value: '—', tier: 'none' };

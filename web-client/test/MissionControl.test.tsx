@@ -23,7 +23,6 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     mapPose: null,
     scan: null,
     battery: null,
-    batteryEstimateMinutes: null,
     networkQuality: null,
     networkStats: null,
     robotName: 'r1',
@@ -992,7 +991,6 @@ describe('MissionControl', () => {
         current: -2.1,
         charging: false,
       },
-      batteryEstimateMinutes: 30,
     });
     const stream = createFakeStream();
     const onMenu = vi.fn();

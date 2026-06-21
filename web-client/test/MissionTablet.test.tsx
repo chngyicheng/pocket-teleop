@@ -23,7 +23,6 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     mapPose: null,
     scan: null,
     battery: null,
-    batteryEstimateMinutes: null,
     networkQuality: null,
     networkStats: null,
     robotName: 'r1',

@@ -201,7 +201,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       : '— ms';
 
   // Battery readout: compute display value and color tier from bridge data
-  const batModel = batteryReadoutModel(bridge.battery, bridge.batteryEstimateMinutes);
+  const batModel = batteryReadoutModel(bridge.battery);
   const batColor =
     batModel.tier === 'ok'
       ? p.ok

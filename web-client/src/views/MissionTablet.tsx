@@ -229,7 +229,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   const robotLabel = bridge.robotName || bridge.robotType;
 
   // Battery readout: compute display value and color tier from bridge data
-  const batModel = batteryReadoutModel(bridge.battery, bridge.batteryEstimateMinutes);
+  const batModel = batteryReadoutModel(bridge.battery);
   const batColor =
     batModel.tier === 'ok'
       ? p.ok
