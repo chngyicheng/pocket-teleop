@@ -166,6 +166,7 @@ Full history + per-feature detail: [milestones.md](memory/agent-guides/milestone
 **Safety + control**
 - ~~Input arbitration (gamepad>keyboard>touch)~~ **DONE 2026-06-18** (`feat/input-arbitration-*`, baseline 787): `docs/superpowers/plans/2026-06-16-input-arbitration-implementation.md`
 - Geofence: `docs/superpowers/plans/2026-05-06-geofence-implementation.md`
+- nav2 waypoint send (tap expanded minimap → `NavigateToPose` action goal; pause/resume; global path on minimap; E-STOP cancels; frame ENV-level): `docs/superpowers/plans/2026-06-21-nav2-waypoint-implementation.md`
 
 **Observation**
 - Map view: `docs/superpowers/plans/2026-05-06-map-view-implementation.md` (can now reuse the minimap's map/pose/scan transport)
