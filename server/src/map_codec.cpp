@@ -153,4 +153,31 @@ nlohmann::json build_scan_message(
   return msg;
 }
 
+std::vector<std::pair<double, double>> decimate_path(
+  const std::vector<std::pair<double, double>>& points,
+  int max_points
+) {
+  if (points.empty()) {
+    return {};
+  }
+
+  if (static_cast<int>(points.size()) <= max_points) {
+    return points;
+  }
+
+  std::vector<std::pair<double, double>> result;
+  result.push_back(points.front());
+
+  int n = static_cast<int>(points.size());
+  int step = std::max(1, static_cast<int>(std::ceil(static_cast<double>(n) / max_points)));
+
+  for (int i = step; i < n - 1; i += step) {
+    result.push_back(points[i]);
+  }
+
+  result.push_back(points.back());
+
+  return result;
+}
+
 } // namespace map_codec

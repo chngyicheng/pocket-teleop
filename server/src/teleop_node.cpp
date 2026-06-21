@@ -557,26 +557,14 @@ void TeleopNode::on_nav_path(const nav_msgs::msg::Path::SharedPtr& msg) {
   const auto now = std::chrono::steady_clock::now();
   if (now - last_nav_path_sent_ < NAV_PATH_INTERVAL) return;
 
-  // Decimate path
+  // Extract points from path
   std::vector<std::pair<double, double>> points;
   for (const auto& pose_stamped : msg->poses) {
     points.push_back({pose_stamped.pose.position.x, pose_stamped.pose.position.y});
   }
 
-  // Simple decimation: keep first, last, and evenly space in between
-  std::vector<std::pair<double, double>> decimated;
-  if (points.empty()) {
-    // Empty path → broadcast empty points to clear line
-  } else if (points.size() <= NAV_PATH_MAX_POINTS) {
-    decimated = points;
-  } else {
-    decimated.push_back(points.front());
-    const int step = static_cast<int>(points.size()) / (NAV_PATH_MAX_POINTS - 1);
-    for (int i = step; i < static_cast<int>(points.size()) - 1; i += step) {
-      decimated.push_back(points[i]);
-    }
-    decimated.push_back(points.back());
-  }
+  // Decimate path to max points
+  const auto decimated = map_codec::decimate_path(points, NAV_PATH_MAX_POINTS);
 
   nlohmann::json nav_path = {
     {"type", "nav_path"},

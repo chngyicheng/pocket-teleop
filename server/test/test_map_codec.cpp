@@ -294,3 +294,41 @@ TEST_F(MapCodecTest, BuildScanMessageNoPose) {
   EXPECT_FALSE(json.contains("pose_heading"));
   EXPECT_FALSE(json.contains("pose_frame"));
 }
+
+// decimate_path tests
+TEST_F(MapCodecTest, DecimatePathReducesCount) {
+  // 200 points, max=64 → result size ≤ 64 and > 1
+  std::vector<std::pair<double, double>> points;
+  for (int i = 0; i < 200; ++i) {
+    points.push_back({static_cast<double>(i), static_cast<double>(i * 2)});
+  }
+
+  auto result = decimate_path(points, 64);
+
+  EXPECT_LE(result.size(), 64);
+  EXPECT_GT(result.size(), 1);
+}
+
+TEST_F(MapCodecTest, DecimatePathPreservesEndpoints) {
+  // Result should keep first and last points
+  std::vector<std::pair<double, double>> points;
+  for (int i = 0; i < 200; ++i) {
+    points.push_back({static_cast<double>(i), static_cast<double>(i * 2)});
+  }
+
+  auto result = decimate_path(points, 64);
+
+  EXPECT_DOUBLE_EQ(result.front().first, points.front().first);
+  EXPECT_DOUBLE_EQ(result.front().second, points.front().second);
+  EXPECT_DOUBLE_EQ(result.back().first, points.back().first);
+  EXPECT_DOUBLE_EQ(result.back().second, points.back().second);
+}
+
+TEST_F(MapCodecTest, DecimatePathEmptyInput) {
+  // Empty input → empty output
+  std::vector<std::pair<double, double>> points;
+
+  auto result = decimate_path(points, 64);
+
+  EXPECT_EQ(result.size(), 0);
+}

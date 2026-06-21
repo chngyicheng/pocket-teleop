@@ -114,4 +114,18 @@ nlohmann::json build_scan_message(
   const std::optional<ScanPose>& pose
 );
 
+/**
+ * Decimate a path to at most max_points by step sampling.
+ *
+ * Preserves first and last points, evenly spaces intermediate points via step sampling.
+ *
+ * @param points       Input path points as (x, y) pairs
+ * @param max_points   Target output size; decimation step = ceil(n / max_points)
+ * @return Decimated path with size ≤ max_points (or empty if input empty)
+ */
+std::vector<std::pair<double, double>> decimate_path(
+  const std::vector<std::pair<double, double>>& points,
+  int max_points
+);
+
 } // namespace map_codec
