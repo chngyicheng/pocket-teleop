@@ -294,6 +294,14 @@ A service worker precaches the app shell (HTML/JS/CSS/fonts) for fast repeat loa
 
 This only affects the cached **shell** — it never touches live control or video, which bypass the worker entirely.
 
+### Offline reload shows "no internet" (service worker not caching)
+
+**Symptom:** after loading the UI, going offline (airplane mode), and reloading, you get the browser's "no internet" page instead of the cached app shell.
+
+**Cause:** browsers only register a service worker in a **secure context** — HTTPS or `localhost`. On a plain `http://<robot-ip>:8080` deployment the worker never registers, so nothing is precached and an offline reload has nothing to fall back to. This is a browser security rule, not an app bug, and it is independent of which browser you use. Whether an offline reload appears to "work" on HTTP is just each browser's ordinary page cache — **Chrome** often redraws the last page, while **Brave** (stricter privacy/cache eviction, same shields behavior behind [Gamepad not detected in Brave](#gamepad-not-detected-in-brave)) keeps nothing and shows "no internet."
+
+**Fix:** run the [HTTPS profile](README.md#enabling-https-tls) (`--profile tls`). Over `https://…` the worker registers and the offline shell loads. The live system (login, drive, video, E-STOP) works the same on plain HTTP regardless.
+
 ---
 
 ## ROS2

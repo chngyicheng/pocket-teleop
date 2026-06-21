@@ -156,6 +156,8 @@ Set both `ROBOT_LENGTH_M` and `ROBOT_WIDTH_M` to overlay a dashed outline of the
 
 The web client also registers a service worker that precaches the app shell (HTML/JS/CSS/fonts), so a returning operator opens straight to the cached UI and a weak Wi-Fi link still reaches the login screen. The live control stream (WebSocket, WHEP signalling, WebRTC video) never passes through the cache. If a UI update doesn't appear after a redeploy, hard-reload once (see TROUBLESHOOTING.md).
 
+> **Requires HTTPS.** Browsers only register service workers in a secure context — i.e. the [HTTPS profile](#enabling-https-tls) (or `localhost`). On a plain `http://<robot-ip>` deployment the worker never registers, so the offline/precache behavior above does not apply; the app still works fully online. (Brave is also stricter than Chrome about evicting cached pages — see TROUBLESHOOTING.md.)
+
 ### Supported robots
 
 | Drive type | Axes used |
