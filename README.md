@@ -42,28 +42,15 @@
 
 ## Architecture
 
-```
-Phone browser  http://<robot-ip>:8080
-    │
-    ▼ port 8080 (only public port)
-┌─────────────────────────────────────────────────────┐
-│  auth-server (Node/Express)                          │
-│  • login page + session cookie auth                  │
-│  • /              → webclient nginx (HTTP)           │
-│  • /ws            → teleop-server (WebSocket)        │
-│  • /video         → mediamtx WHEP (WebRTC SDP)       │
-│  • /mediamtx-api  → mediamtx config API              │
-└─────────────────────────────────────────────────────┘
-      │             │              │
-      ▼             ▼              ▼
- webclient     teleop-server   mediamtx
- (nginx,       (ROS2 + C++)    (WebRTC)
-  React SPA)   publishes         │ UDP 8891 direct
-               /cmd_vel          ▼ to browser
-                              video-bridge
-                              (ROS2 → GStreamer
-                               → RTSP → mediamtx)
-```
+Everything robot-side runs in Docker. The browser reaches the stack through a single public port (8080) fronted by auth-server; only the WebRTC media flows direct over UDP 8891.
+
+<p align="center">
+  <img src="docs/assets/architecture.png" alt="pocket-teleop system architecture" width="88%">
+</p>
+
+- **auth-server** is the only public entrypoint — it authenticates the session, then proxies `/` to the webclient nginx, `/ws` to the C++ teleop-server, and `/video` (WHEP SDP) to MediaMTX.
+- **teleop-server** turns WebSocket twist/E-STOP messages into `/cmd_vel`, with a 500 ms watchdog that publishes zero velocity if the command link goes silent, and relays `/odom` `/map` `/scan` `/battery` back for the minimap.
+- **video-bridge** encodes a ROS2 image topic to H.264 and pushes it over RTMP to MediaMTX; the browser pulls it back over WebRTC, with media travelling direct (UDP 8891) while only the SDP signaling passes through auth-server.
 
 ## Quick start
 
@@ -212,6 +199,10 @@ Set in `.env`; takes effect on the next `docker compose ... up -d`.
 ## Video streaming
 
 The video panel auto-connects over WebRTC (via MediaMTX) and can be re-sourced at runtime from **Settings → Video** — no restart needed.
+
+<p align="center">
+  <img src="docs/assets/video-pipeline.png" alt="Video streaming pipeline: ROS2 image → video-bridge → MediaMTX → browser" width="92%">
+</p>
 
 **One-time firewall rule** (WebRTC media is direct phone ↔ robot over UDP):
 
