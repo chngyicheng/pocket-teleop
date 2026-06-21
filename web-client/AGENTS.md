@@ -58,7 +58,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 |---|---|
 | `nginx.conf` | `gzip on` + immutable `/assets` cache + SPA fallback; `/sw.js` no-cache |
 | `index.html` | Vite entry shell — instant `#boot-splash` + `<div id="root">` |
-| `protocol.ts` | Message types + serializers (twist, estop/estop_reset/estop_state, ping, odom); inbound parser with `Number.isFinite` guards |
+| `protocol.ts` | Message types + serializers (twist, estop/estop_reset/estop_state, ping, odom, **nav_goal/nav_pause/nav_resume/nav_cancel**); inbound parser with `Number.isFinite` guards (incl. **nav_state** enum + **nav_path** `[x,y][]` shape/finite checks) |
 | `connection.ts` | WebSocket open/close/send; fires callbacks |
 | `teleop_client.ts` | Orchestrates modules; **single confluence point for all input sources** — `sendTwist(lx,ly,az,source)` arbitrates gamepad/keyboard/touch (see Local Contracts) then sets a target; the 20 Hz publisher slew-rate-limits `currentTwist`→`targetTwist` and sends (accel ~0.5 s / decel ~0.2 s, E-STOP instant-zero bypass; decel ramp replaced the old zero-burst, one terminal zero at rest); builds + drives GamepadHandler **and** KeyboardHandler; input shaping + `setMaxSpeed` at send choke; cross-source E-STOP; reconnect; zombie detector; 4001 terminal; tracks last-20 RTT + 20-ping loss window → `getNetworkStats()`; `resume()` skips backoff / probe-pings on foreground; `onInputSource(source\|'idle')` fires on owner change; `onPublish(lx,ly,az,source)` fires each tick with the actual ramped command |
 | `network_quality.ts` | Pure `computeQuality(stats)→0–4` from RTT/jitter/loss component scores (min aggregation); non-finite/negative → worst |
@@ -90,7 +90,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 
 ### Inbound message types consumed
 
-`status` (robot_type/name/namespace/length/width), `pong`, `error`, `estop_state`, `map` (trinary-RLE occupancy grid), `pose` (`map`→`base_link`, odom fallback), `scan` (≤120 pts, 0 = invalid, optional `pose` with capture frame/x/y/heading). Outbound: `twist` (`linear_x`/`linear_y`/`angular_z`, clamped `[-1,1]`), `ping`, `estop`, `estop_reset`.
+`status` (robot_type/name/namespace/length/width), `pong`, `error`, `estop_state`, `map` (trinary-RLE occupancy grid), `pose` (`map`→`base_link`, odom fallback), `scan` (≤120 pts, 0 = invalid, optional `pose` with capture frame/x/y/heading), **`nav_state`** (idle/active/paused → bridge `navState`), **`nav_path`** (`[x,y][]` map-frame plan → bridge `navPath`). Outbound: `twist` (`linear_x`/`linear_y`/`angular_z`, clamped `[-1,1]`), `ping`, `estop`, `estop_reset`, **`nav_goal`** (absolute world x/y/heading, **not** scaled; estop-gated), **`nav_pause`/`nav_resume`/`nav_cancel`** (resume estop-gated; pause/cancel always send). Bridge exposes `navState`/`navPath` + `sendNavGoal`/`sendNavPause`/`sendNavResume`/`sendNavCancel`.
 
 ## Work Guidance
 

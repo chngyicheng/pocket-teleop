@@ -114,6 +114,43 @@ export function worldToScreenPoint(
 }
 
 /**
+ * Convert a screen point to world coordinates using current robot pose.
+ * Precise inverse of worldToScreenPoint.
+ *
+ * @param screen { x, y } screen coordinates
+ * @param currentPose { x, y, heading } current robot pose
+ * @param size canvas size in pixels
+ * @param metersAcross view span in meters
+ * @returns { x, y } world coordinates
+ */
+export function screenToWorldPoint(
+  screen: { x: number; y: number },
+  currentPose: Pose,
+  size: number,
+  metersAcross: number
+): { x: number; y: number } {
+  const s = size / metersAcross; // pixels per meter
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const θ = currentPose.heading;
+  const sinθ = Math.sin(θ);
+  const cosθ = Math.cos(θ);
+
+  // Inverse transform: screen → robot frame
+  const forward = (cy - screen.y) / s;
+  const left = (cx - screen.x) / s;
+
+  // Robot frame → world
+  const world = {
+    x: currentPose.x + forward * cosθ - left * sinθ,
+    y: currentPose.y + forward * sinθ + left * cosθ,
+  };
+
+  return world;
+}
+
+/**
  * Select the capture pose for a scan, returning the pose to use for base_link → world transform.
  * If scanPose exists and its frame matches currentPose frame, use scanPose.
  * Otherwise (frame mismatch or undefined), fall back to currentPose (robot-centered behavior).

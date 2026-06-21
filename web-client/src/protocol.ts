@@ -10,6 +10,8 @@ export type InboundMessage =
   | { type: 'map'; resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }
   | { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }
   | { type: 'battery'; percentage: number | null; voltage: number | null; current: number | null; charging: boolean }
+  | { type: 'nav_state'; state: 'idle' | 'active' | 'paused' }
+  | { type: 'nav_path'; points: [number, number][] }
   | { type: 'unknown'; raw: string };
 
 export function buildTwist(lx: number, ly: number, az: number): string {
@@ -26,6 +28,22 @@ export function buildEstop(): string {
 
 export function buildEstopReset(): string {
   return JSON.stringify({ type: 'estop_reset' });
+}
+
+export function buildNavGoal(x: number, y: number, heading: number): string {
+  return JSON.stringify({ type: 'nav_goal', x, y, heading });
+}
+
+export function buildNavPause(): string {
+  return JSON.stringify({ type: 'nav_pause' });
+}
+
+export function buildNavResume(): string {
+  return JSON.stringify({ type: 'nav_resume' });
+}
+
+export function buildNavCancel(): string {
+  return JSON.stringify({ type: 'nav_cancel' });
 }
 
 export function parseMessage(raw: string): InboundMessage {
@@ -178,6 +196,27 @@ export function parseMessage(raw: string): InboundMessage {
         current,
         charging: msg['charging'],
       };
+    }
+    if (msg['type'] === 'nav_state') {
+      const state = msg['state'];
+      if (state !== 'idle' && state !== 'active' && state !== 'paused') {
+        return { type: 'unknown', raw };
+      }
+      return { type: 'nav_state', state };
+    }
+    if (msg['type'] === 'nav_path') {
+      const points = msg['points'];
+      if (!Array.isArray(points)) {
+        return { type: 'unknown', raw };
+      }
+      for (const point of points) {
+        if (!Array.isArray(point) || point.length !== 2 ||
+            typeof point[0] !== 'number' || !Number.isFinite(point[0]) ||
+            typeof point[1] !== 'number' || !Number.isFinite(point[1])) {
+          return { type: 'unknown', raw };
+        }
+      }
+      return { type: 'nav_path', points };
     }
     return { type: 'unknown', raw };
   } catch {
