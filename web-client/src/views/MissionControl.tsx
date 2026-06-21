@@ -622,6 +622,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 robotWidth={bridge.robotWidth}
                 expandable
                 onExpandedChange={setMapExpanded}
+                enableWaypoints
+                navState={bridge.navState}
+                navPath={bridge.navPath}
+                onSendWaypoint={bridge.sendNavGoal}
+                onNavPause={bridge.sendNavPause}
+                onNavResume={bridge.sendNavResume}
+                onNavCancel={bridge.sendNavCancel}
               />
 
               {/* HEADING */}
@@ -788,6 +795,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             robotWidth={bridge.robotWidth}
             expandable
             onExpandedChange={setMapExpanded}
+            enableWaypoints
+            navState={bridge.navState}
+            navPath={bridge.navPath}
+            onSendWaypoint={bridge.sendNavGoal}
+            onNavPause={bridge.sendNavPause}
+            onNavResume={bridge.sendNavResume}
+            onNavCancel={bridge.sendNavCancel}
           />
           <Compass
             heading={odomPos.heading}
