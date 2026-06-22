@@ -134,7 +134,7 @@
 - web-client：`docker compose -p pocket-teleop run --rm --no-deps --build webclient-test npm test`——screenToWorldPoint＋protocol＋transport＋MiniMap UI 測。
 - auth：`docker compose -p pocket-teleop run --rm --no-deps --build <auth-test 役> npm test`——robot_config NAV_ACTION 測。
 - baseline 沿 AGENTS.md「Test baseline」（webclient 790 / auth 96 / video-bridge 20 / C++ 88），新增測後更新計數於收束 commit。
-- **hardware-verify（俟實機＋nav2，列 deviation）**：(a) Send 後 robot 趨正確 world 位＋朝向；(b) **Pause 令 robot 止、Resume 令其續趨同點**；(c) **E-STOP 取消 nav、robot 止、Resume 後不誤驅**；(d) global path 疊於 minimap 牆且隨 robot/zoom 黏合；(e) NAV_ACTION 改後（Settings→次 up -d）生效；(f) odom frame 下 Set 禁用；(g) 無 nav2 時 send 不阻 teleop；(h) goal frame_id 與 nav2 global frame 一致；(i) loupe／dial 真觸控手感。
+- **hardware-verify — 已驗（操作者 2026-06-22）：實機 autonomous drive 運作，Send→goal-reaching 確、frame 對齊正、global path 疊圖正。** 原列項：(a) Send 後 robot 趨正確 world 位＋朝向；(b) **Pause 令 robot 止、Resume 令其續趨同點**；(c) **E-STOP 取消 nav、robot 止、Resume 後不誤驅**；(d) global path 疊於 minimap 牆且隨 robot/zoom 黏合；(e) NAV_ACTION 改後（Settings→次 up -d）生效；(f) odom frame 下 Set 禁用；(g) 無 nav2 時 send 不阻 teleop；(h) goal frame_id 與 nav2 global frame 一致；(i) loupe／dial 真觸控手感。
 
 ## 風險與待決
 
