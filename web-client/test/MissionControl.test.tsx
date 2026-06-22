@@ -242,7 +242,7 @@ describe('MissionControl', () => {
     expect(screen.getByText('STRAFE')).toBeTruthy();
   });
 
-  it('phone-portrait renders MiniMap and Compass', () => {
+  it('phone-portrait renders the standalone top-right MiniMap', () => {
     const bridge = createFakeBridge({ odom: { x: 0, y: 0, heading: 0 } });
     const stream = createFakeStream();
     const onMenu = vi.fn();
@@ -256,13 +256,9 @@ describe('MissionControl', () => {
       />
     );
 
-    // In portrait, MiniMap and Compass should be rendered (no longer landscape-gated)
-    // MiniMap renders SVG with grid/polyline elements, Compass also renders SVG
-    // Count SVGs: we expect at least 2 (MiniMap grid + Compass)
-    const svgs = document.querySelectorAll('svg');
-    expect(svgs.length).toBeGreaterThanOrEqual(2);
-
-    // Alternatively: verify LAT readout is present (earlier test already confirms)
+    // Portrait docks a single small MiniMap top-right (below the SPEED panel).
+    // The Compass was dropped — the corner square matches landscape/tablet.
+    expect(screen.getByTestId('minimap-grid')).toBeTruthy();
     expect(screen.getByText(/LAT/)).toBeTruthy();
   });
 
