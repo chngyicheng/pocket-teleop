@@ -773,6 +773,39 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               />
             </div>
           </div>
+
+          {/* Minimap below the speed setting (translucent, same corner-dock
+              design language as the landscape/tablet overlay). */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+            <MiniMap
+              pos={navPose}
+              heading={navPose.heading}
+              size={128}
+              color={p.accent}
+              bg="rgba(8,10,14,0.45)"
+              border={p.border}
+              mapGrid={bridge.mapGrid}
+              mapPose={bridge.mapPose}
+              scan={bridge.scan}
+              robotLength={bridge.robotLength}
+              robotWidth={bridge.robotWidth}
+              expandable
+              onExpandedChange={setMapExpanded}
+              enableWaypoints
+              navState={bridge.navState}
+              navPath={bridge.navPath}
+              onSendWaypoint={bridge.sendNavGoal}
+              onNavPause={bridge.sendNavPause}
+              onNavResume={bridge.sendNavResume}
+              onNavCancel={bridge.sendNavCancel}
+            />
+            <Compass
+              heading={odomPos.heading}
+              color={p.accent}
+              font={monoFont}
+              size={22}
+            />
+          </div>
         </div>
 
         {/* Top-right telemetry stack */}
@@ -797,37 +830,6 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           />
           <Readout label="BAT" value={batModel.value} color={batColor} />
           <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
-
-          {/* Minimap docked top-right, below the telemetry readouts (translucent,
-              matching the landscape/tablet corner overlay). */}
-          <MiniMap
-            pos={navPose}
-            heading={navPose.heading}
-            size={128}
-            color={p.accent}
-            bg="rgba(8,10,14,0.45)"
-            border={p.border}
-            mapGrid={bridge.mapGrid}
-            mapPose={bridge.mapPose}
-            scan={bridge.scan}
-            robotLength={bridge.robotLength}
-            robotWidth={bridge.robotWidth}
-            expandable
-            onExpandedChange={setMapExpanded}
-            enableWaypoints
-            navState={bridge.navState}
-            navPath={bridge.navPath}
-            onSendWaypoint={bridge.sendNavGoal}
-            onNavPause={bridge.sendNavPause}
-            onNavResume={bridge.sendNavResume}
-            onNavCancel={bridge.sendNavCancel}
-          />
-          <Compass
-            heading={odomPos.heading}
-            color={p.accent}
-            font={monoFont}
-            size={22}
-          />
         </div>
 
         {/* Center crosshair reticle */}
