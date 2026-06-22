@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" version="30.2.4">
+  <diagram name="architecture-detailed">
+    <mxGraphModel dx="1600" dy="1000" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2040" pageHeight="1360" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="pocket-teleop — software architecture (modules, data flow, wire protocol)" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#222222;" vertex="1" parent="1">
+          <mxGeometry x="40" y="8" width="1100" height="32" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== BROWSER TIER ===================== -->
+        <mxCell id="browser" value="Phone browser   ·   the tab owns the live /ws WebSocket + WHEP RTCPeerConnection (both call resume() on foreground / bfcache pageshow)" style="swimlane;startSize=30;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="56" width="1960" height="330" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reactui" value="React 18 SPA  (Vite)&#xa;&#xa;App.tsx  matchMedia phone⇄tablet @700px&#xa;views/ MissionControl · MissionTablet&#xa;components/ Joystick · MiniMap · Compass&#xa;  VelBars · SettingsDrawer · SpeedStepper&#xa;&#xa;hooks/ (only bridge into the TS core):&#xa;  useTeleopBridge · useWhepStream&#xa;  useSessionStatus" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="browser">
+          <mxGeometry x="20" y="44" width="360" height="270" as="geometry" />
+        </mxCell>
+
+        <!-- Nested TeleopClient module box -->
+        <mxCell id="tc" value="TeleopClient   (framework-free TS — single input confluence point)" style="swimlane;startSize=26;html=1;fillColor=#eef4ff;strokeColor=#6c8ebf;fontStyle=1;verticalAlign=top;fontSize=11;" vertex="1" parent="browser">
+          <mxGeometry x="410" y="44" width="780" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_conn" value="Connection&#xa;WS open/close/send" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="14" y="34" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_proto" value="Protocol&#xa;serialize + parse&#xa;Number.isFinite guards" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="14" y="88" width="180" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_gp" value="GamepadHandler&#xa;rAF poll · profile axes&#xa;rising-edge btns · estop=LB" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="206" y="34" width="190" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_kb" value="KeyboardHandler&#xa;WASD/arrows -&gt; twist" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="206" y="96" width="190" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_touch" value="TouchJoystick&#xa;floating · normalised −1..1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="408" y="34" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_shape" value="input_shaping&#xa;deadzone + cubic curve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="408" y="88" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_net" value="network_quality&#xa;RTT/jitter/loss -&gt; 0–4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="600" y="34" width="166" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_map" value="map_codec / map_render&#xa;trinary-RLE decode -&gt; minimap&#xa;footprint · scan · pose · waypoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="600" y="88" width="166" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="tc_pub" value="20 Hz publisher — arbitrates source (gamepad &gt; keyboard &gt; touch; active source owns control), slew-rate ramps current→target (accel ~0.5 s / decel ~0.2 s), E-STOP instant-zero bypass, keepalive + backoff reconnect, maxMissedPongs zombie detector, 4001 close = terminal" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=8;fillColor=#dfeaff;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="tc">
+          <mxGeometry x="14" y="152" width="752" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="whep_c" value="WhepClient   (framework-free TS)&#xa;&#xa;vanilla WHEP gather-then-offer&#xa;RTCPeerConnection -&gt; &lt;video&gt;&#xa;getStats@1Hz · backoff retry&#xa;fps-stall watchdog (frames flat&#xa;  3 polls -&gt; rebuild PC)&#xa;resume() rebuilds PC on foreground" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="browser">
+          <mxGeometry x="1220" y="44" width="320" height="270" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EDGE / TLS ===================== -->
+        <mxCell id="caddy" value="Caddy 2   (--profile tls, optional)&#xa;TLS :443 terminate -&gt; auth :8080&#xa;ACME public / internal root-CA&#xa;sets X-Forwarded-Proto" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="450" width="300" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== AUTH HUB ===================== -->
+        <mxCell id="auth" value="auth-server   (Node / Express)   —   port 8080, the ONLY host-exposed port&#xa;&#xa;• express-session cookie (secure:auto via trust-proxy)  ·  30-min rolling idle timeout  ·  bcrypt creds in auth-data volume&#xa;• login rate limit: per-IP 10/min + per-user 5/min  ·  first-login forced password change&#xa;• HTTP                       -&gt;  nginx webclient (serves dist/)&#xa;• /ws upgrade                -&gt;  teleop-server:9091   (runs express-session, FAIL-CLOSED; 401 + 4001 close on expiry)&#xa;• /video, /mediamtx-api      -&gt;  mediamtx:8889&#xa;• GET/PUT /auth/robot-config -&gt;  /config/robot.env  (8-key allowlist; partial PUT; applies on next up -d)&#xa;• POST /perf                 -&gt;  first-paint timing log" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=12;spacingTop=8;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="430" y="430" width="780" height="220" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== WIRE PROTOCOL CALLOUT ===================== -->
+        <mxCell id="proto" value="Wire protocol over /ws   (JSON text frames)" style="swimlane;startSize=26;html=1;fillColor=#fef7ff;strokeColor=#9673a6;fontStyle=1;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="430" width="700" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="proto_c2s" value="client → server&#xa;&#xa;twist {linear_x, linear_y, angular_z}  — clamped [−1,1]&#xa;ping  ·  estop (latch)  ·  estop_reset&#xa;nav_goal {x, y, heading}  — abs world, estop-gated&#xa;nav_pause  ·  nav_resume  ·  nav_cancel" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="proto">
+          <mxGeometry x="14" y="34" width="332" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="proto_s2c" value="server → client&#xa;&#xa;status {robot_type/name/ns, length/width, disconnect_action}&#xa;pong  ·  error  ·  estop_state {engaged}&#xa;map {trinary-RLE cells} ~0.5 Hz&#xa;pose {map→base_link, odom fallback} ~5 Hz&#xa;scan {≤120 pts, capture pose} ~5 Hz&#xa;battery {pct, V, A, charging} 1 Hz&#xa;nav_state {idle/active/paused}  ·  nav_path {[x,y]≤64}" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffffff;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="proto">
+          <mxGeometry x="358" y="34" width="328" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== SERVICES TIER ===================== -->
+        <mxCell id="nginx" value="nginx (webclient)&#xa;&#xa;serves Vite dist/&#xa;gzip on · immutable /assets cache&#xa;SPA fallback -&gt; index.html&#xa;/sw.js no-cache (PWA precache)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="300" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- teleop-server: 3 strict C++ layers -->
+        <mxCell id="teleopsrv" value="teleop-server   (C++17, ros:humble, host net)   —   strict 3-layer isolation (no rclcpp below TeleopNode)" style="swimlane;startSize=28;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;verticalAlign=top;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="430" y="720" width="690" height="300" as="geometry" />
+        </mxCell>
+        <mxCell id="tnode" value="TeleopNode  — knows ROS2; owns TeleopServer; publishes Twist to /cmd_vel; nav2 NavigateToPose action client; subs /map /scan /odom /battery /plan; tf2 map→base_link (odom fallback); 500 ms watchdog: stop / hold / continue / return_home" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;verticalAlign=middle;fillColor=#e8f5e6;strokeColor=#82b366;fontSize=10;" vertex="1" parent="teleopsrv">
+          <mxGeometry x="20" y="40" width="650" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tserver" value="TeleopServer  — websocketpp :9091; TELEOP_TOKEN auth on upgrade; single active client (2nd = already-connected); per-session watchdog (close on io thread); NO ROS2" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;verticalAlign=middle;fillColor=#e8f5e6;strokeColor=#82b366;fontSize=10;" vertex="1" parent="teleopsrv">
+          <mxGeometry x="20" y="124" width="650" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="thandler" value="CommandHandler  — pure JSON parse + validate -&gt; ParseResult; no I/O, no ROS2 (dispatch via std::holds_alternative)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;verticalAlign=middle;fillColor=#e8f5e6;strokeColor=#82b366;fontSize=10;" vertex="1" parent="teleopsrv">
+          <mxGeometry x="20" y="202" width="650" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="ttypes" value="ParseResult = variant&lt; TwistCommand | PingCommand | EStopCommand | EStopResetCommand | NavGoalCommand | NavPauseCommand | NavResumeCommand | NavCancelCommand | ParseError &gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=10;verticalAlign=middle;fillColor=#f0f8ef;strokeColor=#82b366;fontStyle=2;fontSize=10;" vertex="1" parent="teleopsrv">
+          <mxGeometry x="20" y="258" width="650" height="34" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mediamtx" value="MediaMTX   (host net)&#xa;&#xa;RTMP ingest :1935&#xa;WHEP signaling + API :8889&#xa;WebRTC UDP ICE :8891 (host fw open)" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="720" width="340" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="videobridge" value="video-bridge   (Python rclpy, host net — sleeps idle if VIDEO_TOPIC unset)&#xa;&#xa;GStreamer:  appsrc -&gt; jpegdec/videoconvert -&gt; x264enc -&gt; h264parse -&gt; flvmux -&gt; rtmpsink" style="rounded=1;whiteSpace=wrap;html=1;align=left;spacingLeft=10;spacingTop=6;verticalAlign=top;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="930" width="500" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== ROS2 GRAPH TIER ===================== -->
+        <mxCell id="ros2" value="ROS2 graph   (robot — ros:humble; topics/frames/action are env-tunable)" style="swimlane;startSize=30;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;verticalAlign=top;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="330" y="1090" width="1300" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="nav2" value="nav2 stack&#xa;NavigateToPose action&#xa;publishes /plan (global path)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" vertex="1" parent="ros2">
+          <mxGeometry x="30" y="48" width="230" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="cmdvel" value="/cmd_vel&#xa;geometry_msgs/Twist" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="ros2">
+          <mxGeometry x="320" y="48" width="190" height="66" as="geometry" />
+        </mxCell>
+        <mxCell id="sensors" value="sensor topics&#xa;/map (transient_local) · /scan (sensor QoS)&#xa;/odom · /battery_state · tf2" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="ros2">
+          <mxGeometry x="30" y="150" width="280" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="robothw" value="robot hardware&#xa;diff-drive / holonomic base + sensors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="ros2">
+          <mxGeometry x="360" y="150" width="250" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="imgtopic" value="camera image topic&#xa;CompressedImage / Image&#xa;(VIDEO_TOPIC)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=11;" vertex="1" parent="ros2">
+          <mxGeometry x="700" y="48" width="240" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="params" value="env-tunable params:  cmd_vel_topic · map_topic · scan_topic · odom_topic · battery_topic · nav_action · nav_path_topic · map_frame/odom_frame/base_frame · robot_namespace -&gt; /ns/cmd_vel · disconnect_action(+param)" style="rounded=0;whiteSpace=wrap;html=1;align=left;spacingLeft=10;verticalAlign=middle;fillColor=#f0f8ef;strokeColor=#82b366;fontStyle=2;fontSize=10;" vertex="1" parent="ros2">
+          <mxGeometry x="700" y="150" width="560" height="76" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EDGES ===================== -->
+        <!-- browser -> auth -->
+        <mxCell id="e_react_auth" value="HTTP :8080  (login + app shell)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="reactui" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_tc_auth" value="/ws upgrade  ·  20 Hz commands + telemetry" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;fontSize=11;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.55;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="tc" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_whep_auth" value="/video WHEP SDP (POST)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#6c8ebf;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.9;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="whep_c" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- caddy -> auth -->
+        <mxCell id="e_caddy_auth" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#9673a6;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.4;entryDx=0;entryDy=0;" edge="1" parent="1" source="caddy" target="auth">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- proto callout anchored to auth -->
+        <mxCell id="e_proto" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#9673a6;endArrow=none;startArrow=none;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth" target="proto">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- auth -> services -->
+        <mxCell id="e_auth_nginx" value="proxy dist/ (HTTP)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;fontSize=11;exitX=0.1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth" target="nginx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_auth_teleop" value="ws :9091  (?token, fail-closed)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth" target="teleopsrv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_auth_mtx" value="/video /mediamtx-api :8889" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#9673a6;fontSize=11;exitX=0.95;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="auth" target="mediamtx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- mediamtx -> whep direct UDP -->
+        <mxCell id="e_mtx_whep" value="H.264 WHEP  +  UDP media DIRECT&#xa;browser ↔ robot :8891  (bypasses auth)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#d79b00;fontSize=11;exitX=1;exitY=0.2;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="mediamtx" target="whep_c">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2020" y="700" />
+              <mxPoint x="2020" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- teleop-server <-> ROS2 -->
+        <mxCell id="e_teleop_cmdvel" value="publish Twist" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;fontSize=11;exitX=0.7;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="teleopsrv" target="cmdvel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_sensors_teleop" value="sub map/scan/odom/battery/plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#82b366;fontSize=11;exitX=0.08;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="teleopsrv" target="sensors">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="485" y="1060" />
+              <mxPoint x="300" y="1060" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_teleop_nav2" value="NavigateToPose action&#xa;(goal / pause / resume / cancel)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;fontSize=11;exitX=0.4;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="teleopsrv" target="nav2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- video path -->
+        <mxCell id="e_img_vb" value="sub image" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#d79b00;fontSize=11;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.3;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="imgtopic" target="videobridge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_vb_mtx" value="RTMP push :1935" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#d79b00;fontSize=11;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="videobridge" target="mediamtx">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ROS2 internal -->
+        <mxCell id="e_nav2_cmdvel" value="nav2 cmd_vel" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="ros2" source="nav2" target="cmdvel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cmdvel_hw" value="drive" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#82b366;fontSize=11;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="ros2" source="cmdvel" target="robothw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_hw_sensors" value="publish odom/scan/map/battery" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;dashed=1;strokeColor=#82b366;fontSize=11;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="ros2" source="robothw" target="sensors">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== LEGEND ===================== -->
+        <mxCell id="legend" value="Legend" style="swimlane;startSize=22;html=1;fillColor=#ffffff;strokeColor=#999999;fontStyle=1;fontSize=11;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="lg1" value="——  solid = request / command flow" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="30" width="310" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lg2" value="– –  dashed = telemetry / media / sub" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="54" width="310" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lg3" value="purple = auth/TLS   ·   green = ROS2 / C++" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="78" width="310" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="lg4" value="blue = browser   ·   orange/yellow = video   ·   grey = infra" style="text;html=1;align=left;fontSize=11;" vertex="1" parent="legend">
+          <mxGeometry x="10" y="102" width="320" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

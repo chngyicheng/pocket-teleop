@@ -53,6 +53,8 @@ Everything robot-side runs in Docker. The browser reaches the stack through a si
 - **teleop-server** turns WebSocket twist/E-STOP messages into `/cmd_vel`, with a 500 ms watchdog that publishes zero velocity if the command link goes silent, and relays `/odom` `/map` `/scan` `/battery` back for the minimap. It also forwards navigation goals to nav2 as `NavigateToPose` action requests and relays the global plan (`/plan`) back for the on-map path.
 - **video-bridge** encodes a ROS2 image topic to H.264 and pushes it over RTMP to MediaMTX; the browser pulls it back over WebRTC, with media travelling direct (UDP 8891) while only the SDP signaling passes through auth-server.
 
+> For a module-level view — browser transport classes, the C++ three-layer node, the full `/ws` wire protocol, and ROS2 params — see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+
 ## Quick start
 
 ```bash

@@ -137,6 +137,7 @@ Full history + per-feature detail: [milestones.md](memory/agent-guides/milestone
 | Need | Read |
 |---|---|
 | Run stack now | Layer 1 (below) |
+| Software architecture (modules, `/ws` protocol, ROS2 params, data flow) | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | Build, test, docker commands | [repository-structure.md](memory/agent-guides/repository-structure.md) |
 | Deviations / milestones | [deviations.md](memory/agent-guides/deviations.md) / [milestones.md](memory/agent-guides/milestones.md) |
 | Tech stack + dependencies | [techstack.md](memory/agent-guides/techstack.md) |
