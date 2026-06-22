@@ -822,9 +822,9 @@ describe('MissionTablet', () => {
       />
     );
 
-    // The minimap canvas should exist (rendered with mapPose + mapGrid)
-    const canvas = screen.getByTestId('minimap-canvas');
-    expect(canvas).toBeTruthy();
+    // The minimap canvas should exist (in-rail + collapsed-rail corner overlay)
+    const canvases = screen.getAllByTestId('minimap-canvas');
+    expect(canvases.length).toBeGreaterThan(0);
   });
 
   it('tablet minimap falls back to odom when mapPose is null', () => {
@@ -842,8 +842,8 @@ describe('MissionTablet', () => {
       />
     );
 
-    // Minimap grid should be shown when mapGrid is null
-    expect(screen.getByTestId('minimap-grid')).toBeTruthy();
+    // Minimap grid should be shown when mapGrid is null (in-rail + corner overlay)
+    expect(screen.getAllByTestId('minimap-grid').length).toBeGreaterThan(0);
   });
 
   it('renders gamepad indicator when gamepadConnected is true', () => {

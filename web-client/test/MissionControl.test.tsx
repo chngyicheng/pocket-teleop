@@ -894,9 +894,10 @@ describe('MissionControl', () => {
       />
     );
 
-    // The minimap canvas should exist (rendered with mapPose + mapGrid)
-    const canvas = screen.getByTestId('minimap-canvas');
-    expect(canvas).toBeTruthy();
+    // The minimap canvas should exist (rendered with mapPose + mapGrid).
+    // Landscape has two instances (in-rail + collapsed-rail corner overlay).
+    const canvases = screen.getAllByTestId('minimap-canvas');
+    expect(canvases.length).toBeGreaterThan(0);
   });
 
   it('phone-portrait minimap uses mapPose when available (SLAM)', () => {
@@ -945,8 +946,30 @@ describe('MissionControl', () => {
       />
     );
 
-    // Minimap grid should be shown when mapGrid is null
-    expect(screen.getByTestId('minimap-grid')).toBeTruthy();
+    // Minimap grid should be shown when mapGrid is null (two in landscape:
+    // in-rail + collapsed-rail corner overlay).
+    expect(screen.getAllByTestId('minimap-grid').length).toBeGreaterThan(0);
+  });
+
+  it('phone-landscape: corner minimap crossfades in when the MAP rail collapses', () => {
+    const bridge = createFakeBridge({
+      odom: { x: 0, y: 0, heading: 0 },
+      mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+    });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+    );
+
+    const corner = screen.getByTestId('corner-minimap');
+    // Rail open by default → corner hidden + non-interactive.
+    expect(corner.style.opacity).toBe('0');
+    expect(corner.style.pointerEvents).toBe('none');
+
+    // Collapse the right (MAP) rail → corner fades in + becomes interactive.
+    fireEvent.click(screen.getByTestId('rail-tab-right'));
+    expect(corner.style.opacity).toBe('1');
+    expect(corner.style.pointerEvents).toBe('auto');
   });
 
   it('renders gamepad indicator when gamepadConnected is true', () => {

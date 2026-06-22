@@ -650,6 +650,45 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               </div>
             </div>
           </CollapsibleRail>
+
+          {/* Collapsed-rail corner minimap — translucent overlay on the video,
+              crossfades with the right rail (visible only while the rail is closed). */}
+          <div
+            data-testid="corner-minimap"
+            style={{
+              position: 'absolute',
+              top: 52,
+              right: 10,
+              zIndex: 12,
+              opacity: rightOpen ? 0 : 1,
+              transform: rightOpen ? 'scale(0.92)' : 'scale(1)',
+              transition: 'opacity 0.2s ease, transform 0.2s ease',
+              pointerEvents: rightOpen ? 'none' : 'auto',
+            }}
+          >
+            <MiniMap
+              pos={navPose}
+              heading={navPose.heading}
+              size={120}
+              color={p.accent}
+              bg="rgba(8,10,14,0.45)"
+              border={p.border}
+              mapGrid={bridge.mapGrid}
+              mapPose={bridge.mapPose}
+              scan={bridge.scan}
+              robotLength={bridge.robotLength}
+              robotWidth={bridge.robotWidth}
+              expandable
+              onExpandedChange={setMapExpanded}
+              enableWaypoints
+              navState={bridge.navState}
+              navPath={bridge.navPath}
+              onSendWaypoint={bridge.sendNavGoal}
+              onNavPause={bridge.sendNavPause}
+              onNavResume={bridge.sendNavResume}
+              onNavCancel={bridge.sendNavCancel}
+            />
+          </div>
         </>
       ) : (
         /* Portrait: Video viewport + overlays (original structure) */
