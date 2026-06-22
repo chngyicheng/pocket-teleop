@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { WhepState } from '../whep_client.js';
-import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint } from '../map_render.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint, pointerToWorldHeading, worldHeadingToScreenDeg } from '../map_render.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -784,8 +784,33 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
           {(() => {
             const markerScreen = worldToScreenPoint({ x: waypoint.wx, y: waypoint.wy }, mapPose, size, clampedViewM);
             const markerRad = 6;
-            const dialRad = 14;
-            const screenHeading = (waypoint.heading - mapPose.heading) * 180 / Math.PI;
+            const dialRad = 18;
+            // Arrow + handle face the waypoint heading in the base_link-fixed view.
+            const screenHeading = worldHeadingToScreenDeg(waypoint.heading, mapPose.heading);
+            const dh = waypoint.heading - mapPose.heading;
+            const handleX = markerScreen.x - dialRad * Math.sin(dh);
+            const handleY = markerScreen.y - dialRad * Math.cos(dh);
+
+            // Drag aims the heading at the finger (RViz-style), direction-only.
+            const startHeadingDrag = (e: React.PointerEvent) => {
+              e.stopPropagation();
+              const onMove = (ev: PointerEvent) => {
+                const rect = containerRef.current?.getBoundingClientRect();
+                if (!rect) return;
+                const worldHeading = pointerToWorldHeading(
+                  markerScreen,
+                  { x: ev.clientX - rect.left, y: ev.clientY - rect.top },
+                  mapPose.heading,
+                );
+                onWaypointHeading?.(worldHeading);
+              };
+              const onUp = () => {
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onUp);
+              };
+              document.addEventListener('pointermove', onMove);
+              document.addEventListener('pointerup', onUp);
+            };
 
             return (
               <g>
@@ -806,40 +831,39 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
                   <polygon points="0,-8 3,3 0,1 -3,3" fill="#ffb454" opacity="0.9" />
                 </g>
 
-                {/* Dial handle (draggable, around marker) */}
+                {/* Dial handle (draggable) — line + grip pointing toward the heading */}
                 {waypointMode && (
-                  <circle
-                    data-testid="waypoint-dial"
-                    cx={markerScreen.x + dialRad * Math.sin(waypoint.heading - mapPose.heading)}
-                    cy={markerScreen.y - dialRad * Math.cos(waypoint.heading - mapPose.heading)}
-                    r={4}
-                    fill="#ffb454"
-                    opacity="0.7"
-                    stroke="#fff"
-                    strokeWidth="1.5"
-                    cursor="grab"
-                    onPointerDown={(e) => {
-                      e.stopPropagation();
-                      // ponytail: one handler suffices for now; no gesture state needed
-                      const onMove = (ev: PointerEvent) => {
-                        const rect = containerRef.current?.getBoundingClientRect();
-                        if (!rect) return;
-                        const localX = ev.clientX - rect.left;
-                        const localY = ev.clientY - rect.top;
-                        const sa = Math.atan2(localY - markerScreen.y, localX - markerScreen.x);
-                        const worldHeading = sa + mapPose.heading;
-                        onWaypointHeading?.(worldHeading);
-                      };
-
-                      const onUp = () => {
-                        document.removeEventListener('pointermove', onMove);
-                        document.removeEventListener('pointerup', onUp);
-                      };
-
-                      document.addEventListener('pointermove', onMove);
-                      document.addEventListener('pointerup', onUp);
-                    }}
-                  />
+                  <g>
+                    <line
+                      x1={markerScreen.x}
+                      y1={markerScreen.y}
+                      x2={handleX}
+                      y2={handleY}
+                      stroke="#ffb454"
+                      strokeWidth="1.5"
+                      opacity="0.6"
+                    />
+                    {/* Larger transparent hit target for easy touch grab */}
+                    <circle
+                      data-testid="waypoint-dial"
+                      cx={handleX}
+                      cy={handleY}
+                      r={16}
+                      fill="transparent"
+                      cursor="grab"
+                      onPointerDown={startHeadingDrag}
+                    />
+                    <circle
+                      cx={handleX}
+                      cy={handleY}
+                      r={6}
+                      fill="#ffb454"
+                      opacity="0.85"
+                      stroke="#fff"
+                      strokeWidth="1.5"
+                      pointerEvents="none"
+                    />
+                  </g>
                 )}
               </g>
             );

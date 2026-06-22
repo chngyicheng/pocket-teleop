@@ -70,7 +70,7 @@ Owns: `src/`, `test/`, `index.html`, `nginx.conf`, `vite.config.ts`, `vitest.con
 | `settings.ts` | `SettingsRouter` + namespace/video-url localStorage; `loadMaxSpeed`/`saveMaxSpeed` + clamp (lin 0.1–2.0 / ang 0.1–3.0) |
 | `video_source.ts` | RTSP/UDP/SRT/MJPEG validate + `buildMtxSource` + apply (MediaMTX config API) |
 | `whep_client.ts` | `WhepClient` — vanilla WHEP gather-then-offer; getStats@1Hz; backoff retry; `'disconnected'` 2 s grace; fps-stall watchdog (framesDecoded flat 3 polls → rebuild); `resume()` rebuilds PC on foreground |
-| `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate); scan capture-pose world overlay (`scanToScreenPoints` fuses capture+current pose, `worldToScreenPoint`, `selectScanCapturePose` frame-match fallback) |
+| `map_codec.ts` / `map_render.ts` | Trinary-RLE decode; minimap raster incl. `footprintScreenRect` (length=x→vertical, width=y→horizontal, 14 px zoom gate); scan capture-pose world overlay (`scanToScreenPoints` fuses capture+current pose, `worldToScreenPoint`, `selectScanCapturePose` frame-match fallback); `screenToWorldPoint` (inverse); waypoint heading helpers `pointerToWorldHeading` (RViz-style aim: world heading from the marker→finger screen vector in the base_link-fixed view, direction-only) + `worldHeadingToScreenDeg` (inverse, arrow render) |
 | `MiniMap` (shared.tsx) | Minimap HUD component; internal `MiniMapView` (render/gesture/zoom) + thin `MiniMap` wrapper. `expandable` tap-to-expand + scrollwheel zoom — see the MiniMap contract below. |
 | `perf_beacon.ts` | Navigation/Paint/resource timing → `POST /perf` |
 

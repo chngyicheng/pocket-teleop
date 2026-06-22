@@ -139,5 +139,5 @@
 | `Dockerfile` builder + runtime 皆 apt 裝 `ros-humble-nav2-msgs` | `Dockerfile` | 此 image 手裝依賴（無 rosdep）；`nav2_msgs` 不在 `ros:humble` 基底——缺則 colcon config 失敗（crash 後查得之 blocker） |
 | 八鍵遷移：既有 `config/robot.env` 無 `NAV_ACTION` 行 → 空 → server 用 launch 預設 `/navigate_to_pose` | `robot_config.ts`、`robot.env.example` | 向後相容；舊部署無須改 robot.env 即運作（標準 nav2 action 名） |
 | waypoint loupe 放大鏡延後 | `shared.tsx` MiniMapView（ponytail 註） | 純視覺、jsdom 不可測、計畫列為俟實機；展開 minimap 夠大可直接置點。實機調觸控精度時再加 |
-| waypoint heading dial 用簡 atan2，精度俟實機 | `shared.tsx` MiniMapView | 先簡實作；必要時加吸附/微調（計畫風險節） |
+| waypoint heading dial = RViz-style 絕對指向（拖向何處即朝何處，與拖距無關） | `map_render.ts` `pointerToWorldHeading`/`worldHeadingToScreenDeg`、`shared.tsx` MiniMapView | minimap map mode 為 base_link-fixed view（螢幕上 = robot forward = `mapPose.heading`）；初版誤用 `atan2(dy,dx)+heading`（standard math convention，忽略 screen-up=forward 與 y-flip），arrow 方向亦反號——goal heading 與使用者所見不符。修正：world heading = `mapPose.heading + atan2(mk.x-fx, mk.y-fy)`（純方向），arrow rotate = `(mapPose.heading - heading)`；10 unit test 釘往返 + 方向。position 本即 map frame（`screenToWorldPoint` 用 map-frame `mapPose`，server 蓋 `goal_frame=map`）——僅 heading 需修 |
 | nav goal/path/marker 螢幕方向 + nav2 TF 一致性為 hardware-verify | nav 全鏈 | action send/cancel、狀態機、global path 黏合、frame 對齊俟真 nav2 stack 驗（gtest 僅釘 parse + build_goal_pose + decimate_path 純函式） |
