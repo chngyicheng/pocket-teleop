@@ -653,6 +653,11 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         touchAction: mapGrid && mapPose ? 'none' : undefined,
         cursor: onTap ? 'pointer' : undefined,
         visibility: hidden ? 'hidden' : undefined,
+        // A long-press otherwise selects the "MAP" label / pops the iOS
+        // text-callout instead of being a map gesture.
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
       }}
     >
       {/* Canvas (map + scan) — only if mapGrid && mapPose */}
