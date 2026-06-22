@@ -846,7 +846,7 @@ describe('MiniMap', () => {
     // Click backdrop to collapse
     const backdrop = document.querySelector('[data-testid="minimap-backdrop"]');
     expect(backdrop).toBeTruthy();
-    fireEvent.click(backdrop!);
+    fireEvent.pointerUp(backdrop!);
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
   });
 
@@ -1056,7 +1056,7 @@ describe('MiniMap', () => {
     fireEvent.pointerUp(collapsed!, { pointerId: 1, clientX: 50, clientY: 50 });
     expect(onExpandedChange).toHaveBeenLastCalledWith(true);
 
-    fireEvent.click(document.querySelector('[data-testid="minimap-backdrop"]')!);
+    fireEvent.pointerUp(document.querySelector('[data-testid="minimap-backdrop"]')!);
     expect(onExpandedChange).toHaveBeenLastCalledWith(false);
   });
 
@@ -1270,7 +1270,7 @@ describe('MiniMap', () => {
 
     // Click backdrop
     const backdrop = document.querySelector('[data-testid="minimap-backdrop"]') as HTMLElement;
-    fireEvent.click(backdrop);
+    fireEvent.pointerUp(backdrop);
 
     // Overlay should be gone
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();

@@ -1050,7 +1050,7 @@ describe('MissionControl', () => {
     expect(root.style.gridTemplateColumns).toBe('0px 1fr 0px');
 
     // Collapse → rails restored to their prior open state
-    fireEvent.click(document.querySelector('[data-testid="minimap-backdrop"]')!);
+    fireEvent.pointerUp(document.querySelector('[data-testid="minimap-backdrop"]')!);
     expect(root.style.gridTemplateColumns).toBe('180px 1fr 180px');
   });
 });

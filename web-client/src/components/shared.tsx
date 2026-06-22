@@ -994,10 +994,14 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         boxSizing: 'border-box',
       }}
     >
-      {/* Backdrop */}
+      {/* Backdrop — close on pointerup, NOT click: the opening tap's trailing
+          synthetic `click` retargets to this freshly-mounted backdrop and would
+          dismiss immediately (only taps over the centered map survived). The
+          opening gesture's own pointerdown+pointerup both landed on the minimap,
+          so neither re-fires here; pointerup keeps conventional release-to-dismiss. */}
       <div
         data-testid="minimap-backdrop"
-        onClick={handleBackdropClick}
+        onPointerUp={handleBackdropClick}
         style={{
           position: 'absolute',
           inset: 0,
