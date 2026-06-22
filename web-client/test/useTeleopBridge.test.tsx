@@ -46,6 +46,11 @@ class FakeTeleopClient {
   setGamepadProfile() {}
   setGamepadEnabled() {}
 
+  sendNavGoal(wx: number, wy: number, heading: number) {}
+  sendNavPause() {}
+  sendNavResume() {}
+  sendNavCancel() {}
+
   getNetworkStats(): NetworkStats | null {
     return this.networkStats;
   }

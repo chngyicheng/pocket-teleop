@@ -3,10 +3,15 @@
 #include <thread>
 #include <chrono>
 #include <optional>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
+#include <nav_msgs/msg/path.hpp>
+#include <nav2_msgs/action/navigate_to_pose.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 #include <sensor_msgs/msg/battery_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
@@ -63,4 +68,39 @@ private:
   sensor_msgs::msg::BatteryState::SharedPtr latest_battery_;
   rclcpp::TimerBase::SharedPtr battery_timer_;
   static constexpr std::chrono::milliseconds BATTERY_INTERVAL{1000}; // 1 Hz
+
+  // Navigation goal state machine
+  using NavigateToPoseClient = rclcpp_action::Client<nav2_msgs::action::NavigateToPose>;
+  NavigateToPoseClient::SharedPtr nav_action_client_;
+
+  std::mutex nav_mutex_;
+  NavigateToPoseClient::GoalHandle::SharedPtr active_goal_handle_;
+  std::optional<geometry_msgs::msg::PoseStamped> stored_goal_;
+  bool paused_{false};
+
+  // Navigation path
+  rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr nav_path_sub_;
+  std::chrono::steady_clock::time_point last_nav_path_sent_{};
+  static constexpr std::chrono::milliseconds NAV_PATH_INTERVAL{200}; // 5 Hz
+  static constexpr int NAV_PATH_MAX_POINTS{64};
+
+  // Navigation goal callback wrappers
+  void nav_goal_callback(double x, double y, double heading);
+  void nav_pause_callback();
+  void nav_resume_callback();
+  void nav_cancel_callback();
+  void on_nav_path(const nav_msgs::msg::Path::SharedPtr& msg);
+
+  // Pure function for building goal pose (gtest seam)
+public:
+  geometry_msgs::msg::PoseStamped build_goal_pose(double x, double y, double heading,
+                                                  const std::string& frame,
+                                                  rclcpp::Time stamp);
+
+private:
+  void send_stored_goal_();
+  void on_nav_goal_response(
+    NavigateToPoseClient::GoalHandle::SharedPtr goal_handle);
+  void on_nav_goal_result(
+    const NavigateToPoseClient::WrappedResult& result);
 };

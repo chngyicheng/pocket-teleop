@@ -114,6 +114,81 @@ export function worldToScreenPoint(
 }
 
 /**
+ * Convert a screen point to world coordinates using current robot pose.
+ * Precise inverse of worldToScreenPoint.
+ *
+ * @param screen { x, y } screen coordinates
+ * @param currentPose { x, y, heading } current robot pose
+ * @param size canvas size in pixels
+ * @param metersAcross view span in meters
+ * @returns { x, y } world coordinates
+ */
+export function screenToWorldPoint(
+  screen: { x: number; y: number },
+  currentPose: Pose,
+  size: number,
+  metersAcross: number
+): { x: number; y: number } {
+  const s = size / metersAcross; // pixels per meter
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const θ = currentPose.heading;
+  const sinθ = Math.sin(θ);
+  const cosθ = Math.cos(θ);
+
+  // Inverse transform: screen → robot frame
+  const forward = (cy - screen.y) / s;
+  const left = (cx - screen.x) / s;
+
+  // Robot frame → world
+  const world = {
+    x: currentPose.x + forward * cosθ - left * sinθ,
+    y: currentPose.y + forward * sinθ + left * cosθ,
+  };
+
+  return world;
+}
+
+/**
+ * World heading (rad, map frame) that points from a waypoint marker toward a
+ * pointer/finger on screen — RViz-style "drag to aim". Purely directional:
+ * the result faces wherever the finger is relative to the marker, independent
+ * of drag distance.
+ *
+ * In a base_link-fixed map view, screen-up is the robot's forward direction
+ * (world heading = mapHeading), and screen-x is mirrored relative to the map
+ * frame (worldToScreenPoint maps a world heading θ to screen direction
+ * (-sin(θ-mapHeading), -cos(θ-mapHeading))). Inverting that for a screen
+ * vector (marker → pointer) gives this expression.
+ *
+ * @param marker    waypoint marker screen position { x, y }
+ * @param pointer   finger/cursor screen position { x, y }
+ * @param mapHeading current robot heading (rad, map frame) — the view's up axis
+ * @returns world heading in radians (map frame)
+ */
+export function pointerToWorldHeading(
+  marker: { x: number; y: number },
+  pointer: { x: number; y: number },
+  mapHeading: number
+): number {
+  return mapHeading + Math.atan2(marker.x - pointer.x, marker.y - pointer.y);
+}
+
+/**
+ * SVG rotation (degrees, clockwise) for an up-pointing arrow so it faces a
+ * given world heading in a base_link-fixed map view. Exact inverse of
+ * pointerToWorldHeading's screen convention.
+ *
+ * @param worldHeading desired heading (rad, map frame)
+ * @param mapHeading   current robot heading (rad, map frame)
+ * @returns degrees for an SVG rotate() of an arrow drawn pointing up
+ */
+export function worldHeadingToScreenDeg(worldHeading: number, mapHeading: number): number {
+  return (mapHeading - worldHeading) * 180 / Math.PI;
+}
+
+/**
  * Select the capture pose for a scan, returning the pose to use for base_link → world transform.
  * If scanPose exists and its frame matches currentPose frame, use scanPose.
  * Otherwise (frame mismatch or undefined), fall back to currentPose (robot-centered behavior).

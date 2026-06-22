@@ -520,3 +520,32 @@ TEST_F(TeleopNodeTest, BatteryChargingFlag) {
   }
   EXPECT_TRUE(found) << "no battery message with charging=true received over WebSocket";
 }
+
+TEST_F(TeleopNodeTest, BuildGoalPoseSetsPositionFrameAndQuaternion) {
+  // heading = pi/2 -> z = sin(pi/4) ~ 0.7071, w = cos(pi/4) ~ 0.7071
+  const double heading = M_PI / 2.0;
+  rclcpp::Time stamp(123, 456, RCL_ROS_TIME);
+  auto pose = node_->build_goal_pose(1.5, -2.0, heading, "map", stamp);
+
+  EXPECT_EQ(pose.header.frame_id, "map");
+  EXPECT_EQ(pose.header.stamp.sec, 123);
+  EXPECT_EQ(pose.header.stamp.nanosec, 456u);
+
+  EXPECT_DOUBLE_EQ(pose.pose.position.x, 1.5);
+  EXPECT_DOUBLE_EQ(pose.pose.position.y, -2.0);
+  EXPECT_DOUBLE_EQ(pose.pose.position.z, 0.0);
+
+  EXPECT_DOUBLE_EQ(pose.pose.orientation.x, 0.0);
+  EXPECT_DOUBLE_EQ(pose.pose.orientation.y, 0.0);
+  EXPECT_NEAR(pose.pose.orientation.z, 0.70710678, 1e-6);
+  EXPECT_NEAR(pose.pose.orientation.w, 0.70710678, 1e-6);
+}
+
+TEST_F(TeleopNodeTest, BuildGoalPoseZeroHeadingIsIdentityQuaternion) {
+  rclcpp::Time stamp(0, 0, RCL_ROS_TIME);
+  auto pose = node_->build_goal_pose(0.0, 0.0, 0.0, "odom", stamp);
+
+  EXPECT_EQ(pose.header.frame_id, "odom");
+  EXPECT_DOUBLE_EQ(pose.pose.orientation.z, 0.0);
+  EXPECT_DOUBLE_EQ(pose.pose.orientation.w, 1.0);
+}

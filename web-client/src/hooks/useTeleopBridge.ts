@@ -67,6 +67,12 @@ export interface TeleopBridge {
   setMaxAngular: (v: number) => void;
   gamepadConnected: boolean;
   disconnectAction: string;
+  navState: 'idle' | 'active' | 'paused';
+  navPath: [number, number][];
+  sendNavGoal: (wx: number, wy: number, heading: number) => void;
+  sendNavPause: () => void;
+  sendNavResume: () => void;
+  sendNavCancel: () => void;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -101,6 +107,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [battery, setBattery] = useState<BatteryData | null>(null);
   const [networkQuality, setNetworkQuality] = useState<number | null>(null);
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
+  const [navState, setNavState] = useState<'idle' | 'active' | 'paused'>('idle');
+  const [navPath, setNavPath] = useState<[number, number][]>([]);
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -196,6 +204,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onBattery: (b) => {
         setBattery(b);
       },
+      onNavState: setNavState,
+      onNavPath: setNavPath,
     });
 
     clientRef.current = client;
@@ -285,6 +295,30 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     saveMaxSpeed({ maxLinear, maxAngular: c });
   };
 
+  const sendNavGoal = (wx: number, wy: number, heading: number) => {
+    if (clientRef.current) {
+      clientRef.current.sendNavGoal(wx, wy, heading);
+    }
+  };
+
+  const sendNavPause = () => {
+    if (clientRef.current) {
+      clientRef.current.sendNavPause();
+    }
+  };
+
+  const sendNavResume = () => {
+    if (clientRef.current) {
+      clientRef.current.sendNavResume();
+    }
+  };
+
+  const sendNavCancel = () => {
+    if (clientRef.current) {
+      clientRef.current.sendNavCancel();
+    }
+  };
+
   return {
     connected,
     connectionState,
@@ -315,5 +349,11 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     setMaxAngular,
     gamepadConnected,
     disconnectAction,
+    navState,
+    navPath,
+    sendNavGoal,
+    sendNavPause,
+    sendNavResume,
+    sendNavCancel,
   };
 }

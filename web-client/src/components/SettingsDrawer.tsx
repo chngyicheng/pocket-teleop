@@ -168,6 +168,7 @@ interface RobotConfig {
   ROBOT_NAMESPACE: string;
   ROBOT_LENGTH_M: string;
   ROBOT_WIDTH_M: string;
+  NAV_ACTION: string;
   VIDEO_TOPIC: string;
   VIDEO_TOPIC_TYPE: string;
 }
@@ -208,6 +209,7 @@ export default function SettingsDrawer({
     ROBOT_NAMESPACE: '',
     ROBOT_LENGTH_M: '',
     ROBOT_WIDTH_M: '',
+    NAV_ACTION: '',
     VIDEO_TOPIC: '',
     VIDEO_TOPIC_TYPE: '',
   });
@@ -299,7 +301,7 @@ export default function SettingsDrawer({
 
   const handleRobotConfigSave = () =>
     saveRobotConfig(
-      ['ROBOT_TYPE', 'ROBOT_NAME', 'ROBOT_NAMESPACE', 'ROBOT_LENGTH_M', 'ROBOT_WIDTH_M'],
+      ['ROBOT_TYPE', 'ROBOT_NAME', 'ROBOT_NAMESPACE', 'ROBOT_LENGTH_M', 'ROBOT_WIDTH_M', 'NAV_ACTION'],
       setRobotSaveResult,
     );
 
@@ -628,6 +630,21 @@ export default function SettingsDrawer({
                 />
                 {robotFieldErrors.ROBOT_WIDTH_M && (
                   <div style={fieldError}>{robotFieldErrors.ROBOT_WIDTH_M}</div>
+                )}
+              </div>
+
+              {/* NAV_ACTION: text */}
+              <div>
+                <label style={fieldLabel}>Nav Action</label>
+                <input
+                  type="text"
+                  value={robotConfig.NAV_ACTION}
+                  onChange={(e) => handleRobotConfigChange('NAV_ACTION', e.target.value)}
+                  placeholder="/navigate_to_pose"
+                  style={fieldStyle}
+                />
+                {robotFieldErrors.NAV_ACTION && (
+                  <div style={fieldError}>{robotFieldErrors.NAV_ACTION}</div>
                 )}
               </div>
 

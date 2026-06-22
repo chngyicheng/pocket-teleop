@@ -91,6 +91,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '1.0',
         VIDEO_TOPIC: '/camera/image',
         VIDEO_TOPIC_TYPE: 'compressed',
+        NAV_ACTION: '/navigate_to_pose',
         EXTRA_KEY: 'should_be_ignored',
       };
       const result = serializeEnvFile(values);
@@ -103,6 +104,7 @@ describe('robot_config module', () => {
         'ROBOT_WIDTH_M=1.0',
         'VIDEO_TOPIC=/camera/image',
         'VIDEO_TOPIC_TYPE=compressed',
+        'NAV_ACTION=/navigate_to_pose',
       ]);
     });
 
@@ -115,6 +117,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '',
         VIDEO_TOPIC: '',
         VIDEO_TOPIC_TYPE: 'raw',
+        NAV_ACTION: '',
       };
       const result = serializeEnvFile(values);
       expect(result.endsWith('\n')).toBe(true);
@@ -135,6 +138,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '',
         VIDEO_TOPIC: '',
         VIDEO_TOPIC_TYPE: 'compressed',
+        NAV_ACTION: '',
       });
     });
 
@@ -149,6 +153,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '',
         VIDEO_TOPIC: '',
         VIDEO_TOPIC_TYPE: 'compressed',
+        NAV_ACTION: '',
       });
     });
 
@@ -335,6 +340,36 @@ describe('robot_config module', () => {
         expect(invalidResult.errors).toHaveProperty('VIDEO_TOPIC_TYPE');
       }
     });
+
+    it('should validate NAV_ACTION: ROS action path or empty, no newline/=', () => {
+      const validInput = { NAV_ACTION: '/navigate_to_pose' };
+      const validResult = validateRobotConfig(validInput);
+      expect(validResult.ok).toBe(true);
+
+      const relativeActionInput = { NAV_ACTION: 'navigate_to_pose' };
+      const relativeActionResult = validateRobotConfig(relativeActionInput);
+      expect(relativeActionResult.ok).toBe(true); // Relative actions are valid ROS names
+
+      const withNewlineInput = { NAV_ACTION: '/navigate\nto_pose' };
+      const withNewlineResult = validateRobotConfig(withNewlineInput);
+      expect(withNewlineResult.ok).toBe(false);
+      if (!withNewlineResult.ok) {
+        expect(withNewlineResult.errors).toHaveProperty('NAV_ACTION');
+      }
+
+      const withEqualsInput = { NAV_ACTION: '/navigate=to_pose' };
+      const withEqualsResult = validateRobotConfig(withEqualsInput);
+      expect(withEqualsResult.ok).toBe(false);
+      if (!withEqualsResult.ok) {
+        expect(withEqualsResult.errors).toHaveProperty('NAV_ACTION');
+      }
+    });
+
+    it('should allow empty NAV_ACTION', () => {
+      const input = { NAV_ACTION: '' };
+      const result = validateRobotConfig(input);
+      expect(result.ok).toBe(true);
+    });
   });
 
   describe('writeRobotConfig', () => {
@@ -347,6 +382,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '1.0',
         VIDEO_TOPIC: '/test/image',
         VIDEO_TOPIC_TYPE: 'raw',
+        NAV_ACTION: '/my_nav_action',
       };
       writeRobotConfig(robotConfigPath, values);
 
@@ -354,6 +390,7 @@ describe('robot_config module', () => {
       const lines = written.trim().split('\n');
       expect(lines).toContain('ROBOT_TYPE=holonomic');
       expect(lines).toContain('ROBOT_NAME=TestBot');
+      expect(lines).toContain('NAV_ACTION=/my_nav_action');
     });
 
     it('should write only allowlist keys', () => {
@@ -365,6 +402,7 @@ describe('robot_config module', () => {
         ROBOT_WIDTH_M: '',
         VIDEO_TOPIC: '',
         VIDEO_TOPIC_TYPE: 'compressed',
+        NAV_ACTION: '',
         SECRET_KEY: 'should_not_appear',
       };
       writeRobotConfig(robotConfigPath, values);
@@ -399,7 +437,7 @@ describe('robot-config endpoints', () => {
     expect(res.body.error).toBe('Unauthorized');
   });
 
-  it('should return seven allowlist keys on GET after login', async () => {
+  it('should return eight allowlist keys on GET after login', async () => {
     const app = getApp();
     const agent = supertest.agent(app);
 
@@ -419,7 +457,8 @@ describe('robot-config endpoints', () => {
     expect(res.body).toHaveProperty('ROBOT_WIDTH_M');
     expect(res.body).toHaveProperty('VIDEO_TOPIC');
     expect(res.body).toHaveProperty('VIDEO_TOPIC_TYPE');
-    expect(Object.keys(res.body).length).toBe(7);
+    expect(res.body).toHaveProperty('NAV_ACTION');
+    expect(Object.keys(res.body).length).toBe(8);
   });
 
   it('should return defaults when config file is missing', async () => {

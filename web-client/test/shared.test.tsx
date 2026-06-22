@@ -850,6 +850,73 @@ describe('MiniMap', () => {
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
   });
 
+  it('✕ button collapses the expanded overlay', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose} metersAcross={10} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-testid="minimap-close-btn"]')!);
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
+
+  it('tapping the expanded map does NOT collapse it (close is backdrop/✕ only)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose} metersAcross={10} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    const expanded = document.querySelector('[data-testid="minimap-expanded"]');
+    expect(expanded).toBeTruthy();
+
+    // Clean tap on the expanded map view — must not dismiss.
+    const view = expanded!.querySelector('[data-testid="minimap-grid"]')!.parentElement!;
+    fireEvent.pointerDown(view, { pointerId: 1, clientX: 120, clientY: 120 });
+    fireEvent.pointerUp(view, { pointerId: 1, clientX: 120, clientY: 120 });
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+  });
+
+  it('one-finger drag pans the map (nav-path shifts by the drag delta)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose}
+        metersAcross={10} navPath={[[0, 0], [2, 0]]} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    const expanded = document.querySelector('[data-testid="minimap-expanded"]')!;
+    const view = expanded.querySelector('[data-testid="minimap-grid"]')!.parentElement!;
+
+    const firstPoint = (): { x: number; y: number } => {
+      const pts = expanded.querySelector('[data-testid="nav-path"] polyline')!.getAttribute('points')!;
+      const [x, y] = pts.trim().split(/\s+/)[0].split(',').map(Number);
+      return { x, y };
+    };
+    const before = firstPoint();
+
+    // 1-finger drag by (+30, +20)
+    fireEvent.pointerDown(view, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(view, { pointerId: 1, clientX: 130, clientY: 120 });
+    fireEvent.pointerUp(view, { pointerId: 1, clientX: 130, clientY: 120 });
+    const after = firstPoint();
+
+    expect(after.x - before.x).toBeCloseTo(30, 3);
+    expect(after.y - before.y).toBeCloseTo(20, 3);
+  });
+
   it('two-finger pinch does not trigger expand (pinch suppresses tap)', () => {
     const cells = new Uint8Array(10000);
     const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
@@ -1005,6 +1072,415 @@ describe('MiniMap', () => {
     fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
 
     expect(collapsed.style.visibility).toBe('hidden');
+  });
+
+  // ─── MiniMap Waypoint UI Tests ──────────────────────────────────────────────
+
+  it('waypoint mode: overlay stays open (no collapse) when pointer up on map', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Verify overlay is shown
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+
+    // Click set-waypoint-btn
+    const setBtn = document.querySelector('[data-testid="set-waypoint-btn"]') as HTMLButtonElement;
+    expect(setBtn).toBeTruthy();
+    fireEvent.click(setBtn);
+
+    // Pointer up on map should place waypoint, not collapse
+    const mapView = document.querySelector('[data-testid="minimap-expanded"]');
+    fireEvent.pointerDown(mapView || document.body, {
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+    });
+    fireEvent.pointerUp(mapView || document.body, {
+      pointerId: 1,
+      clientX: 100,
+      clientY: 100,
+    });
+
+    // Overlay should still be present
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+  });
+
+  it('set-waypoint-btn enables send-waypoint-btn state transition via mock', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand and set waypoint
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Set waypoint button should be visible and clickable
+    const setBtn = document.querySelector('[data-testid="set-waypoint-btn"]') as HTMLButtonElement;
+    expect(setBtn).toBeTruthy();
+    expect(setBtn.disabled).toBe(false);
+    fireEvent.click(setBtn);
+
+    // After clicking set-waypoint, send-waypoint and cancel buttons should appear
+    expect(document.querySelector('[data-testid="send-waypoint-btn"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="cancel-waypoint-btn"]')).toBeTruthy();
+
+    // Send button starts disabled (until waypoint is placed)
+    const sendBtn = document.querySelector('[data-testid="send-waypoint-btn"]') as HTMLButtonElement;
+    expect(sendBtn.disabled).toBe(true);
+  });
+
+  it('navState active shows pause and stop buttons', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="active"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Pause and stop buttons should be present
+    expect(document.querySelector('[data-testid="nav-pause-btn"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="nav-stop-btn"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="set-waypoint-btn"]')).toBeFalsy();
+  });
+
+  it('navState paused shows resume and stop buttons', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="paused"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Resume and stop buttons should be present
+    expect(document.querySelector('[data-testid="nav-resume-btn"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="nav-stop-btn"]')).toBeTruthy();
+    expect(document.querySelector('[data-testid="set-waypoint-btn"]')).toBeFalsy();
+  });
+
+  it('set-waypoint-btn disabled when mapPose.frame !== map', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'odom' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Set-waypoint button should be disabled
+    const setBtn = document.querySelector('[data-testid="set-waypoint-btn"]') as HTMLButtonElement;
+    expect(setBtn).toBeTruthy();
+    expect(setBtn.disabled).toBe(true);
+  });
+
+  it('backdrop click collapses expanded and resets waypoint mode', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+
+    // Click backdrop
+    const backdrop = document.querySelector('[data-testid="minimap-backdrop"]') as HTMLElement;
+    fireEvent.click(backdrop);
+
+    // Overlay should be gone
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
+
+  it('navPath polyline renders with nav path points', () => {
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const navPath: [number, number][] = [[1, 1], [2, 2], [3, 3]];
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        navPath={navPath}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Nav path polyline should exist
+    const navPathSvg = document.querySelector('[data-testid="nav-path"]');
+    expect(navPathSvg).toBeTruthy();
+
+    const polyline = navPathSvg?.querySelector('polyline');
+    expect(polyline).toBeTruthy();
+
+    // Should have points for 3 path vertices
+    const pointsAttr = polyline?.getAttribute('points');
+    expect(pointsAttr).toBeTruthy();
+    const pointCount = (pointsAttr?.match(/,/g) || []).length + 1;
+    expect(pointCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it('waypoint control buttons fire nav callbacks when clicked', () => {
+    const onSendWaypoint = vi.fn();
+    const onNavPause = vi.fn();
+    const onNavResume = vi.fn();
+    const onNavCancel = vi.fn();
+
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { rerender, container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onSendWaypoint={onSendWaypoint}
+        onNavPause={onNavPause}
+        onNavResume={onNavResume}
+        onNavCancel={onNavCancel}
+      />
+    );
+
+    // Tap to expand
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    // Test nav pause callback
+    rerender(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="active"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onSendWaypoint={onSendWaypoint}
+        onNavPause={onNavPause}
+        onNavResume={onNavResume}
+        onNavCancel={onNavCancel}
+      />
+    );
+
+    const pauseBtn = document.querySelector('[data-testid="nav-pause-btn"]') as HTMLButtonElement;
+    expect(pauseBtn).toBeTruthy();
+    fireEvent.click(pauseBtn);
+    expect(onNavPause).toHaveBeenCalled();
+
+    // Test nav resume callback
+    rerender(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="paused"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onSendWaypoint={onSendWaypoint}
+        onNavPause={onNavPause}
+        onNavResume={onNavResume}
+        onNavCancel={onNavCancel}
+      />
+    );
+
+    const resumeBtn = document.querySelector('[data-testid="nav-resume-btn"]') as HTMLButtonElement;
+    expect(resumeBtn).toBeTruthy();
+    fireEvent.click(resumeBtn);
+    expect(onNavResume).toHaveBeenCalled();
+
+    // Test nav cancel callback
+    const stopBtn = document.querySelector('[data-testid="nav-stop-btn"]') as HTMLButtonElement;
+    expect(stopBtn).toBeTruthy();
+    fireEvent.click(stopBtn);
+    expect(onNavCancel).toHaveBeenCalled();
+  });
+
+  it('onNavPause fires when nav-pause-btn is clicked', () => {
+    const onNavPause = vi.fn();
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="active"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onNavPause={onNavPause}
+      />
+    );
+
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const pauseBtn = document.querySelector('[data-testid="nav-pause-btn"]') as HTMLButtonElement;
+    fireEvent.click(pauseBtn);
+
+    expect(onNavPause).toHaveBeenCalled();
+  });
+
+  it('onNavResume fires when nav-resume-btn is clicked', () => {
+    const onNavResume = vi.fn();
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="paused"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onNavResume={onNavResume}
+      />
+    );
+
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const resumeBtn = document.querySelector('[data-testid="nav-resume-btn"]') as HTMLButtonElement;
+    fireEvent.click(resumeBtn);
+
+    expect(onNavResume).toHaveBeenCalled();
+  });
+
+  it('onNavCancel fires when nav-stop-btn is clicked (active state)', () => {
+    const onNavCancel = vi.fn();
+    const cells = new Uint8Array(100);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="active"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onNavCancel={onNavCancel}
+      />
+    );
+
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const stopBtn = document.querySelector('[data-testid="nav-stop-btn"]') as HTMLButtonElement;
+    fireEvent.click(stopBtn);
+
+    expect(onNavCancel).toHaveBeenCalled();
   });
 });
 

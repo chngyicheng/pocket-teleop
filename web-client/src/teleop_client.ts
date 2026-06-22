@@ -2,7 +2,7 @@ import { Connection } from './connection.js';
 import { GamepadHandler } from './gamepad_handler.js';
 import { KeyboardHandler } from './keyboard_handler.js';
 import type { GamepadProfile } from './gamepad_profiles.js';
-import { buildEstop, buildEstopReset, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
+import { buildEstop, buildEstopReset, buildNavCancel, buildNavGoal, buildNavPause, buildNavResume, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
 import type { NetworkStats } from './network_quality.js';
 
@@ -61,6 +61,8 @@ export interface TeleopClientOptions {
   onGamepadActivity?: () => void;
   onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
+  onNavState?: (state: 'idle' | 'active' | 'paused') => void;
+  onNavPath?: (points: [number, number][]) => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
   publishIntervalMs?: number;
@@ -310,6 +312,50 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
   }
 
+  sendNavGoal(wx: number, wy: number, heading: number): void {
+    // Estop engaged: no-op + warn
+    if (this.estopEngaged) {
+      console.warn('sendNavGoal blocked: estop engaged');
+      return;
+    }
+    // No connection: no-op
+    if (!this.connection) {
+      return;
+    }
+    this.connection.send(buildNavGoal(wx, wy, heading));
+    this.lastSentAt = Date.now();
+  }
+
+  sendNavPause(): void {
+    // Always send (even if estop engaged)
+    if (!this.connection) {
+      return;
+    }
+    this.connection.send(buildNavPause());
+    this.lastSentAt = Date.now();
+  }
+
+  sendNavResume(): void {
+    // Estop engaged: no-op
+    if (this.estopEngaged) {
+      return;
+    }
+    if (!this.connection) {
+      return;
+    }
+    this.connection.send(buildNavResume());
+    this.lastSentAt = Date.now();
+  }
+
+  sendNavCancel(): void {
+    // Always send (even if estop engaged)
+    if (!this.connection) {
+      return;
+    }
+    this.connection.send(buildNavCancel());
+    this.lastSentAt = Date.now();
+  }
+
   sendTwist(lx: number, ly: number, az: number, source: InputSource = 'touch'): void {
     // While e-stop is latched, all motion commands are suppressed
     if (this.estopEngaged) {
@@ -452,6 +498,10 @@ export class TeleopClient {
         current: msg.current,
         charging: msg.charging,
       });
+    } else if (msg.type === 'nav_state') {
+      this.options.onNavState?.(msg.state);
+    } else if (msg.type === 'nav_path') {
+      this.options.onNavPath?.(msg.points);
     }
   }
 

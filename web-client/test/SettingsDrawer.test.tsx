@@ -265,6 +265,7 @@ describe('SettingsDrawer', () => {
         ROBOT_NAMESPACE: '/robot',
         ROBOT_LENGTH_M: '0.5',
         ROBOT_WIDTH_M: '0.4',
+        NAV_ACTION: '/navigate_to_pose',
         VIDEO_TOPIC: '/camera/image',
         VIDEO_TOPIC_TYPE: 'compressed',
       }),
@@ -282,6 +283,7 @@ describe('SettingsDrawer', () => {
         ROBOT_NAMESPACE: '/robot',
         ROBOT_LENGTH_M: '0.5',
         ROBOT_WIDTH_M: '0.4',
+        NAV_ACTION: '/navigate_to_pose',
         VIDEO_TOPIC: '/camera/image',
         VIDEO_TOPIC_TYPE: 'compressed',
       }),
@@ -319,7 +321,7 @@ describe('SettingsDrawer', () => {
     expect(selects.length).toBeGreaterThanOrEqual(3); // gamepad + video + robot type (at minimum)
   });
 
-  it('Robot Save sends a partial PUT with only identity + footprint fields', async () => {
+  it('Robot Save sends a partial PUT with identity + footprint + NAV_ACTION fields', async () => {
     const mockFetch = vi.fn()
       .mockResolvedValueOnce({
         ok: true,
@@ -329,6 +331,7 @@ describe('SettingsDrawer', () => {
           ROBOT_NAMESPACE: '/r1',
           ROBOT_LENGTH_M: '0.5',
           ROBOT_WIDTH_M: '0.4',
+          NAV_ACTION: '/navigate_to_pose',
           VIDEO_TOPIC: '/vid',
           VIDEO_TOPIC_TYPE: 'compressed',
         }),
@@ -358,12 +361,13 @@ describe('SettingsDrawer', () => {
     expect(putCall).toBeTruthy();
     expect(putCall[0]).toBe('/auth/robot-config');
     const body = JSON.parse(putCall[1].body);
-    // Identity + footprint only — video keys belong to the Video section's Save.
+    // Identity + footprint + NAV_ACTION — video keys belong to the Video section's Save.
     expect(body).toHaveProperty('ROBOT_TYPE');
     expect(body).toHaveProperty('ROBOT_NAME');
     expect(body).toHaveProperty('ROBOT_NAMESPACE');
     expect(body).toHaveProperty('ROBOT_LENGTH_M');
     expect(body).toHaveProperty('ROBOT_WIDTH_M');
+    expect(body).toHaveProperty('NAV_ACTION');
     expect(body).not.toHaveProperty('VIDEO_TOPIC');
     expect(body).not.toHaveProperty('VIDEO_TOPIC_TYPE');
     expect(body.ROBOT_NAME).toBe('Bot2');
@@ -592,5 +596,119 @@ describe('SettingsDrawer', () => {
     const inputs = container?.querySelectorAll('input');
     // Should have no input child (read-only display only)
     expect(inputs?.length).toBe(0);
+  });
+
+  it('renders Nav Action field in Robot section', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: 'diff_drive',
+        ROBOT_NAME: 'Bot',
+        ROBOT_NAMESPACE: '/r',
+        ROBOT_LENGTH_M: '0.5',
+        ROBOT_WIDTH_M: '0.4',
+        NAV_ACTION: '/navigate_to_pose',
+        VIDEO_TOPIC: '/v',
+        VIDEO_TOPIC_TYPE: 'compressed',
+      }),
+    }));
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    // Wait for the config to load
+    await screen.findByDisplayValue('Bot');
+
+    // Verify Nav Action label exists
+    const navActionLabel = screen.getByText('Nav Action');
+    expect(navActionLabel).toBeTruthy();
+
+    // Verify the input field displays the value
+    const navActionInput = screen.getByDisplayValue('/navigate_to_pose') as HTMLInputElement;
+    expect(navActionInput).toBeTruthy();
+    expect(navActionInput.placeholder).toBe('/navigate_to_pose');
+  });
+
+  it('includes NAV_ACTION in Robot Save PUT body', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot',
+          ROBOT_NAMESPACE: '/r',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          NAV_ACTION: '/navigate_to_pose',
+          VIDEO_TOPIC: '/v',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ restartRequired: true }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    // Wait for config to load
+    await screen.findByDisplayValue('/navigate_to_pose');
+
+    // Modify the NAV_ACTION field
+    const navActionInput = screen.getByDisplayValue('/navigate_to_pose') as HTMLInputElement;
+    await userEvent.clear(navActionInput);
+    await userEvent.type(navActionInput, '/my_custom_action');
+
+    // Click Robot Save button
+    const allBtns = screen.getAllByText('Save');
+    const robotSaveBtn = allBtns[allBtns.length - 1];
+    await userEvent.click(robotSaveBtn);
+
+    // Verify PUT body contains NAV_ACTION
+    const putCall = mockFetch.mock.calls.find((call) => call[1]?.method === 'PUT');
+    expect(putCall).toBeTruthy();
+    const body = JSON.parse(putCall[1].body);
+    expect(body).toHaveProperty('NAV_ACTION');
+    expect(body.NAV_ACTION).toBe('/my_custom_action');
+  });
+
+  it('displays NAV_ACTION validation errors from PUT 400 response', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ROBOT_TYPE: 'diff_drive',
+          ROBOT_NAME: 'Bot',
+          ROBOT_NAMESPACE: '/r',
+          ROBOT_LENGTH_M: '0.5',
+          ROBOT_WIDTH_M: '0.4',
+          NAV_ACTION: '/navigate_to_pose',
+          VIDEO_TOPIC: '/v',
+          VIDEO_TOPIC_TYPE: 'compressed',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: async () => ({
+          errors: {
+            NAV_ACTION: 'Invalid action format',
+          },
+        }),
+      });
+
+    vi.stubGlobal('fetch', mockFetch);
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    await screen.findByDisplayValue('/navigate_to_pose');
+
+    // Click Robot Save button
+    const allBtns = screen.getAllByText('Save');
+    const robotSaveBtn = allBtns[allBtns.length - 1];
+    await userEvent.click(robotSaveBtn);
+
+    // Verify error is displayed
+    await expect(
+      screen.findByText('Invalid action format')
+    ).resolves.toBeTruthy();
   });
 });

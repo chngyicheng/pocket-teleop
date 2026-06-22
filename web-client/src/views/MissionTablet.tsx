@@ -693,6 +693,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             robotWidth={bridge.robotWidth}
             expandable
             onExpandedChange={setMapExpanded}
+            enableWaypoints
+            navState={bridge.navState}
+            navPath={bridge.navPath}
+            onSendWaypoint={bridge.sendNavGoal}
+            onNavPause={bridge.sendNavPause}
+            onNavResume={bridge.sendNavResume}
+            onNavCancel={bridge.sendNavCancel}
           />
 
           <SidePanel title="HEADING">

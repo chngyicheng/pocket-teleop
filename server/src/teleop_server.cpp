@@ -36,7 +36,11 @@ TeleopServer::TeleopServer(int port,
                            DisconnectAction disconnect_action,
                            int disconnect_param_ms,
                            PublishCallback callback,
-                           std::function<void()> return_home_callback)
+                           std::function<void()> return_home_callback,
+                           NavGoalCallback nav_goal_callback,
+                           NavCommandCallback nav_pause_callback,
+                           NavCommandCallback nav_resume_callback,
+                           NavCommandCallback nav_cancel_callback)
   : port_(port),
     timeout_ms_(timeout_ms),
     robot_type_(robot_type),
@@ -47,7 +51,11 @@ TeleopServer::TeleopServer(int port,
     disconnect_action_(disconnect_action),
     disconnect_param_ms_(disconnect_param_ms),
     publish_callback_(std::move(callback)),
-    return_home_callback_(std::move(return_home_callback)) {
+    return_home_callback_(std::move(return_home_callback)),
+    nav_goal_callback_(std::move(nav_goal_callback)),
+    nav_pause_callback_(std::move(nav_pause_callback)),
+    nav_resume_callback_(std::move(nav_resume_callback)),
+    nav_cancel_callback_(std::move(nav_cancel_callback)) {
   ws_server_.set_access_channels(websocketpp::log::alevel::none);
   ws_server_.set_error_channels(websocketpp::log::elevel::none);
   ws_server_.init_asio();
@@ -149,6 +157,9 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
     estopped_ = true;
     reset_watchdog();
     publish_callback_(0.0, 0.0, 0.0);
+    if (nav_cancel_callback_) {
+      nav_cancel_callback_();
+    }
     nlohmann::json state = {{"type", "estop_state"}, {"engaged", true}};
     ws_server_.send(hdl, state.dump(), websocketpp::frame::opcode::text);
 
@@ -157,6 +168,28 @@ void TeleopServer::on_message(ConnectionHdl hdl, WsServer::message_ptr msg) {
     reset_watchdog();
     nlohmann::json state = {{"type", "estop_state"}, {"engaged", false}};
     ws_server_.send(hdl, state.dump(), websocketpp::frame::opcode::text);
+
+  } else if (std::holds_alternative<NavGoalCommand>(result)) {
+    reset_watchdog();
+    if (!estopped_ && nav_goal_callback_) {
+      auto cmd = std::get<NavGoalCommand>(result);
+      nav_goal_callback_(cmd.x, cmd.y, cmd.heading);
+    }
+
+  } else if (std::holds_alternative<NavPauseCommand>(result)) {
+    if (nav_pause_callback_) {
+      nav_pause_callback_();
+    }
+
+  } else if (std::holds_alternative<NavResumeCommand>(result)) {
+    if (!estopped_ && nav_resume_callback_) {
+      nav_resume_callback_();
+    }
+
+  } else if (std::holds_alternative<NavCancelCommand>(result)) {
+    if (nav_cancel_callback_) {
+      nav_cancel_callback_();
+    }
 
   } else {
     auto err = std::get<ParseError>(result);
