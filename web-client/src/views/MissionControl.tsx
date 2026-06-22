@@ -673,10 +673,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               top: 52,
               right: 10,
               zIndex: 12,
-              opacity: rightOpen ? 0 : 1,
-              transform: rightOpen ? 'scale(0.92)' : 'scale(1)',
+              opacity: (rightOpen || mapExpanded) ? 0 : 1,
+              transform: (rightOpen || mapExpanded) ? 'scale(0.92)' : 'scale(1)',
               transition: 'opacity 0.2s ease, transform 0.2s ease',
-              pointerEvents: rightOpen ? 'none' : 'auto',
+              pointerEvents: (rightOpen || mapExpanded) ? 'none' : 'auto',
             }}
           >
             <MiniMap
@@ -818,7 +818,12 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             above the video. Standalone (no blur wrapper); the map's own
             translucent bg shows the video through, matching the landscape/tablet
             corner overlay. */}
-        <div style={{ position: 'absolute', top: portraitMapTop, right: 8, zIndex: 12 }}>
+        <div style={{
+          position: 'absolute', top: portraitMapTop, right: 8, zIndex: 12,
+          opacity: mapExpanded ? 0 : 1,
+          transition: 'opacity 0.2s ease',
+          pointerEvents: mapExpanded ? 'none' : 'auto',
+        }}>
           <MiniMap
             pos={navPose}
             heading={navPose.heading}

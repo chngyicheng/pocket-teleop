@@ -697,10 +697,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           top: 52,
           right: 12,
           zIndex: 12,
-          opacity: rightOpen ? 0 : 1,
-          transform: rightOpen ? 'scale(0.92)' : 'scale(1)',
+          opacity: (rightOpen || mapExpanded) ? 0 : 1,
+          transform: (rightOpen || mapExpanded) ? 'scale(0.92)' : 'scale(1)',
           transition: 'opacity 0.2s ease, transform 0.2s ease',
-          pointerEvents: rightOpen ? 'none' : 'auto',
+          pointerEvents: (rightOpen || mapExpanded) ? 'none' : 'auto',
         }}
       >
         <MiniMap
