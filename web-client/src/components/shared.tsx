@@ -805,7 +805,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
               .map((p) => `${p.x + pan.x},${p.y + pan.y}`)
               .join(' ')}
             fill="none"
-            stroke="#ffb454"
+            stroke="#4ec9d6"
             strokeOpacity="0.8"
             strokeWidth="2"
             strokeLinecap="round"
@@ -825,9 +825,11 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
           {(() => {
             const w = worldToScreenPoint({ x: waypoint.wx, y: waypoint.wy }, mapPose, size, clampedViewM);
             const markerScreen = { x: w.x + pan.x, y: w.y + pan.y };
-            const markerRad = 6;
-            const dialRad = 18;
-            // Arrow + handle face the waypoint heading in the base_link-fixed view.
+            // Target ("ghost") colour — palette accent2, distinct from the
+            // live robot's amber accent so they're never confused.
+            const WP = '#4ec9d6';
+            const dialRad = 22;
+            // Ghost arrow + grip face the waypoint heading in the base_link-fixed view.
             const screenHeading = worldHeadingToScreenDeg(waypoint.heading, mapPose.heading);
             const dh = waypoint.heading - mapPose.heading;
             const handleX = markerScreen.x - dialRad * Math.sin(dh);
@@ -855,25 +857,16 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
             };
 
             return (
-              <g>
-                {/* Marker circle at waypoint world position */}
-                <circle
-                  data-testid="waypoint-marker"
-                  cx={markerScreen.x}
-                  cy={markerScreen.y}
-                  r={markerRad}
-                  fill="#ffb454"
-                  opacity="0.9"
-                  stroke="#fff"
-                  strokeWidth="2"
-                />
-
-                {/* Directional arrow/heading indicator */}
+              <g data-testid="waypoint-marker">
+                {/* Ghost of the robot arrow (same glyph as the live robot, but
+                    hollow + faded cyan) = target pose & facing. */}
                 <g transform={`translate(${markerScreen.x} ${markerScreen.y}) rotate(${screenHeading})`}>
-                  <polygon points="0,-8 3,3 0,1 -3,3" fill="#ffb454" opacity="0.9" />
+                  <polygon points="0,-7 5,5 0,2 -5,5" fill="none" stroke={WP} strokeWidth="1.5" opacity="0.7" />
+                  <circle r="2" fill={WP} opacity="0.85" />
                 </g>
 
-                {/* Dial handle (draggable) — line + grip pointing toward the heading */}
+                {/* Orientation grip at the arrow tip — a distinct hollow ring
+                    (clearly not the solid robot/center dot). Drag to aim. */}
                 {waypointMode && (
                   <g>
                     <line
@@ -881,28 +874,29 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
                       y1={markerScreen.y}
                       x2={handleX}
                       y2={handleY}
-                      stroke="#ffb454"
-                      strokeWidth="1.5"
-                      opacity="0.6"
+                      stroke={WP}
+                      strokeWidth="1"
+                      strokeDasharray="2 2"
+                      opacity="0.5"
                     />
                     {/* Larger transparent hit target for easy touch grab */}
                     <circle
                       data-testid="waypoint-dial"
                       cx={handleX}
                       cy={handleY}
-                      r={16}
+                      r={18}
                       fill="transparent"
                       cursor="grab"
                       onPointerDown={startHeadingDrag}
                     />
+                    {/* Visible grip: hollow ring + faint fill = "rotate handle" */}
                     <circle
                       cx={handleX}
                       cy={handleY}
-                      r={6}
-                      fill="#ffb454"
-                      opacity="0.85"
-                      stroke="#fff"
-                      strokeWidth="1.5"
+                      r={7}
+                      fill="rgba(78,201,214,0.18)"
+                      stroke={WP}
+                      strokeWidth="2"
                       pointerEvents="none"
                     />
                   </g>
