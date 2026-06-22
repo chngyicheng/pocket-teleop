@@ -789,28 +789,29 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           </div>
         </div>
 
-        {/* Top-right telemetry stack */}
+        {/* Top-right telemetry row — horizontal (BAT, SIG, LAT) like landscape/
+            tablet; LAT stays the right anchor, BAT + SIG sit to its left. */}
         <div
           style={{
             position: 'absolute',
             top: 8,
             right: 8,
             display: 'flex',
-            flexDirection: 'column',
-            gap: 4,
-            alignItems: 'flex-end',
+            flexDirection: 'row',
+            gap: 8,
+            alignItems: 'center',
             fontFamily: monoFont,
             fontSize: 10,
             color: p.muted,
           }}
         >
+          <Readout label="BAT" value={batModel.value} color={batColor} />
+          <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
           <Readout
             label="LAT"
             value={latText}
             color={p.accent}
           />
-          <Readout label="BAT" value={batModel.value} color={batColor} />
-          <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
         </div>
 
         {/* Minimap — small square hovering top-right, below the SPEED panel and
