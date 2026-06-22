@@ -7,7 +7,7 @@
  * E-STOP and Space keydown → bridge.eStop().
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
@@ -60,6 +60,19 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   // Collapsible rail state (landscape only)
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
+
+  // Portrait: align the top-right minimap just below the SPEED/VELOCITY HUD
+  // panel (measured, so it tracks the panel's real height instead of a guess).
+  const speedPanelRef = useRef<HTMLDivElement>(null);
+  const [portraitMapTop, setPortraitMapTop] = useState(160);
+  useLayoutEffect(() => {
+    const el = speedPanelRef.current;
+    if (!el) return;
+    const measure = () => setPortraitMapTop(el.offsetTop + el.offsetHeight + 6);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [layout]);
 
   // Video ref for streaming MediaStream
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -720,6 +733,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
         {/* Top-left vel bars + speed controls */}
         <div
+          ref={speedPanelRef}
           style={{
             position: 'absolute',
             top: 8,
@@ -803,7 +817,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             above the video. Standalone (no blur wrapper); the map's own
             translucent bg shows the video through, matching the landscape/tablet
             corner overlay. */}
-        <div style={{ position: 'absolute', top: 150, right: 8, zIndex: 12 }}>
+        <div style={{ position: 'absolute', top: portraitMapTop, right: 8, zIndex: 12 }}>
           <MiniMap
             pos={navPose}
             heading={navPose.heading}
