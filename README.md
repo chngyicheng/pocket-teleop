@@ -24,7 +24,8 @@
 - **Adjustable speed limits** — per-axis linear/angular caps, set live from the UI and persisted.
 - **Latching E-STOP** — from the on-screen button, the spacebar, or the gamepad left bumper; one shared latch across every source.
 - **Low-latency video** — WebRTC via MediaMTX (~100–300 ms on a LAN), with runtime-switchable sources (ROS2 topic, RTSP, UDP/SRT, MJPEG).
-- **Robot-localized minimap** — SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view with pinch-to-zoom; falls back to odometry when SLAM is unavailable.
+- **Robot-localized minimap** — SLAM occupancy grid (transient_local `/map`), tf2 `map→base_link` pose, and lidar overlay in a robot-centered rotating view; docked as a translucent corner square in every layout, tap to expand full-screen with pinch/wheel zoom and drag-to-pan; falls back to odometry when SLAM is unavailable.
+- **Send-a-waypoint navigation (nav2)** — on the expanded map, tap to drop a goal and drag its arrow to aim, then **Send** — the robot drives there autonomously via its nav2 stack (`NavigateToPose` action). Pause/Resume/Stop from the map's control bar, with the live global path drawn on the map; E-STOP cancels the goal. _(Requires a nav2 stack on the robot.)_
 - **Access control** — session-cookie login, single operator, forced password change on first run, session-authenticated WebSocket upgrade, failed-login rate limiting (10/min per IP, 5/min per username → 429 + Retry-After), 30-minute idle timeout (warning banner with a "Stay logged in" button; real operator input counts as activity, an expired session also closes the control WebSocket). Plain HTTP by default for trusted LANs; opt-in HTTPS via `--profile tls` (see [Enabling HTTPS](#enabling-https-tls)).
 
 ## Screenshots
@@ -49,7 +50,7 @@ Everything robot-side runs in Docker. The browser reaches the stack through a si
 </p>
 
 - **auth-server** is the only public entrypoint — it authenticates the session, then proxies `/` to the webclient nginx, `/ws` to the C++ teleop-server, and `/video` (WHEP SDP) to MediaMTX.
-- **teleop-server** turns WebSocket twist/E-STOP messages into `/cmd_vel`, with a 500 ms watchdog that publishes zero velocity if the command link goes silent, and relays `/odom` `/map` `/scan` `/battery` back for the minimap.
+- **teleop-server** turns WebSocket twist/E-STOP messages into `/cmd_vel`, with a 500 ms watchdog that publishes zero velocity if the command link goes silent, and relays `/odom` `/map` `/scan` `/battery` back for the minimap. It also forwards navigation goals to nav2 as `NavigateToPose` action requests and relays the global plan (`/plan`) back for the on-map path.
 - **video-bridge** encodes a ROS2 image topic to H.264 and pushes it over RTMP to MediaMTX; the browser pulls it back over WebRTC, with media travelling direct (UDP 8891) while only the SDP signaling passes through auth-server.
 
 ## Quick start
@@ -138,6 +139,7 @@ the WebSocket upgrade, so the UI loads but nothing connects.
 - **Smooth motion:** the robot ramps up to speed (~0.5 s) and slows to a stop (~0.2 s) instead of lurching. **E-STOP skips the ramp and stops immediately.**
 - **Speed limits:** set the max linear (m/s) and angular (rad/s) caps live from the left rail's **SPEED** panel; the value is shaped, scaled, and shown as the published `cmd_vel`.
 - **E-STOP:** latches across all sources — engage from any one, reset from any one.
+- **Navigation (nav2):** expand the map full-screen, tap to drop a waypoint and drag its arrow to set heading, then **Send** — the robot drives there autonomously. Pause/Resume/Stop from the map's control bar; E-STOP cancels the goal. Requires a nav2 stack on the robot (see [Navigation](#navigation-nav2-waypoints)).
 
 ## Robot configuration
 
@@ -181,6 +183,18 @@ Minimap rendering requires odometry; SLAM is optional:
 | `MAP_WINDOW_M` | `24.0` | Side length of the transmitted map crop window, centered on the robot (24.0 → 24×24 m) |
 
 When SLAM publishes the map and the `map→base_link` transform, the UI shows the SLAM-localized pose (with lidar overlay when a scan is available). If SLAM is unavailable or silent, the minimap falls back to odometry (`odom→base_link`).
+
+### Navigation (nav2 waypoints)
+
+Tap-to-send goals require a [nav2](https://docs.nav2.org/) stack running on the robot. Goals are sent as a `NavigateToPose` action; the operator can only place a waypoint while the map is in the `map` frame (SLAM active).
+
+| Variable | Default | Description |
+|---|---|---|
+| `NAV_ACTION` | `/navigate_to_pose` | nav2 action name for goals. Editable live from **Settings → Robot** (applied on next `up -d`) |
+| `NAV_GOAL_FRAME` | `map` | Frame the goal pose is stamped in — must match nav2's global frame |
+| `NAV_PATH_TOPIC` | `/plan` | nav2 global plan (`nav_msgs/Path`), decimated and drawn on the map |
+
+**Safety:** E-STOP cancels and clears the goal. "Stop"/"Pause" use nav2's `cancel`, which decelerates through the controller — it is **not** a hard stop; the hardware E-STOP remains the real emergency stop. With no nav2 running, sending a goal is a no-op and never blocks teleop.
 
 ### Disconnect behavior (safety)
 

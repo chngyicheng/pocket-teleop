@@ -22,7 +22,7 @@
           <mxGeometry x="110" y="380" width="210" height="90" as="geometry" />
         </mxCell>
 
-        <mxCell id="6" value="&lt;b&gt;teleop-server&lt;/b&gt;  (ROS2 + C++)&#xa;WebSocket → Twist&#xa;500 ms watchdog · :9091 internal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="6" value="&lt;b&gt;teleop-server&lt;/b&gt;  (ROS2 + C++)&#xa;WebSocket → Twist + nav2 goal&#xa;500 ms watchdog · :9091 internal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="455" y="380" width="210" height="100" as="geometry" />
         </mxCell>
 
@@ -34,7 +34,7 @@
           <mxGeometry x="800" y="580" width="210" height="100" as="geometry" />
         </mxCell>
 
-        <mxCell id="9" value="&lt;b&gt;ROS2 robot&lt;/b&gt;&#xa;/cmd_vel · image topic&#xa;/odom /map /scan /battery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=12;" vertex="1" parent="1">
+        <mxCell id="9" value="&lt;b&gt;ROS2 robot&lt;/b&gt; + nav2&#xa;/cmd_vel · NavigateToPose · image&#xa;/odom /map /scan /battery /plan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="440" y="790" width="240" height="80" as="geometry" />
         </mxCell>
 
@@ -46,7 +46,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="22" value="/ws  →  WebSocket&#xa;twist · estop · odom" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#9673a6;fontSize=11;" edge="1" parent="1" source="4" target="6">
+        <mxCell id="22" value="/ws  →  WebSocket&#xa;twist · estop · nav · odom" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeColor=#9673a6;fontSize=11;" edge="1" parent="1" source="4" target="6">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
@@ -58,7 +58,7 @@
           <mxGeometry x="0.5" relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="25" value="/odom /map /scan /battery" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=0;exitDx=0;exitDy=0;entryX=0.4;entryY=1;entryDx=0;entryDy=0;dashed=1;strokeColor=#82b366;fontSize=11;" edge="1" parent="1" source="9" target="6">
+        <mxCell id="25" value="/odom /map /scan /battery /plan" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.4;exitY=0;exitDx=0;exitDy=0;entryX=0.4;entryY=1;entryDx=0;entryDy=0;dashed=1;strokeColor=#82b366;fontSize=11;" edge="1" parent="1" source="9" target="6">
           <mxGeometry x="0.5" relative="1" as="geometry" />
         </mxCell>
 
