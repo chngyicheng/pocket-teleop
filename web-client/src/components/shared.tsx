@@ -965,10 +965,12 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
 
-  const expandedSize = Math.min(
-    typeof window !== 'undefined' ? window.innerWidth : 400,
-    typeof window !== 'undefined' ? window.innerHeight : 400,
-  ) * 0.85;
+  // Clear the top bar / E-STOP and leave room for the control buttons below, so
+  // the expanded map never sits under the STOP button and scales to fit.
+  const TOP_CLEARANCE = 56;
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 400;
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 400;
+  const expandedSize = Math.max(160, Math.min(vw - 24, vh - TOP_CLEARANCE - 84));
 
   const canSetWaypoint = enableWaypoints && mapGrid && mapPose && mapPose.frame === 'map';
 
@@ -988,6 +990,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingTop: TOP_CLEARANCE,
+        boxSizing: 'border-box',
       }}
     >
       {/* Backdrop */}
@@ -1000,51 +1004,53 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           background: 'rgba(0,0,0,0.6)',
         }}
       />
-      {/* Explicit close — tapping the map now pans/places, never dismisses. */}
-      <button
-        type="button"
-        data-testid="minimap-close-btn"
-        aria-label="Close map"
-        onClick={handleBackdropClick}
-        style={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          zIndex: 2,
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          border: '1px solid rgba(255,255,255,0.25)',
-          background: 'rgba(8,10,14,0.85)',
-          color: '#fff',
-          fontSize: 20,
-          lineHeight: '1',
-          cursor: 'pointer',
-        }}
-      >
-        ✕
-      </button>
       {/* Expanded map view — sits above backdrop. bg is forced translucent (regardless of the
           collapsed instance's bg) so the video feed shows through in every layout, matching
           the portrait minimap. */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <MiniMapView
-          {...props}
-          mapGrid={mapGrid}
-          mapPose={mapPose}
-          bg="rgba(8,10,14,0.7)"
-          size={expandedSize}
-          pannable
-          waypointMode={waypointMode}
-          waypoint={waypoint}
-          navPath={navPath}
-          onWaypointPlace={(wx, wy) => {
-            setWaypoint({ wx, wy, heading: mapPose?.heading ?? 0 });
-          }}
-          onWaypointHeading={(h) => {
-            setWaypoint((w) => (w ? { ...w, heading: h } : w));
-          }}
-        />
+        {/* Map card — ✕ close sits in its top-right corner (clear of the E-STOP). */}
+        <div style={{ position: 'relative' }}>
+          <MiniMapView
+            {...props}
+            mapGrid={mapGrid}
+            mapPose={mapPose}
+            bg="rgba(8,10,14,0.7)"
+            size={expandedSize}
+            pannable
+            waypointMode={waypointMode}
+            waypoint={waypoint}
+            navPath={navPath}
+            onWaypointPlace={(wx, wy) => {
+              setWaypoint({ wx, wy, heading: mapPose?.heading ?? 0 });
+            }}
+            onWaypointHeading={(h) => {
+              setWaypoint((w) => (w ? { ...w, heading: h } : w));
+            }}
+          />
+          <button
+            type="button"
+            data-testid="minimap-close-btn"
+            aria-label="Close map"
+            onClick={handleBackdropClick}
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              zIndex: 2,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              border: '1px solid rgba(255,255,255,0.25)',
+              background: 'rgba(8,10,14,0.85)',
+              color: '#fff',
+              fontSize: 18,
+              lineHeight: '1',
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
 
         {/* Control buttons — only shown in expanded mode */}
         <div
