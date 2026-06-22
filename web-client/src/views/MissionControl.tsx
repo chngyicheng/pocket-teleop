@@ -797,35 +797,15 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           />
           <Readout label="BAT" value={batModel.value} color={batColor} />
           <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
-        </div>
 
-        {/* Landscape: bottom-right mini-map + compass; Portrait: bottom-center above joysticks */}
-        <div
-          style={isLandscape ? {
-            position: 'absolute',
-            bottom: 8,
-            right: 8,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            alignItems: 'flex-end',
-          } : {
-            position: 'absolute',
-            bottom: 204,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-            alignItems: 'center',
-          }}
-        >
+          {/* Minimap docked top-right, below the telemetry readouts (translucent,
+              matching the landscape/tablet corner overlay). */}
           <MiniMap
             pos={navPose}
             heading={navPose.heading}
-            size={isLandscape ? 110 : 128}
+            size={128}
             color={p.accent}
-            bg="rgba(8,10,14,0.7)"
+            bg="rgba(8,10,14,0.45)"
             border={p.border}
             mapGrid={bridge.mapGrid}
             mapPose={bridge.mapPose}
@@ -846,7 +826,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             heading={odomPos.heading}
             color={p.accent}
             font={monoFont}
-            size={isLandscape ? 28 : 22}
+            size={22}
           />
         </div>
 
