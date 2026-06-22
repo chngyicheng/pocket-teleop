@@ -1260,7 +1260,9 @@ export const Compass: React.FC<CompassProps> = ({
           strokeOpacity="0.35"
           strokeWidth="0.8"
         />
-        <g transform={`rotate(${deg})`}>
+        {/* ROS yaw is CCW-positive; SVG rotate() is clockwise, so negate it —
+            a left turn must spin the needle counter-clockwise. */}
+        <g transform={`rotate(${-deg})`}>
           <polygon points="0,-8 2.5,4 0,1.5 -2.5,4" fill={color} />
         </g>
         <text

@@ -92,10 +92,9 @@ describe('MissionTablet', () => {
     expect(screen.getByText('VELOCITY')).toBeTruthy();
     expect(screen.getByText('ODOMETRY')).toBeTruthy();
 
-    // Right rail panels: MAP, HEADING, LIGHTS, HINT
+    // Right rail panels: MAP, HEADING, HINT
     expect(screen.getByText('MAP')).toBeTruthy();
     expect(screen.getByText('HEADING')).toBeTruthy();
-    expect(screen.getByText('LIGHTS')).toBeTruthy();
     expect(screen.getByText('HINT')).toBeTruthy();
 
     // Joystick labels
@@ -198,35 +197,6 @@ describe('MissionTablet', () => {
     fireEvent.click(hamburger);
 
     expect(onMenu).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles LIGHTS pill states on click', () => {
-    const bridge = createFakeBridge();
-    const stream = createFakeStream();
-    const onMenu = vi.fn();
-
-    const props: MissionTabletProps = {
-      bridge,
-      stream,
-      onMenu,
-    };
-
-    render(<MissionTablet {...props} />);
-
-    // Find HEAD pill toggle
-    const headPill = screen.getByTestId('pill-toggle-head');
-    expect(headPill).toBeTruthy();
-
-    // Initially ON (from prop on={true})
-    expect(headPill.textContent).toContain('●');
-
-    // Click to toggle OFF
-    fireEvent.click(headPill);
-    expect(headPill.textContent).toContain('○');
-
-    // Click again to toggle ON
-    fireEvent.click(headPill);
-    expect(headPill.textContent).toContain('●');
   });
 
   it('displays stream state from props.stream.state', () => {

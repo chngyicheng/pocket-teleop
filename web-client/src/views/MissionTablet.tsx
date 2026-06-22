@@ -90,41 +90,6 @@ function DataRow({ k, v }: { k: string; v: string }): JSX.Element {
   );
 }
 
-function MissionPillToggle({ label, on }: { label: string; on: boolean }): JSX.Element {
-  const p = MissionPalette;
-  const monoFont = '"JetBrains Mono", ui-monospace, monospace';
-  const [isOn, setIsOn] = useState(on);
-
-  const handleClick = () => {
-    const newState = !isOn;
-    setIsOn(newState);
-    console.log('toggle', label, newState);
-  };
-
-  return (
-    <div
-      onClick={handleClick}
-      data-testid={`pill-toggle-${label.toLowerCase()}`}
-      style={{
-        fontFamily: monoFont,
-        fontSize: 9,
-        letterSpacing: '0.1em',
-        padding: '4px 8px',
-        borderRadius: 2,
-        border: `1px solid ${isOn ? p.accent + '88' : p.border}`,
-        color: isOn ? p.accent : p.muted,
-        background: isOn ? p.accent + '14' : 'transparent',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-      }}
-      className={isOn ? 'active' : ''}
-    >
-      {isOn ? '● ' : '○ '}
-      {label}
-    </div>
-  );
-}
-
 /**
  * MissionTablet component
  */
@@ -712,14 +677,6 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
                 />
                 <DataRow k="track" v={(Math.atan2(ly, lx) * 180 / Math.PI).toFixed(0) + '°'} />
               </div>
-            </div>
-          </SidePanel>
-
-          <SidePanel title="LIGHTS">
-            <div style={{ display: 'flex', gap: 6 }}>
-              <MissionPillToggle label="HEAD" on={true} />
-              <MissionPillToggle label="AUX" on={false} />
-              <MissionPillToggle label="LASER" on={false} />
             </div>
           </SidePanel>
 
