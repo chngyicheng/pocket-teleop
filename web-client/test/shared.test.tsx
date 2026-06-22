@@ -850,6 +850,73 @@ describe('MiniMap', () => {
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
   });
 
+  it('✕ button collapses the expanded overlay', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose} metersAcross={10} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-testid="minimap-close-btn"]')!);
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeFalsy();
+  });
+
+  it('tapping the expanded map does NOT collapse it (close is backdrop/✕ only)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose} metersAcross={10} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    const expanded = document.querySelector('[data-testid="minimap-expanded"]');
+    expect(expanded).toBeTruthy();
+
+    // Clean tap on the expanded map view — must not dismiss.
+    const view = expanded!.querySelector('[data-testid="minimap-grid"]')!.parentElement!;
+    fireEvent.pointerDown(view, { pointerId: 1, clientX: 120, clientY: 120 });
+    fireEvent.pointerUp(view, { pointerId: 1, clientX: 120, clientY: 120 });
+    expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
+  });
+
+  it('one-finger drag pans the map (nav-path shifts by the drag delta)', () => {
+    const cells = new Uint8Array(10000);
+    const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    render(
+      <MiniMap pos={{ x: 0, y: 0 }} heading={0} expandable mapGrid={mapGrid} mapPose={mapPose}
+        metersAcross={10} navPath={[[0, 0], [2, 0]]} />
+    );
+    const wrapper = document.querySelector('[data-testid="minimap-grid"]')?.parentElement;
+    fireEvent.pointerDown(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(wrapper!, { pointerId: 1, clientX: 50, clientY: 50 });
+    const expanded = document.querySelector('[data-testid="minimap-expanded"]')!;
+    const view = expanded.querySelector('[data-testid="minimap-grid"]')!.parentElement!;
+
+    const firstPoint = (): { x: number; y: number } => {
+      const pts = expanded.querySelector('[data-testid="nav-path"] polyline')!.getAttribute('points')!;
+      const [x, y] = pts.trim().split(/\s+/)[0].split(',').map(Number);
+      return { x, y };
+    };
+    const before = firstPoint();
+
+    // 1-finger drag by (+30, +20)
+    fireEvent.pointerDown(view, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(view, { pointerId: 1, clientX: 130, clientY: 120 });
+    fireEvent.pointerUp(view, { pointerId: 1, clientX: 130, clientY: 120 });
+    const after = firstPoint();
+
+    expect(after.x - before.x).toBeCloseTo(30, 3);
+    expect(after.y - before.y).toBeCloseTo(20, 3);
+  });
+
   it('two-finger pinch does not trigger expand (pinch suppresses tap)', () => {
     const cells = new Uint8Array(10000);
     const mapGrid = { cells, width: 100, height: 100, resolution: 0.1, originX: 0, originY: 0 };

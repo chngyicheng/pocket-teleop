@@ -382,6 +382,8 @@ interface MiniMapViewProps extends MiniMapProps {
   onWaypointPlace?: (wx: number, wy: number) => void;
   /** Fires on dial drag to update waypoint heading. */
   onWaypointHeading?: (heading: number) => void;
+  /** Enable map panning (1-finger drag + 2-finger drag). Used by the expanded view only. */
+  pannable?: boolean;
 }
 
 /** Internal component that owns all the map rendering, pinch-zoom, tap detection, and wheel-zoom logic. */
@@ -408,15 +410,24 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
   onWaypointPlace,
   onWaypointHeading,
   navPath,
+  pannable = false,
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const offscreenRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
-  const pinchRef = useRef<{ startDist: number; startM: number } | null>(null);
+  const pinchRef = useRef<{ startDist: number; startM: number; startMidX: number; startMidY: number; startPanX: number; startPanY: number } | null>(null);
+  const panStartRef = useRef<{ px: number; py: number; panX: number; panY: number } | null>(null);
   const tapStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const [viewM, setViewM] = useState(metersAcross);
+  // Pan offset in screen px (map mode only); robot/center sits at (size/2)+pan.
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+
+  // Reset pan when the map goes away (odom fallback has no pannable frame).
+  useEffect(() => {
+    if (!mapGrid || !mapPose) setPan({ x: 0, y: 0 });
+  }, [mapGrid, mapPose]);
 
   // Build offscreen canvas when mapGrid changes
   useEffect(() => {
@@ -465,16 +476,16 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2,
       );
 
-      // Draw map image
+      // Draw map image (pan shifts the whole view)
       if (offscreenRef.current) {
         const t = mapToScreenTransform(mapPose, mapGrid, size, m);
-        ctx.setTransform(t.a, t.b, t.c, t.d, t.e, t.f);
+        ctx.setTransform(t.a, t.b, t.c, t.d, t.e + pan.x, t.f + pan.y);
         ctx.drawImage(offscreenRef.current, 0, 0);
       }
 
       // Draw scan overlay
       if (scan) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.setTransform(1, 0, 0, 1, pan.x, pan.y);
         const capturePose = selectScanCapturePose(scan.pose, mapPose);
         const points = scanToScreenPoints(scan, capturePose, mapPose, size, m);
         ctx.fillStyle = hexToRgba(color, 0.8);
@@ -485,7 +496,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
     } catch (_) {
       // jsdom errors; do nothing
     }
-  }, [mapGrid, mapPose, scan, size, viewM, color]);
+  }, [mapGrid, mapPose, scan, size, viewM, color, pan.x, pan.y]);
 
   useEffect(() => {
     trailRef.current.push({ x: pos.x, y: pos.y });
@@ -524,49 +535,71 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
       if (pointersRef.current.size === 1) {
         // First finger — potential tap
         tapStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+        // 1-finger pan (Google-Maps style): expanded view, map mode, not placing.
+        if (pannable && !waypointMode && mapGrid && mapPose) {
+          panStartRef.current = { px: e.clientX, py: e.clientY, panX: pan.x, panY: pan.y };
+        }
       } else if (pointersRef.current.size === 2) {
-        // Second finger — this is a pinch, not a tap
+        // Second finger — this is a pinch/2-finger pan, not a tap or 1-finger pan
         tapStartRef.current = null;
+        panStartRef.current = null;
 
-        // Pinch math only in map mode and not in waypointMode
-        if (!waypointMode && mapGrid && mapPose) {
+        // Pinch-zoom + 2-finger pan: map mode (works in waypoint mode too).
+        if (mapGrid && mapPose) {
           const pointers = Array.from(pointersRef.current.values());
           const dx = pointers[1].x - pointers[0].x;
           const dy = pointers[1].y - pointers[0].y;
           const startDist = Math.hypot(dx, dy);
-          pinchRef.current = { startDist, startM: viewM };
+          pinchRef.current = {
+            startDist,
+            startM: viewM,
+            startMidX: (pointers[0].x + pointers[1].x) / 2,
+            startMidY: (pointers[0].y + pointers[1].y) / 2,
+            startPanX: pan.x,
+            startPanY: pan.y,
+          };
         }
       }
     },
-    [mapGrid, mapPose, viewM, waypointMode]
+    [mapGrid, mapPose, viewM, waypointMode, pannable, pan.x, pan.y]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!mapGrid || !mapPose || !pinchRef.current) return;
+      if (!mapGrid || !mapPose) return;
 
       const pointers = pointersRef.current;
       if (!pointers.has(e.pointerId)) return;
 
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-      if (pointers.size === 2) {
+      if (pointers.size === 2 && pinchRef.current) {
         const pts = Array.from(pointers.values());
         const dx = pts[1].x - pts[0].x;
         const dy = pts[1].y - pts[0].y;
         const newDist = Math.hypot(dx, dy);
+        const { startDist, startM, startMidX, startMidY, startPanX, startPanY } = pinchRef.current;
 
-        if (newDist < 8) return; // Avoid division by very small numbers
+        // 2-finger pan: follow the finger midpoint (expanded view only).
+        if (pannable) {
+          const midX = (pts[0].x + pts[1].x) / 2;
+          const midY = (pts[0].y + pts[1].y) / 2;
+          setPan({ x: startPanX + (midX - startMidX), y: startPanY + (midY - startMidY) });
+        }
 
-        const { startDist, startM } = pinchRef.current;
-        const minM = 1.0;
-        const maxM = Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2;
-        const newViewM = startM * (startDist / newDist);
-        const clamped = Math.min(Math.max(newViewM, minM), maxM);
-        setViewM(clamped);
+        if (newDist >= 8) { // avoid division by very small numbers
+          const minM = 1.0;
+          const maxM = Math.max(mapGrid.width, mapGrid.height) * mapGrid.resolution * 1.2;
+          const newViewM = startM * (startDist / newDist);
+          setViewM(Math.min(Math.max(newViewM, minM), maxM));
+        }
+      } else if (pointers.size === 1 && panStartRef.current) {
+        // 1-finger pan
+        const { px, py, panX, panY } = panStartRef.current;
+        setPan({ x: panX + (e.clientX - px), y: panY + (e.clientY - py) });
       }
     },
-    [mapGrid, mapPose]
+    [mapGrid, mapPose, pannable]
   );
 
   const handlePointerUp = useCallback(
@@ -578,8 +611,8 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
       // Waypoint placement: release (any distance or time) converts screen → world
       // ponytail: loupe magnifier deferred — add when tuning real-touch placement precision
       if (waypointMode && isValidRelease && onWaypointPlace && rect) {
-        const localX = e.clientX - rect.left;
-        const localY = e.clientY - rect.top;
+        const localX = e.clientX - rect.left - pan.x;
+        const localY = e.clientY - rect.top - pan.y;
         const world = screenToWorldPoint({ x: localX, y: localY }, mapPose, size, clampedViewM);
         onWaypointPlace(world.x, world.y);
       }
@@ -595,16 +628,18 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
       }
 
       tapStartRef.current = null;
+      panStartRef.current = null;
       pointersRef.current.delete(e.pointerId);
       if (pointersRef.current.size < 2) {
         pinchRef.current = null;
       }
     },
-    [onTap, waypointMode, mapGrid, mapPose, onWaypointPlace, size, clampedViewM]
+    [onTap, waypointMode, mapGrid, mapPose, onWaypointPlace, size, clampedViewM, pan.x, pan.y]
   );
 
   const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     tapStartRef.current = null;
+    panStartRef.current = null;
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) {
       pinchRef.current = null;
@@ -613,6 +648,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
 
   const handlePointerLeave = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     tapStartRef.current = null;
+    panStartRef.current = null;
     pointersRef.current.delete(e.pointerId);
     if (pointersRef.current.size < 2) {
       pinchRef.current = null;
@@ -621,8 +657,8 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
 
   const scale = 6;
   const mapPoints = trailRef.current.map((p) => ({
-    x: size / 2 + (p.x - pos.x) * scale,
-    y: size / 2 + (p.y - pos.y) * scale,
+    x: size / 2 + (p.x - pos.x) * scale + pan.x,
+    y: size / 2 + (p.y - pos.y) * scale + pan.y,
   }));
 
   const labelText = mapGrid && mapPose ? (mapPose.frame === 'map' ? 'MAP' : 'ODOM') : 'NO MAP';
@@ -739,7 +775,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
           data-testid="minimap-footprint"
           style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
         >
-          <g transform={`translate(${size / 2} ${size / 2}) rotate(${footprintRotation})`}>
+          <g transform={`translate(${size / 2 + pan.x} ${size / 2 + pan.y}) rotate(${footprintRotation})`}>
             <rect
               x={-footprint.widthPx / 2}
               y={-footprint.heightPx / 2}
@@ -766,7 +802,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
           <polyline
             points={navPath
               .map((pt) => worldToScreenPoint({ x: pt[0], y: pt[1] }, mapPose, size, clampedViewM))
-              .map((p) => `${p.x},${p.y}`)
+              .map((p) => `${p.x + pan.x},${p.y + pan.y}`)
               .join(' ')}
             fill="none"
             stroke="#ffb454"
@@ -785,9 +821,10 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
           data-testid="waypoint-svg"
           style={{ position: 'absolute', inset: 0, pointerEvents: waypointMode ? 'auto' : 'none' }}
         >
-          {/* Calculate marker position (world → screen) */}
+          {/* Calculate marker position (world → screen, pan-shifted) */}
           {(() => {
-            const markerScreen = worldToScreenPoint({ x: waypoint.wx, y: waypoint.wy }, mapPose, size, clampedViewM);
+            const w = worldToScreenPoint({ x: waypoint.wx, y: waypoint.wy }, mapPose, size, clampedViewM);
+            const markerScreen = { x: w.x + pan.x, y: w.y + pan.y };
             const markerRad = 6;
             const dialRad = 18;
             // Arrow + handle face the waypoint heading in the base_link-fixed view.
@@ -883,7 +920,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         viewBox={`0 0 ${size} ${size}`}
         style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
       >
-        <g transform={`translate(${size / 2} ${size / 2}) rotate(${mapGrid && mapPose ? 0 : heading * 180 / Math.PI})`}>
+        <g transform={`translate(${size / 2 + (mapGrid && mapPose ? pan.x : 0)} ${size / 2 + (mapGrid && mapPose ? pan.y : 0)}) rotate(${mapGrid && mapPose ? 0 : heading * 180 / Math.PI})`}>
           <polygon points="0,-7 5,5 0,2 -5,5" fill={color} />
           <circle r="2" fill={color} />
         </g>
@@ -969,6 +1006,30 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           background: 'rgba(0,0,0,0.6)',
         }}
       />
+      {/* Explicit close — tapping the map now pans/places, never dismisses. */}
+      <button
+        type="button"
+        data-testid="minimap-close-btn"
+        aria-label="Close map"
+        onClick={handleBackdropClick}
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          zIndex: 2,
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          border: '1px solid rgba(255,255,255,0.25)',
+          background: 'rgba(8,10,14,0.85)',
+          color: '#fff',
+          fontSize: 20,
+          lineHeight: '1',
+          cursor: 'pointer',
+        }}
+      >
+        ✕
+      </button>
       {/* Expanded map view — sits above backdrop. bg is forced translucent (regardless of the
           collapsed instance's bg) so the video feed shows through in every layout, matching
           the portrait minimap. */}
@@ -979,7 +1040,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
           mapPose={mapPose}
           bg="rgba(8,10,14,0.7)"
           size={expandedSize}
-          onTap={waypointMode ? undefined : () => setExpanded(false)}
+          pannable
           waypointMode={waypointMode}
           waypoint={waypoint}
           navPath={navPath}
