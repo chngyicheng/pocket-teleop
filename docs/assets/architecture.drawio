@@ -54,7 +54,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
-        <mxCell id="24" value="/cmd_vel&#xa;watchdog → 0 on silence" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.6;entryY=0;entryDx=0;entryDy=0;strokeColor=#82b366;fontSize=11;" edge="1" parent="1" source="6" target="9">
+        <mxCell id="24" value="/cmd_vel (watchdog → 0 on silence)&#xa;nav2 goal: NavigateToPose action" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.6;exitY=1;exitDx=0;exitDy=0;entryX=0.6;entryY=0;entryDx=0;entryDy=0;strokeColor=#82b366;fontSize=11;" edge="1" parent="1" source="6" target="9">
           <mxGeometry x="0.5" relative="1" as="geometry" />
         </mxCell>
 
