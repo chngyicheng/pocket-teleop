@@ -46,10 +46,10 @@ class FakeTeleopClient {
   setGamepadProfile() {}
   setGamepadEnabled() {}
 
-  sendNavGoal(wx: number, wy: number, heading: number) {}
-  sendNavPause() {}
-  sendNavResume() {}
-  sendNavCancel() {}
+  sendNavGoal(wx: number, wy: number, heading: number): boolean { return true; }
+  sendNavPause(): boolean { return true; }
+  sendNavResume(): boolean { return true; }
+  sendNavCancel(): boolean { return true; }
 
   getNetworkStats(): NetworkStats | null {
     return this.networkStats;
@@ -1100,6 +1100,11 @@ describe('useTeleopBridge', () => {
       })
     );
 
+    // Set estopEngaged to true to match the E-STOP case
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
     act(() => {
       result.current.sendNavGoal(1.0, 2.0, 0);
     });
@@ -1123,6 +1128,136 @@ describe('useTeleopBridge', () => {
     });
 
     expect(result.current.navNotice).toBeNull();
+  });
+
+  it('sendNavGoal returning false with estopEngaged shows E-STOP warning', () => {
+    const fake = createFakeClientWithMockNavGoal(false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
+    expect(result.current.estopEngaged).toBe(true);
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('E-STOP engaged — reset before navigating');
+  });
+
+  it('sendNavGoal returning false without estopEngaged shows Not connected warning', () => {
+    const fake = createFakeClientWithMockNavGoal(false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    // estopEngaged should be false
+    expect(result.current.estopEngaged).toBe(false);
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavPause returning false shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavPause = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavPause();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavResume returning false with estopEngaged shows E-STOP warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavResume = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
+    expect(result.current.estopEngaged).toBe(true);
+
+    act(() => {
+      result.current.sendNavResume();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('E-STOP engaged — reset before navigating');
+  });
+
+  it('sendNavResume returning false without estopEngaged shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavResume = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    // estopEngaged should be false
+    expect(result.current.estopEngaged).toBe(false);
+
+    act(() => {
+      result.current.sendNavResume();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavCancel returning false shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavCancel = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavCancel();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
   });
 
   it('navNotice auto-dismisses after 4 seconds', () => {

@@ -5,6 +5,7 @@ vi.mock('../src/connection.js', () => ({
     connect: vi.fn(),
     disconnect: vi.fn(),
     send: vi.fn(),
+    isOpen: vi.fn(() => true),
   })),
 }));
 
@@ -50,47 +51,84 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
 
       warnSpy.mockRestore();
     });
+
+    it('does not send nav_goal and returns false when socket not open', () => {
+      // Mock connection.isOpen() to return false
+      (client as any).connection.isOpen = vi.fn(() => false);
+      capturedSend.mockClear();
+
+      const result = client.sendNavGoal(10, 20, 1.57);
+
+      expect(result).toBe(false);
+      expect(capturedSend).not.toHaveBeenCalled();
+    });
   });
 
   describe('sendNavPause', () => {
-    it('always sends nav_pause (even when estop engaged)', () => {
+    it('always sends nav_pause and returns true (even when estop engaged)', () => {
       (client as any).estopEngaged = true;
       capturedSend.mockClear();
 
-      client.sendNavPause();
+      const result = client.sendNavPause();
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       const msg = JSON.parse(call);
       expect(msg.type).toBe('nav_pause');
     });
 
-    it('sends nav_pause when estop not engaged', () => {
-      client.sendNavPause();
+    it('sends nav_pause and returns true when estop not engaged', () => {
+      const result = client.sendNavPause();
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       const msg = JSON.parse(call);
       expect(msg.type).toBe('nav_pause');
+    });
+
+    it('does not send nav_pause and returns false when socket not open', () => {
+      // Mock connection.isOpen() to return false
+      (client as any).connection.isOpen = vi.fn(() => false);
+      capturedSend.mockClear();
+
+      const result = client.sendNavPause();
+
+      expect(result).toBe(false);
+      expect(capturedSend).not.toHaveBeenCalled();
     });
   });
 
   describe('sendNavResume', () => {
-    it('sends nav_resume when estop not engaged', () => {
-      client.sendNavResume();
+    it('sends nav_resume and returns true when estop not engaged', () => {
+      const result = client.sendNavResume();
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       const msg = JSON.parse(call);
       expect(msg.type).toBe('nav_resume');
     });
 
-    it('does not send nav_resume when estop engaged', () => {
+    it('does not send nav_resume and returns false when estop engaged', () => {
       (client as any).estopEngaged = true;
       capturedSend.mockClear();
 
-      client.sendNavResume();
+      const result = client.sendNavResume();
 
+      expect(result).toBe(false);
+      expect(capturedSend).not.toHaveBeenCalled();
+    });
+
+    it('does not send nav_resume and returns false when socket not open', () => {
+      // Mock connection.isOpen() to return false
+      (client as any).connection.isOpen = vi.fn(() => false);
+      capturedSend.mockClear();
+
+      const result = client.sendNavResume();
+
+      expect(result).toBe(false);
       expect(capturedSend).not.toHaveBeenCalled();
     });
   });
@@ -100,8 +138,9 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
       (client as any).estopEngaged = true;
       capturedSend.mockClear();
 
-      client.sendNavCancel();
+      const result = client.sendNavCancel();
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       const msg = JSON.parse(call);
@@ -109,12 +148,24 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
     });
 
     it('sends nav_cancel when estop not engaged', () => {
-      client.sendNavCancel();
+      const result = client.sendNavCancel();
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       const msg = JSON.parse(call);
       expect(msg.type).toBe('nav_cancel');
+    });
+
+    it('does not send nav_cancel and returns false when socket not open', () => {
+      // Mock connection.isOpen() to return false
+      (client as any).connection.isOpen = vi.fn(() => false);
+      capturedSend.mockClear();
+
+      const result = client.sendNavCancel();
+
+      expect(result).toBe(false);
+      expect(capturedSend).not.toHaveBeenCalled();
     });
   });
 

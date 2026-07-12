@@ -346,27 +346,45 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     if (clientRef.current) {
       const success = clientRef.current.sendNavGoal(wx, wy, heading);
       if (success === false) {
-        // E-STOP is engaged
-        setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        // Determine if blocked due to E-STOP or disconnection
+        if (estopEngaged) {
+          setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        } else {
+          setNavNotice({ text: 'Not connected', tone: 'warn' });
+        }
       }
     }
   };
 
   const sendNavPause = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavPause();
+      const success = clientRef.current.sendNavPause();
+      if (success === false) {
+        setNavNotice({ text: 'Not connected', tone: 'warn' });
+      }
     }
   };
 
   const sendNavResume = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavResume();
+      const success = clientRef.current.sendNavResume();
+      if (success === false) {
+        // Determine if blocked due to E-STOP or disconnection
+        if (estopEngaged) {
+          setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        } else {
+          setNavNotice({ text: 'Not connected', tone: 'warn' });
+        }
+      }
     }
   };
 
   const sendNavCancel = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavCancel();
+      const success = clientRef.current.sendNavCancel();
+      if (success === false) {
+        setNavNotice({ text: 'Not connected', tone: 'warn' });
+      }
     }
   };
 

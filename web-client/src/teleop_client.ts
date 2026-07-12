@@ -319,7 +319,7 @@ export class TeleopClient {
       return false;
     }
     // No connection: no-op
-    if (!this.connection) {
+    if (!this.connection.isOpen()) {
       return false;
     }
     this.connection.send(buildNavGoal(wx, wy, heading));
@@ -327,34 +327,37 @@ export class TeleopClient {
     return true;
   }
 
-  sendNavPause(): void {
-    // Always send (even if estop engaged)
-    if (!this.connection) {
-      return;
+  sendNavPause(): boolean {
+    // Always send (even if estop engaged), but check connection
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavPause());
     this.lastSentAt = Date.now();
+    return true;
   }
 
-  sendNavResume(): void {
+  sendNavResume(): boolean {
     // Estop engaged: no-op
     if (this.estopEngaged) {
-      return;
+      return false;
     }
-    if (!this.connection) {
-      return;
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavResume());
     this.lastSentAt = Date.now();
+    return true;
   }
 
-  sendNavCancel(): void {
-    // Always send (even if estop engaged)
-    if (!this.connection) {
-      return;
+  sendNavCancel(): boolean {
+    // Always send (even if estop engaged), but check connection
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavCancel());
     this.lastSentAt = Date.now();
+    return true;
   }
 
   sendTwist(lx: number, ly: number, az: number, source: InputSource = 'touch'): void {
