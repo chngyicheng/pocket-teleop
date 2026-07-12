@@ -1735,15 +1735,37 @@ const toastColors = {
   error: { bg: '#ef4444', text: '#fff' },
 };
 
-export const HudToast: React.FC<HudToastProps> = ({ notice, top = 70 }) => {
-  if (!notice) return null;
+/** Fade-out duration; fade-in uses the same transition. Keep in sync with the
+    unmount delay below. */
+const TOAST_FADE_MS = 300;
 
-  const colors = toastColors[notice.tone];
+export const HudToast: React.FC<HudToastProps> = ({ notice, top = 70 }) => {
+  // `shown` lags `notice` on clear so the fade-out can play before unmount;
+  // `visible` drives the opacity transition both ways.
+  const [shown, setShown] = useState<HudToastProps['notice']>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (notice) {
+      setShown(notice);
+      // Mount at opacity 0 first, then flip on the next tick so the CSS
+      // transition actually animates the fade-in.
+      const t = setTimeout(() => setVisible(true), 20);
+      return () => clearTimeout(t);
+    }
+    setVisible(false);
+    const t = setTimeout(() => setShown(null), TOAST_FADE_MS);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  if (!shown) return null;
+
+  const colors = toastColors[shown.tone];
 
   return (
     <div
       data-testid="hud-toast"
-      data-tone={notice.tone}
+      data-tone={shown.tone}
       style={{
         position: 'fixed',
         top,
@@ -1758,9 +1780,11 @@ export const HudToast: React.FC<HudToastProps> = ({ notice, top = 70 }) => {
         fontFamily: 'ui-monospace, monospace',
         background: colors.bg,
         color: colors.text,
+        opacity: visible ? 1 : 0,
+        transition: `opacity ${TOAST_FADE_MS}ms ease`,
       }}
     >
-      {notice.text}
+      {shown.text}
     </div>
   );
 };

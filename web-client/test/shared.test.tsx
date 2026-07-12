@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   Joystick,
@@ -1969,6 +1969,49 @@ describe('HudToast', () => {
     const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
     const style = toast.getAttribute('style') || '';
     expect(style).toContain('top: 62');
+  });
+
+  it('fades in: mounts at opacity 0, then transitions to 1', () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <HudToast notice={{ text: 'Fade', tone: 'ok' }} />
+      );
+      const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+      expect(toast.getAttribute('style') || '').toContain('opacity: 0');
+      expect(toast.getAttribute('style') || '').toContain('transition: opacity 300ms ease');
+      act(() => {
+        vi.advanceTimersByTime(25);
+      });
+      expect(toast.getAttribute('style') || '').toContain('opacity: 1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('fades out on clear: opacity 0 while unmount is delayed, gone after the fade', () => {
+    vi.useFakeTimers();
+    try {
+      const { container, rerender } = render(
+        <HudToast notice={{ text: 'Fade', tone: 'ok' }} />
+      );
+      act(() => {
+        vi.advanceTimersByTime(25);
+      });
+
+      rerender(<HudToast notice={null} />);
+      // Still mounted for the fade-out, at opacity 0
+      const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+      expect(toast).toBeTruthy();
+      expect(toast.getAttribute('style') || '').toContain('opacity: 0');
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(container.querySelector('[data-testid="hud-toast"]')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('has pointerEvents none (non-interactive)', () => {
