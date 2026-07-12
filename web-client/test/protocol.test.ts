@@ -726,4 +726,54 @@ describe('parseMessage', () => {
       expect(result.current).toBe(-15.0);
     }
   });
+
+  // nav_state message tests
+  it('parses nav_state message with idle', () => {
+    const result = parseMessage('{"type":"nav_state","state":"idle"}');
+    expect(result).toEqual({ type: 'nav_state', state: 'idle' });
+  });
+
+  it('parses nav_state message with active', () => {
+    const result = parseMessage('{"type":"nav_state","state":"active"}');
+    expect(result).toEqual({ type: 'nav_state', state: 'active' });
+  });
+
+  it('parses nav_state message with paused', () => {
+    const result = parseMessage('{"type":"nav_state","state":"paused"}');
+    expect(result).toEqual({ type: 'nav_state', state: 'paused' });
+  });
+
+  it('parses nav_state message with succeeded', () => {
+    const result = parseMessage('{"type":"nav_state","state":"succeeded"}');
+    expect(result).toEqual({ type: 'nav_state', state: 'succeeded' });
+  });
+
+  it('parses nav_state message with failed', () => {
+    const result = parseMessage('{"type":"nav_state","state":"failed"}');
+    expect(result).toEqual({ type: 'nav_state', state: 'failed' });
+  });
+
+  it('nav_state message with invalid state "bogus" returns unknown', () => {
+    const raw = '{"type":"nav_state","state":"bogus"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('nav_state message with invalid state "unknown_state" returns unknown', () => {
+    const raw = '{"type":"nav_state","state":"unknown_state"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('nav_state message with missing state returns unknown', () => {
+    const raw = '{"type":"nav_state"}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
+
+  it('nav_state message with non-string state returns unknown', () => {
+    const raw = '{"type":"nav_state","state":123}';
+    const result = parseMessage(raw);
+    expect(result).toEqual({ type: 'unknown', raw });
+  });
 });

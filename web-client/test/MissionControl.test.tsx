@@ -43,6 +43,13 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     setMaxAngular: vi.fn(),
     gamepadConnected: false,
     disconnectAction: 'stop',
+    navState: 'idle',
+    navPath: [],
+    navNotice: null,
+    sendNavGoal: vi.fn(),
+    sendNavPause: vi.fn(),
+    sendNavResume: vi.fn(),
+    sendNavCancel: vi.fn(),
     ...overrides,
   };
 }
@@ -1052,5 +1059,42 @@ describe('MissionControl', () => {
     // Collapse → rails restored to their prior open state
     fireEvent.pointerUp(document.querySelector('[data-testid="minimap-backdrop"]')!);
     expect(root.style.gridTemplateColumns).toBe('180px 1fr 180px');
+  });
+
+  // ─── HUD Toast Tests ─────────────────────────────────────────────────────
+
+  it('does not render hud-toast when bridge.navNotice is null', () => {
+    const bridge = createFakeBridge({ navNotice: null });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+    );
+
+    const toast = document.querySelector('[data-testid="hud-toast"]');
+    expect(toast).toBeNull();
+  });
+
+  it('renders hud-toast with text when bridge.navNotice is set', () => {
+    const bridge = createFakeBridge({
+      navNotice: { text: 'Goal reached', tone: 'ok' },
+    });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+    );
+
+    const toast = document.querySelector('[data-testid="hud-toast"]');
+    expect(toast).toBeTruthy();
+    expect(toast?.textContent).toBe('Goal reached');
+  });
+
+  it('hud-toast has correct data-tone and styling for ok', () => {
+    const bridge = createFakeBridge({
+      navNotice: { text: 'Goal reached', tone: 'ok' },
+    });
+    render(
+      <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+    );
+
+    const toast = document.querySelector('[data-testid="hud-toast"]');
+    expect(toast?.getAttribute('data-tone')).toBe('ok');
   });
 });

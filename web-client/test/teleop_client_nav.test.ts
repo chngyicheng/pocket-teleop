@@ -21,9 +21,10 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
   });
 
   describe('sendNavGoal', () => {
-    it('sends nav_goal when estop not engaged', () => {
-      client.sendNavGoal(10, 20, 1.57);
+    it('sends nav_goal and returns true when estop not engaged', () => {
+      const result = client.sendNavGoal(10, 20, 1.57);
 
+      expect(result).toBe(true);
       expect(capturedSend).toHaveBeenCalled();
       const call = capturedSend.mock.calls[0]?.[0];
       expect(call).toBeDefined();
@@ -34,15 +35,16 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
       expect(msg.heading).toBe(1.57);
     });
 
-    it('does not send nav_goal when estop engaged', () => {
+    it('does not send nav_goal and returns false when estop engaged', () => {
       (client as any).estopEngaged = true;
       capturedSend.mockClear();
 
       // Suppress console.warn for test
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      client.sendNavGoal(10, 20, 1.57);
+      const result = client.sendNavGoal(10, 20, 1.57);
 
+      expect(result).toBe(false);
       expect(capturedSend).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith('sendNavGoal blocked: estop engaged');
 
@@ -142,6 +144,24 @@ describe('TeleopClient nav methods (estop gating + always-send)', () => {
       (clientWithCallback as any).handleMessage('{"type":"nav_state","state":"paused"}');
 
       expect(onNavStateSpy).toHaveBeenCalledWith('paused');
+    });
+
+    it('fires onNavState with succeeded', () => {
+      const onNavStateSpy = vi.fn();
+      const clientWithCallback = new TeleopClient({ onNavState: onNavStateSpy });
+
+      (clientWithCallback as any).handleMessage('{"type":"nav_state","state":"succeeded"}');
+
+      expect(onNavStateSpy).toHaveBeenCalledWith('succeeded');
+    });
+
+    it('fires onNavState with failed', () => {
+      const onNavStateSpy = vi.fn();
+      const clientWithCallback = new TeleopClient({ onNavState: onNavStateSpy });
+
+      (clientWithCallback as any).handleMessage('{"type":"nav_state","state":"failed"}');
+
+      expect(onNavStateSpy).toHaveBeenCalledWith('failed');
     });
   });
 

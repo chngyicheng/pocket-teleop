@@ -491,14 +491,34 @@ void TeleopNode::nav_cancel_callback() {
 }
 
 void TeleopNode::send_stored_goal_() {
-  std::lock_guard<std::mutex> lock(nav_mutex_);
+  bool server_ready = false;
+  {
+    std::lock_guard<std::mutex> lock(nav_mutex_);
 
-  if (!stored_goal_ || !nav_action_client_) return;
-  if (!nav_action_client_->action_server_is_ready()) {
-    RCLCPP_WARN(get_logger(), "NavigateToPose action server not ready; discarding goal");
+    if (!stored_goal_ || !nav_action_client_) return;
+    if (!nav_action_client_->action_server_is_ready()) {
+      RCLCPP_WARN(get_logger(), "NavigateToPose action server not ready; discarding goal");
+      stored_goal_ = std::nullopt;
+      paused_ = false;
+      server_ready = false;
+    } else {
+      server_ready = true;
+    }
+  }
+
+  if (!server_ready) {
+    nlohmann::json nav_state = {
+      {"type", "nav_state"},
+      {"state", "failed"}
+    };
+    server_->broadcast(nav_state.dump());
     return;
   }
 
+  std::lock_guard<std::mutex> lock(nav_mutex_);
+  // Re-check after re-acquiring: a cancel/estop may have cleared the goal
+  // while the lock was released for the failed-state broadcast above.
+  if (!stored_goal_) return;
   auto goal_msg = nav2_msgs::action::NavigateToPose::Goal();
   goal_msg.pose = *stored_goal_;
 
@@ -519,6 +539,16 @@ void TeleopNode::on_nav_goal_response(
     NavigateToPoseClient::GoalHandle::SharedPtr goal_handle) {
   if (!goal_handle) {
     RCLCPP_WARN(get_logger(), "NavigateToPose goal rejected");
+    {
+      std::lock_guard<std::mutex> lock(nav_mutex_);
+      stored_goal_ = std::nullopt;
+      paused_ = false;
+    }
+    nlohmann::json nav_state = {
+      {"type", "nav_state"},
+      {"state", "failed"}
+    };
+    server_->broadcast(nav_state.dump());
     return;
   }
 
@@ -528,15 +558,20 @@ void TeleopNode::on_nav_goal_response(
 
 void TeleopNode::on_nav_goal_result(
     const NavigateToPoseClient::WrappedResult& result) {
+  // Default covers ResultCode::UNKNOWN — anything that isn't an explicit
+  // success is reported as failed (CANCELED early-returns below).
+  std::string result_state = "failed";
   {
     std::lock_guard<std::mutex> lock(nav_mutex_);
     if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
       RCLCPP_INFO(get_logger(), "NavigateToPose goal succeeded");
+      result_state = "succeeded";
       active_goal_handle_ = nullptr;
       stored_goal_ = std::nullopt;
       paused_ = false;
     } else if (result.code == rclcpp_action::ResultCode::ABORTED) {
       RCLCPP_WARN(get_logger(), "NavigateToPose goal aborted");
+      result_state = "failed";
       active_goal_handle_ = nullptr;
       stored_goal_ = std::nullopt;
       paused_ = false;
@@ -548,7 +583,7 @@ void TeleopNode::on_nav_goal_result(
 
   nlohmann::json nav_state = {
     {"type", "nav_state"},
-    {"state", "idle"}
+    {"state", result_state}
   };
   server_->broadcast(nav_state.dump());
 }

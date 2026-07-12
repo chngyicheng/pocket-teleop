@@ -109,26 +109,28 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 
 ## Handover state — continue from here
 
-> **LATEST (2026-06-22).** **nav2 waypoint send** — merged to `main`; **autonomous drive hardware-confirmed on the real robot.** Tap the expanded minimap → drop a goal (ghost-arrow marker + tip-grip heading) → Send issues a `NavigateToPose` action; Pause/Resume/Stop by nav state; E-STOP cancels + clears; the nav2 global path draws on the map. `NAV_ACTION` web-editable (Settings → Robot); `NAV_PATH_TOPIC`/`NAV_GOAL_FRAME` are `.env`-level. Minimap UX shipped alongside (corner-dock in every layout, expand→pan/zoom, RViz-style heading + ghost-arrow icon). **Tagged `v1.1.0`** (2026-06-22). Detail: [milestones.md](memory/agent-guides/milestones.md); contracts in the child AGENTS.md.
+> **LATEST (2026-07-13).** **nav feedback** — branch `feat/nav-feedback`, ready to merge: `nav_state` gains terminal `succeeded`/`failed` (server broadcasts on nav2 result, goal-reject, and action-server-not-ready — fixes silent finish + stuck-`active`); bridge maps them to a transient `navNotice` (4 s auto-clear) rendered by `HudToast` in both views; estop-blocked `sendNavGoal` raises a warn toast instead of a console-only warn. **Operator-unverified on hardware.** Plan: `docs/superpowers/plans/2026-07-10-nav-feedback-implementation.md`; wire contract in server/web-client AGENTS.md.
+>
+> **Prior (2026-06-22).** **nav2 waypoint send** — merged to `main`; **autonomous drive hardware-confirmed on the real robot.** Tap the expanded minimap → drop a goal (ghost-arrow marker + tip-grip heading) → Send issues a `NavigateToPose` action; Pause/Resume/Stop by nav state; E-STOP cancels + clears; the nav2 global path draws on the map. `NAV_ACTION` web-editable (Settings → Robot); `NAV_PATH_TOPIC`/`NAV_GOAL_FRAME` are `.env`-level. Minimap UX shipped alongside (corner-dock in every layout, expand→pan/zoom, RViz-style heading + ghost-arrow icon). **Tagged `v1.1.0`** (2026-06-22). Detail: [milestones.md](memory/agent-guides/milestones.md); contracts in the child AGENTS.md.
 >
 > **Run stack:** `docker compose -p pocket-teleop --env-file ./.env up --build -d` (`-p` keeps the `auth-data` volume; `down -v` resets creds). Restart `teleop-server` after any sim restart (tf2 rejects post-restart transforms — TROUBLESHOOTING). **Host once:** `sudo ufw allow from <lan-subnet>/24 to any port 8891 proto udp` (else video ICE fails).
 >
 > **Robot config:** UI-tunable keys live in `config/robot.env` (gitignored; seed from `config/robot.env.example`), **not** `.env`. Edited from the web Settings drawer (partial PUT to `/auth/robot-config`); applies on next `up -d`. Upgrade: copy old `.env` tunables into `config/robot.env` once (TROUBLESHOOTING).
 >
-> **Test baseline:** webclient **856** / auth **98** / video-bridge **20** / C++ **106**. Docker only; `--build` after edits. Known reds (not regressions): auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **887** / auth **98** / video-bridge **20** / C++ **107** (TEST-macro count; `colcon test-result` says 111 — it also counts wrapper layers). Docker only; `--build` after edits. Known reds (not regressions): auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Carry-forward:**
 > - Pre-existing `npx tsc --noEmit` red in `web-client/test/useTeleopBridge.test.tsx` (`FakeTeleopClient` missing members); vitest `npm test` is the green gate. Worth a cleanup.
 > - `return_home` disconnect auto-trigger intentionally OFF (one-line re-enable in `teleop_node.cpp`).
 > - HTTPS-only, still operator-unverified: TLS phone root-CA/ACME + service-worker precache (activate only under `--profile tls`; deviations SW row).
 >
-> **Subagent/worktree gotchas:** subagents never run git (controller stages by explicit path); a Haiku's cwd can pin to the main repo instead of the worktree (check `git status` in both); Docker may leave root-owned `node_modules` in a worktree (`chown` before `git worktree remove`).
+> **Subagent/worktree gotchas:** subagents never run git (controller stages by explicit path) and **never spawn their own subagents** (no Agent tool — controller is the only dispatcher; say so in every prompt); a Haiku's cwd can pin to the main repo instead of the worktree (check `git status` in both); Docker may leave root-owned `node_modules` in a worktree (`chown` before `git worktree remove`).
 >
 > **Build next** (fastest value first; plans under `docs/superpowers/plans/`; backlog UI tasks predate the React migration — re-cast onto `views/` + `components/`): **1.** Latency history graph **2.** Map view (reuses the MiniMap transport; unblocks geofence's editor) **3.** Geofence (SAFETY). Then diagnostics / action macros / multi-camera; PTZ/aux/audio need real hardware — don't build blind. `v1.0.0` released 2026-06-21 (live system confirmed over HTTP; milestones).
 
 ### Milestones + deviations
 
-Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: **nav2 waypoint send** + minimap pan/zoom/corner-dock UX — hardware-confirmed 2026-06-22 (856/98/20/106).
+Full history + per-feature detail: [milestones.md](memory/agent-guides/milestones.md). Accepted deviations: [deviations.md](memory/agent-guides/deviations.md) (append new ones there). Most recent: **nav feedback** (result toasts + estop-blocked Send) — hardware-verify pending, 2026-07-13 (887/98/20/107).
 
 ---
 

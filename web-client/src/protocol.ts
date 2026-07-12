@@ -10,7 +10,7 @@ export type InboundMessage =
   | { type: 'map'; resolution: number; width: number; height: number; origin_x: number; origin_y: number; cells: string }
   | { type: 'scan'; angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose }
   | { type: 'battery'; percentage: number | null; voltage: number | null; current: number | null; charging: boolean }
-  | { type: 'nav_state'; state: 'idle' | 'active' | 'paused' }
+  | { type: 'nav_state'; state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed' }
   | { type: 'nav_path'; points: [number, number][] }
   | { type: 'unknown'; raw: string };
 
@@ -199,7 +199,7 @@ export function parseMessage(raw: string): InboundMessage {
     }
     if (msg['type'] === 'nav_state') {
       const state = msg['state'];
-      if (state !== 'idle' && state !== 'active' && state !== 'paused') {
+      if (state !== 'idle' && state !== 'active' && state !== 'paused' && state !== 'succeeded' && state !== 'failed') {
         return { type: 'unknown', raw };
       }
       return { type: 'nav_state', state };

@@ -111,6 +111,19 @@ class FakeTeleopClient {
   triggerError(msg: string) {
     this.opts.onError?.(msg);
   }
+
+  triggerNavState(state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed') {
+    this.opts.onNavState?.(state);
+  }
+}
+
+// Helper to make sendNavGoal mockable
+function createFakeClientWithMockNavGoal(mockSendNavGoalReturnValue: boolean | null = null) {
+  const fake = new FakeTeleopClient();
+  if (mockSendNavGoalReturnValue !== null) {
+    fake.sendNavGoal = vi.fn(() => mockSendNavGoalReturnValue);
+  }
+  return fake;
 }
 
 describe('useTeleopBridge', () => {
@@ -997,5 +1010,218 @@ describe('useTeleopBridge', () => {
       fakeClient.opts.onPublish?.(1.0, 0, 0, 'keyboard');
     });
     expect(result.current.publishedTwist).toEqual({ lx: 1.0, ly: 0, az: 0 });
+  });
+
+  // ─── Nav Feedback Tests ──────────────────────────────────────────────────────
+
+  it('initializes navNotice to null', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.navNotice).toBeNull();
+  });
+
+  it('onNavState succeeded sets navState idle and shows navNotice goal reached (ok)', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.navState).toBe('idle');
+    expect(result.current.navNotice).toBeNull();
+
+    act(() => {
+      fakeClient.triggerNavState('succeeded');
+    });
+
+    expect(result.current.navState).toBe('idle');
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.text).toBe('Goal reached');
+    expect(result.current.navNotice!.tone).toBe('ok');
+  });
+
+  it('onNavState failed sets navState idle and shows navNotice navigation failed (error)', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerNavState('failed');
+    });
+
+    expect(result.current.navState).toBe('idle');
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.text).toBe('Navigation failed');
+    expect(result.current.navNotice!.tone).toBe('error');
+  });
+
+  it('onNavState idle/active/paused pass through without creating navNotice', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerNavState('active');
+    });
+    expect(result.current.navState).toBe('active');
+    expect(result.current.navNotice).toBeNull();
+
+    act(() => {
+      fakeClient.triggerNavState('paused');
+    });
+    expect(result.current.navState).toBe('paused');
+    expect(result.current.navNotice).toBeNull();
+
+    act(() => {
+      fakeClient.triggerNavState('idle');
+    });
+    expect(result.current.navState).toBe('idle');
+    expect(result.current.navNotice).toBeNull();
+  });
+
+  it('sendNavGoal returning false sets navNotice with E-STOP warning', () => {
+    const fake = createFakeClientWithMockNavGoal(false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toContain('E-STOP');
+  });
+
+  it('sendNavGoal returning true does not set navNotice', () => {
+    const fake = createFakeClientWithMockNavGoal(true);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).toBeNull();
+  });
+
+  it('navNotice auto-dismisses after 4 seconds', () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerNavState('succeeded');
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+
+    // Advance timers by 4000ms
+    act(() => {
+      vi.advanceTimersByTime(4000);
+    });
+
+    expect(result.current.navNotice).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('new navNotice clears old timer', () => {
+    vi.useFakeTimers();
+
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // First notice
+    act(() => {
+      fakeClient.triggerNavState('succeeded');
+    });
+    expect(result.current.navNotice!.text).toBe('Goal reached');
+
+    // Advance 2 seconds
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // Still visible
+    expect(result.current.navNotice).not.toBeNull();
+
+    // Second notice (should reset timer)
+    act(() => {
+      fakeClient.triggerNavState('failed');
+    });
+    expect(result.current.navNotice!.text).toBe('Navigation failed');
+
+    // Advance 2 more seconds (total 4 from first, but 2 from second)
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    // Should still be visible (2 seconds into second notice)
+    expect(result.current.navNotice).not.toBeNull();
+
+    // Advance 2 more seconds to hit 4 from second notice
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+
+    expect(result.current.navNotice).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('clears timer on unmount', () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+
+    const { result, unmount } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerNavState('succeeded');
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+
+    unmount();
+
+    // clearTimeout should have been called
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    clearTimeoutSpy.mockRestore();
+    vi.useRealTimers();
   });
 });
