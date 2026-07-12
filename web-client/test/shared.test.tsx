@@ -1951,7 +1951,7 @@ describe('HudToast', () => {
     expect(style).toContain('rgb(239, 68, 68)');
   });
 
-  it('has fixed positioning at bottom 24', () => {
+  it('has fixed positioning below the top bar (default top 70)', () => {
     const { container } = render(
       <HudToast notice={{ text: 'Test', tone: 'ok' }} />
     );
@@ -1959,7 +1959,16 @@ describe('HudToast', () => {
     expect(toast).toBeTruthy();
     const style = toast.getAttribute('style') || '';
     expect(style).toContain('position: fixed');
-    expect(style).toContain('bottom: 24');
+    expect(style).toContain('top: 70');
+  });
+
+  it('honors an explicit top offset', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Test', tone: 'ok' }} top={62} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+    const style = toast.getAttribute('style') || '';
+    expect(style).toContain('top: 62');
   });
 
   it('has pointerEvents none (non-interactive)', () => {

@@ -1723,6 +1723,10 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
 
 export interface HudToastProps {
   notice: { text: string; tone: 'ok' | 'warn' | 'error' } | null;
+  /** px from viewport top — views pass header + E-STOP-banner height so the
+      toast reads as a notification under the top bar instead of covering the
+      nav controls at the bottom. */
+  top?: number;
 }
 
 const toastColors = {
@@ -1731,7 +1735,7 @@ const toastColors = {
   error: { bg: '#ef4444', text: '#fff' },
 };
 
-export const HudToast: React.FC<HudToastProps> = ({ notice }) => {
+export const HudToast: React.FC<HudToastProps> = ({ notice, top = 70 }) => {
   if (!notice) return null;
 
   const colors = toastColors[notice.tone];
@@ -1742,7 +1746,7 @@ export const HudToast: React.FC<HudToastProps> = ({ notice }) => {
       data-tone={notice.tone}
       style={{
         position: 'fixed',
-        bottom: 24,
+        top,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 300,

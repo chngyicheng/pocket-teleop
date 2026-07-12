@@ -914,8 +914,10 @@ export const MissionControl: React.FC<MissionControlProps> = ({
       </div>
       )}
 
-      {/* HUD Toast for nav feedback */}
-      <HudToast notice={bridge.navNotice} />
+      {/* HUD Toast for nav feedback — sits just below the E-STOP banner slot
+          (header 44/36 + banner ~26) so it reads as a notification and never
+          covers the expanded map's nav buttons. */}
+      <HudToast notice={bridge.navNotice} top={isLandscape ? 70 : 62} />
     </div>
   );
 };

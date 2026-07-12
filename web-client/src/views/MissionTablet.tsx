@@ -767,8 +767,10 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         externalValue={strafeExternal}
       />
 
-      {/* HUD Toast for nav feedback */}
-      <HudToast notice={bridge.navNotice} />
+      {/* HUD Toast for nav feedback — just below the E-STOP banner slot
+          (top bar 44 + banner ~28) so it reads as a notification and never
+          covers the expanded map's nav buttons. */}
+      <HudToast notice={bridge.navNotice} top={72} />
     </div>
   );
 };
