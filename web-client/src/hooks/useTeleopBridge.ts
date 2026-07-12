@@ -21,6 +21,11 @@ export interface MapPose {
   heading: number;
 }
 
+export type NavNotice = {
+  text: string;
+  tone: 'ok' | 'warn' | 'error';
+};
+
 export interface ScanData {
   angleMin: number;
   angleIncrement: number;
@@ -69,6 +74,7 @@ export interface TeleopBridge {
   disconnectAction: string;
   navState: 'idle' | 'active' | 'paused';
   navPath: [number, number][];
+  navNotice: NavNotice | null;
   sendNavGoal: (wx: number, wy: number, heading: number) => void;
   sendNavPause: () => void;
   sendNavResume: () => void;
@@ -109,6 +115,9 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [navState, setNavState] = useState<'idle' | 'active' | 'paused'>('idle');
   const [navPath, setNavPath] = useState<[number, number][]>([]);
+  const [navNotice, setNavNotice] = useState<NavNotice | null>(null);
+
+  const navNoticeTimerRef = useRef<number | null>(null);
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -204,7 +213,19 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       onBattery: (b) => {
         setBattery(b);
       },
-      onNavState: setNavState,
+      onNavState: (state) => {
+        // Handle nav state transitions
+        if (state === 'succeeded') {
+          setNavState('idle');
+          setNavNotice({ text: 'Goal reached', tone: 'ok' });
+        } else if (state === 'failed') {
+          setNavState('idle');
+          setNavNotice({ text: 'Navigation failed', tone: 'error' });
+        } else {
+          // For idle/active/paused, pass through without creating notice
+          setNavState(state);
+        }
+      },
       onNavPath: setNavPath,
     });
 
@@ -233,6 +254,32 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     // them here would tear down and reconnect the socket on every speed adjustment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.url, opts.TeleopClientCtor]);
+
+  // Auto-dismiss navNotice after 4 seconds
+  useEffect(() => {
+    if (!navNotice) {
+      // No notice, clear any existing timer
+      if (navNoticeTimerRef.current) {
+        clearTimeout(navNoticeTimerRef.current);
+        navNoticeTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Set timer to clear after 4 seconds
+    navNoticeTimerRef.current = window.setTimeout(() => {
+      setNavNotice(null);
+      navNoticeTimerRef.current = null;
+    }, 4000);
+
+    // Cleanup on unmount or when notice changes
+    return () => {
+      if (navNoticeTimerRef.current) {
+        clearTimeout(navNoticeTimerRef.current);
+        navNoticeTimerRef.current = null;
+      }
+    };
+  }, [navNotice]);
 
   // Handle tab visibility change and bfcache restoration
   useEffect(() => {
@@ -297,7 +344,11 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
 
   const sendNavGoal = (wx: number, wy: number, heading: number) => {
     if (clientRef.current) {
-      clientRef.current.sendNavGoal(wx, wy, heading);
+      const success = clientRef.current.sendNavGoal(wx, wy, heading);
+      if (success === false) {
+        // E-STOP is engaged
+        setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+      }
     }
   };
 
@@ -351,6 +402,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     disconnectAction,
     navState,
     navPath,
+    navNotice,
     sendNavGoal,
     sendNavPause,
     sendNavResume,

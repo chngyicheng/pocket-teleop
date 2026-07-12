@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone, HudToast } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
@@ -913,6 +913,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         </div>
       </div>
       )}
+
+      {/* HUD Toast for nav feedback */}
+      <HudToast notice={bridge.navNotice} />
     </div>
   );
 };

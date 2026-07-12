@@ -1718,3 +1718,45 @@ export const JoystickZone: React.FC<JoystickZoneProps> = ({
     />
   </div>
 );
+
+// ─── HudToast ─────────────────────────────────────────────────────────────
+
+export interface HudToastProps {
+  notice: { text: string; tone: 'ok' | 'warn' | 'error' } | null;
+}
+
+const toastColors = {
+  ok: { bg: '#22c55e', text: '#000' },
+  warn: { bg: '#f59e0b', text: '#000' },
+  error: { bg: '#ef4444', text: '#fff' },
+};
+
+export const HudToast: React.FC<HudToastProps> = ({ notice }) => {
+  if (!notice) return null;
+
+  const colors = toastColors[notice.tone];
+
+  return (
+    <div
+      data-testid="hud-toast"
+      data-tone={notice.tone}
+      style={{
+        position: 'fixed',
+        bottom: 24,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 300,
+        pointerEvents: 'none',
+        padding: '8px 16px',
+        borderRadius: 4,
+        fontWeight: 600,
+        fontSize: 12,
+        fontFamily: 'ui-monospace, monospace',
+        background: colors.bg,
+        color: colors.text,
+      }}
+    >
+      {notice.text}
+    </div>
+  );
+};

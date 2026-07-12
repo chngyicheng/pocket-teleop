@@ -11,6 +11,7 @@ import {
   CONNECTION_LABELS,
   Crosshair,
   JoystickZone,
+  HudToast,
 } from '../src/components/shared';
 
 // ─── Joystick Tests ──────────────────────────────────────────────────────────
@@ -1896,5 +1897,90 @@ describe('JoystickZone', () => {
     // Knob should be absent (unless user is actively touching)
     const knob = container.querySelector('[data-testid="joystick-knob"]');
     expect(knob).toBeNull();
+  });
+});
+
+// ─── HudToast Tests ──────────────────────────────────────────────────────────
+
+describe('HudToast', () => {
+  it('renders null when notice is null', () => {
+    const { container } = render(<HudToast notice={null} />);
+    const toast = container.querySelector('[data-testid="hud-toast"]');
+    expect(toast).toBeNull();
+  });
+
+  it('displays text when notice is provided', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Test message', tone: 'ok' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]');
+    expect(toast).toBeTruthy();
+    expect(toast?.textContent).toBe('Test message');
+  });
+
+  it('tone ok has data-tone=ok and correct styling', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Success', tone: 'ok' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]');
+    expect(toast?.getAttribute('data-tone')).toBe('ok');
+    // Check for green background (#22c55e = rgb(34, 197, 94))
+    const style = toast?.getAttribute('style') || '';
+    expect(style).toContain('rgb(34, 197, 94)');
+  });
+
+  it('tone warn has data-tone=warn and correct styling', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Warning', tone: 'warn' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]');
+    expect(toast?.getAttribute('data-tone')).toBe('warn');
+    // Check for amber background (#f59e0b = rgb(245, 158, 11))
+    const style = toast?.getAttribute('style') || '';
+    expect(style).toContain('rgb(245, 158, 11)');
+  });
+
+  it('tone error has data-tone=error and correct styling', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Error', tone: 'error' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]');
+    expect(toast?.getAttribute('data-tone')).toBe('error');
+    // Check for red background (#ef4444 = rgb(239, 68, 68))
+    const style = toast?.getAttribute('style') || '';
+    expect(style).toContain('rgb(239, 68, 68)');
+  });
+
+  it('has fixed positioning at bottom 24', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Test', tone: 'ok' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+    expect(toast).toBeTruthy();
+    const style = toast.getAttribute('style') || '';
+    expect(style).toContain('position: fixed');
+    expect(style).toContain('bottom: 24');
+  });
+
+  it('has pointerEvents none (non-interactive)', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Test', tone: 'ok' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+    const style = toast.getAttribute('style') || '';
+    // React renders as kebab-case: pointer-events instead of pointerEvents
+    expect(style).toContain('pointer-events: none');
+  });
+
+  it('uses monospace font and specific formatting', () => {
+    const { container } = render(
+      <HudToast notice={{ text: 'Test', tone: 'ok' }} />
+    );
+    const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
+    const style = toast.getAttribute('style') || '';
+    // React renders as kebab-case
+    expect(style).toContain('monospace');
+    expect(style).toContain('font-weight: 600');
+    expect(style).toContain('font-size: 12');
   });
 });
