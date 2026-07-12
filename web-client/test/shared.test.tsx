@@ -2030,9 +2030,10 @@ describe('HudToast', () => {
     );
     const toast = container.querySelector('[data-testid="hud-toast"]') as HTMLElement;
     const style = toast.getAttribute('style') || '';
-    // React renders as kebab-case
-    expect(style).toContain('monospace');
-    expect(style).toContain('font-weight: 600');
-    expect(style).toContain('font-size: 12');
+    // React renders as kebab-case. Font matches the HUD chip/banner theme.
+    expect(style).toContain('JetBrains Mono');
+    expect(style).toContain('letter-spacing: 0.08em');
+    expect(style).toContain('font-weight: 500');
+    expect(style).toContain('font-size: 11');
   });
 });
