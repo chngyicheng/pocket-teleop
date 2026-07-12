@@ -549,3 +549,51 @@ TEST_F(TeleopNodeTest, BuildGoalPoseZeroHeadingIsIdentityQuaternion) {
   EXPECT_DOUBLE_EQ(pose.pose.orientation.z, 0.0);
   EXPECT_DOUBLE_EQ(pose.pose.orientation.w, 1.0);
 }
+
+TEST_F(TeleopNodeTest, NavGoalRejectedBroadcastsFailedState) {
+  // When no action server exists and nav_goal is sent, the server should:
+  // 1. Attempt to send the goal (but it gets rejected)
+  // 2. on_nav_goal_response receives null goal_handle
+  // 3. Broadcast {"type":"nav_state","state":"failed"}
+
+  std::vector<std::string> texts;
+  WsClient client;
+  client.set_access_channels(websocketpp::log::alevel::none);
+  client.set_error_channels(websocketpp::log::elevel::none);
+  client.init_asio();
+  client.set_message_handler([&](websocketpp::connection_hdl, WsClient::message_ptr msg) {
+    texts.push_back(msg->get_payload());
+  });
+  websocketpp::lib::error_code ec;
+  auto con = client.get_connection("ws://localhost:19092/teleop", ec);
+  client.connect(con);
+
+  std::thread t([&]() {
+    // Send a nav_goal; no action server means it will be rejected
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    websocketpp::lib::error_code pec;
+    client.send(con->get_handle(),
+      R"({"type":"nav_goal","x":1.0,"y":2.0,"heading":0.5})",
+      websocketpp::frame::opcode::text, pec);
+
+    // Wait a bit for the response/rejection to process
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    client.stop();
+  });
+  client.run();
+  t.join();
+
+  // Look for the failed nav_state
+  bool found_failed = false;
+  for (const auto& text : texts) {
+    auto j = nlohmann::json::parse(text, nullptr, false);
+    if (j.is_discarded() || j.value("type", "") != "nav_state") continue;
+    auto state = j.value("state", "");
+    if (state == "failed") {
+      found_failed = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found_failed) << "expected nav_state with state='failed' when action server unavailable";
+}
+
