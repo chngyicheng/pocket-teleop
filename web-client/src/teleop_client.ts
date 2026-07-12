@@ -61,7 +61,7 @@ export interface TeleopClientOptions {
   onGamepadActivity?: () => void;
   onGamepadConnected?: (connected: boolean, id: string | null) => void;
   onEstopState?: (engaged: boolean) => void;
-  onNavState?: (state: 'idle' | 'active' | 'paused') => void;
+  onNavState?: (state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed') => void;
   onNavPath?: (points: [number, number][]) => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
@@ -312,18 +312,19 @@ export class TeleopClient {
     this.lastSentAt = Date.now();
   }
 
-  sendNavGoal(wx: number, wy: number, heading: number): void {
+  sendNavGoal(wx: number, wy: number, heading: number): boolean {
     // Estop engaged: no-op + warn
     if (this.estopEngaged) {
       console.warn('sendNavGoal blocked: estop engaged');
-      return;
+      return false;
     }
     // No connection: no-op
     if (!this.connection) {
-      return;
+      return false;
     }
     this.connection.send(buildNavGoal(wx, wy, heading));
     this.lastSentAt = Date.now();
+    return true;
   }
 
   sendNavPause(): void {
