@@ -1359,4 +1359,91 @@ describe('useTeleopBridge', () => {
     clearTimeoutSpy.mockRestore();
     vi.useRealTimers();
   });
+
+  it('latencyHistory starts empty', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.latencyHistory).toEqual([]);
+  });
+
+  it('onLatency pushes values into latencyHistory', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerLatency(50);
+    });
+    expect(result.current.latencyHistory).toEqual([50]);
+
+    act(() => {
+      fakeClient.triggerLatency(60);
+    });
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    act(() => {
+      fakeClient.triggerLatency(55);
+    });
+    expect(result.current.latencyHistory).toEqual([50, 60, 55]);
+  });
+
+  it('latencyHistory caps at 60 items', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // Push 61 values
+    act(() => {
+      for (let i = 0; i < 61; i++) {
+        fakeClient.triggerLatency(50 + i);
+      }
+    });
+
+    expect(result.current.latencyHistory.length).toBe(60);
+    // First value (50) should be gone, last value (110) should be present
+    expect(result.current.latencyHistory[0]).toBe(51);
+    expect(result.current.latencyHistory[59]).toBe(110);
+  });
+
+  it('latencyHistory persists across reconnect', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerLatency(50);
+      fakeClient.triggerLatency(60);
+    });
+
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    // Simulate reconnect: onClose then reconnecting
+    act(() => {
+      fakeClient.triggerClose(1000, 'Normal closure');
+      fakeClient.triggerReconnecting(1);
+    });
+
+    // History should still be there (not cleared on reconnect)
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    act(() => {
+      fakeClient.triggerLatency(70);
+    });
+
+    expect(result.current.latencyHistory).toEqual([50, 60, 70]);
+  });
 });

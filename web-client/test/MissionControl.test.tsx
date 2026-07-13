@@ -18,6 +18,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     connectionState: 'live',
     retryCount: 0,
     latencyMs: 42,
+    latencyHistory: [],
     odom: { x: 0, y: 0, heading: 0 },
     mapGrid: null,
     mapPose: null,

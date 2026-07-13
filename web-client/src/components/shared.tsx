@@ -1615,6 +1615,77 @@ export const SignalBars: React.FC<SignalBarsProps> = ({
   );
 };
 
+// ─── LatencySparkline ──────────────────────────────────────────────────────────
+
+export interface LatencySparklineProps {
+  history: number[];
+  width?: number;
+  height?: number;
+}
+
+export const LatencySparkline: React.FC<LatencySparklineProps> = ({
+  history,
+  width = 80,
+  height = 24,
+}) => {
+  // Return null if insufficient data
+  if (history.length < 2) {
+    return null;
+  }
+
+  // Determine color tier based on last value
+  const lastValue = history[history.length - 1];
+  const tier = lastValue < 100 ? 'ok' : lastValue < 300 ? 'warn' : 'danger';
+  const tierColors = {
+    ok: '#22c55e',
+    warn: '#f59e0b',
+    danger: '#ef4444',
+  };
+  const color = tierColors[tier];
+
+  // Scale Y-axis: use max of observed values or 300, whichever is larger
+  const maxObserved = Math.max(...history);
+  const yMax = Math.max(300, maxObserved);
+
+  // Build polyline points: x evenly distributed, y scaled with inversion (SVG y=0 at top)
+  const points = history.map((value, idx) => {
+    const x = (idx / (history.length - 1)) * width;
+    const y = height - (value / yMax) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div
+      data-testid="latency-sparkline"
+      data-tier={tier}
+      style={{
+        background: 'rgba(8,10,14,0.55)',
+        borderRadius: 2,
+        padding: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ display: 'block' }}
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+};
+
 // ─── VideoSignalOverlay ────────────────────────────────────────────────────────
 
 export interface VideoSignalOverlayProps {

@@ -46,6 +46,7 @@ export interface TeleopBridge {
   connectionState: ConnectionState;
   retryCount: number;
   latencyMs: number | null;
+  latencyHistory: number[];
   odom: { x: number; y: number; heading: number } | null;
   mapGrid: MapGrid | null;
   mapPose: MapPose | null;
@@ -95,6 +96,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [retryCount, setRetryCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [latencyHistory, setLatencyHistory] = useState<number[]>([]);
   const [odom, setOdom] = useState<{ x: number; y: number; heading: number } | null>(null);
   const [mapGrid, setMapGrid] = useState<MapGrid | null>(null);
   const [mapPose, setMapPose] = useState<MapPose | null>(null);
@@ -145,6 +147,14 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onLatency: (ms) => {
         setLatencyMs(ms);
+        setLatencyHistory((prev) => {
+          const updated = [...prev, ms];
+          // Keep only the last 60 values
+          if (updated.length > 60) {
+            return updated.slice(-60);
+          }
+          return updated;
+        });
         hasNetworkDataRef.current = true;
       },
       onOdom: (x, y, heading) => {
@@ -393,6 +403,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     connectionState,
     retryCount,
     latencyMs,
+    latencyHistory,
     odom,
     mapGrid,
     mapPose,

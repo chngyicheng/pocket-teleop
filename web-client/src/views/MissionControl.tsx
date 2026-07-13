@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone, HudToast } from '../components/shared.js';
+import { MiniMap, Compass, VelBars, Readout, SignalBars, CONNECTION_LABELS, VideoSignalOverlay, Crosshair, JoystickZone, HudToast, LatencySparkline } from '../components/shared.js';
 import CollapsibleRail from '../components/CollapsibleRail.js';
 import SpeedStepper from '../components/SpeedStepper.js';
 import { TeleopBridge } from '../hooks/useTeleopBridge.js';
@@ -482,11 +482,14 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
               {/* LAT/BAT/SIG readouts */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <Readout
-                  label="LAT"
-                  value={latText}
-                  color={p.accent}
-                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Readout
+                    label="LAT"
+                    value={latText}
+                    color={p.accent}
+                  />
+                  <LatencySparkline history={bridge.latencyHistory} />
+                </div>
                 <Readout label="BAT" value={batModel.value} color={batColor} />
                 <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
               </div>
