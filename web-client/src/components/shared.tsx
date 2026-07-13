@@ -7,7 +7,9 @@
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { WhepState } from '../whep_client.js';
-import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint, pointerToWorldHeading, worldHeadingToScreenDeg } from '../map_render.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint, pointerToWorldHeading, worldHeadingToScreenDeg, cellAtWorld } from '../map_render.js';
+import { CELL_FREE } from '../map_codec.js';
+import type { FencePolygon } from '../geofence.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -68,6 +70,8 @@ export interface MiniMapProps {
   onExpandedChange?: (expanded: boolean) => void;
   /** Enable waypoint placement UI in expanded view. */
   enableWaypoints?: boolean;
+  /** Enable map panning (1-finger drag + 2-finger drag). Typically used in full-screen map view mode. */
+  pannable?: boolean;
   /** Current nav2 action state: 'idle' (no nav goal), 'active' (navigating), 'paused' (paused). */
   navState?: 'idle' | 'active' | 'paused';
   /** Global path from nav2 (array of [x, y] world coords). */
@@ -80,6 +84,10 @@ export interface MiniMapProps {
   onNavResume?: () => void;
   /** Fires when stop button clicked (cancels nav goal). */
   onNavCancel?: () => void;
+  /** Active geofences (map coordinates). */
+  fences?: FencePolygon[];
+  /** Fires when geofences are saved: called with new fences array. */
+  onSaveFences?: (fences: FencePolygon[]) => void;
 }
 
 export interface CompassProps {
@@ -384,6 +392,12 @@ interface MiniMapViewProps extends MiniMapProps {
   onWaypointHeading?: (heading: number) => void;
   /** Enable map panning (1-finger drag + 2-finger drag). Used by the expanded view only. */
   pannable?: boolean;
+  /** Geofence editing mode: true when user is actively editing fences. */
+  fenceEditMode?: boolean;
+  /** Draft fence vertices being placed (world coords). */
+  draftFenceVertices?: [number, number][];
+  /** Fires on pointer up to add a vertex to the draft fence. */
+  onFenceVertex?: (wx: number, wy: number) => void;
 }
 
 /** Internal component that owns all the map rendering, pinch-zoom, tap detection, and wheel-zoom logic. */
@@ -411,6 +425,10 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
   onWaypointHeading,
   navPath,
   pannable = false,
+  fenceEditMode = false,
+  draftFenceVertices = [],
+  onFenceVertex,
+  fences = [],
 }) => {
   const trailRef = useRef<Array<{ x: number; y: number }>>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -608,6 +626,14 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
       const isValidRelease =
         tapStartRef.current && pointersRef.current.size === 1 && mapGrid && mapPose;
 
+      // Fence vertex placement (same UX as waypoint)
+      if (fenceEditMode && isValidRelease && onFenceVertex && rect) {
+        const localX = e.clientX - rect.left - pan.x;
+        const localY = e.clientY - rect.top - pan.y;
+        const world = screenToWorldPoint({ x: localX, y: localY }, mapPose, size, clampedViewM);
+        onFenceVertex(world.x, world.y);
+      }
+
       // Waypoint placement: release (any distance or time) converts screen → world
       // ponytail: loupe magnifier deferred — add when tuning real-touch placement precision
       if (waypointMode && isValidRelease && onWaypointPlace && rect) {
@@ -617,8 +643,8 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         onWaypointPlace(world.x, world.y);
       }
 
-      // Regular tap (no waypoint mode): only if moved <10px and dt < 400ms
-      if (!waypointMode && onTap && tapStartRef.current && pointersRef.current.size === 1) {
+      // Regular tap (no waypoint/fence mode): only if moved <10px and dt < 400ms
+      if (!waypointMode && !fenceEditMode && onTap && tapStartRef.current && pointersRef.current.size === 1) {
         const { x, y, t } = tapStartRef.current;
         const dist = Math.hypot(e.clientX - x, e.clientY - y);
         const dt = Date.now() - t;
@@ -634,7 +660,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
         pinchRef.current = null;
       }
     },
-    [onTap, waypointMode, mapGrid, mapPose, onWaypointPlace, size, clampedViewM, pan.x, pan.y]
+    [onTap, waypointMode, fenceEditMode, mapGrid, mapPose, onWaypointPlace, onFenceVertex, size, clampedViewM, pan.x, pan.y]
   );
 
   const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -789,6 +815,75 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
               rx="1"
             />
           </g>
+        </svg>
+      )}
+
+      {/* Geofence polygons (map mode only) — always drawn when fences exist */}
+      {fences && fences.length > 0 && mapGrid && mapPose && (
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          data-testid="fence-polygons"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        >
+          {fences.map((fence, idx) => {
+            if (fence.vertices.length < 3) return null;
+            const screenPts = fence.vertices
+              .map((pt) => worldToScreenPoint({ x: pt[0], y: pt[1] }, mapPose, size, clampedViewM))
+              .map((p) => `${p.x + pan.x},${p.y + pan.y}`)
+              .join(' ');
+            return (
+              <polygon
+                key={idx}
+                points={screenPts}
+                fill="rgba(239,68,68,0.15)"
+                stroke="#ef4444"
+                strokeWidth="1.5"
+                strokeDasharray="3 2"
+                data-testid="fence-polygon"
+              />
+            );
+          })}
+        </svg>
+      )}
+
+      {/* Draft fence vertices (in editing mode) */}
+      {draftFenceVertices && draftFenceVertices.length > 0 && mapGrid && mapPose && fenceEditMode && (
+        <svg
+          viewBox={`0 0 ${size} ${size}`}
+          data-testid="draft-fence"
+          style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+        >
+          {/* Draw lines connecting draft vertices */}
+          {draftFenceVertices.length >= 2 && (
+            <polyline
+              points={draftFenceVertices
+                .map((pt) => worldToScreenPoint({ x: pt[0], y: pt[1] }, mapPose, size, clampedViewM))
+                .map((p) => `${p.x + pan.x},${p.y + pan.y}`)
+                .join(' ')}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="2"
+              strokeOpacity="0.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+          {/* Draw vertices as circles */}
+          {draftFenceVertices.map((pt, idx) => {
+            const screen = worldToScreenPoint({ x: pt[0], y: pt[1] }, mapPose, size, clampedViewM);
+            const sx = screen.x + pan.x;
+            const sy = screen.y + pan.y;
+            return (
+              <circle
+                key={idx}
+                cx={sx}
+                cy={sy}
+                r="4"
+                fill="#ef4444"
+                fillOpacity="0.7"
+              />
+            );
+          })}
         </svg>
       )}
 
@@ -954,11 +1049,17 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   onNavCancel,
   mapGrid,
   mapPose,
+  fences = [],
+  onSaveFences,
   ...props
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [waypointMode, setWaypointMode] = useState(false);
   const [waypoint, setWaypoint] = useState<{ wx: number; wy: number; heading: number } | null>(null);
+  const [blockedHint, setBlockedHint] = useState(false);
+  const [fenceEditMode, setFenceEditMode] = useState(false);
+  const [draftFenceVertices, setDraftFenceVertices] = useState<[number, number][]>([]);
+  const blockedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notify the view so it can raise the joysticks above the overlay while expanded.
   useEffect(() => {
@@ -978,6 +1079,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     setExpanded(false);
     setWaypointMode(false);
     setWaypoint(null);
+    setBlockedHint(false);
+    setFenceEditMode(false);
+    setDraftFenceVertices([]);
+    if (blockedTimeoutRef.current) {
+      clearTimeout(blockedTimeoutRef.current);
+      blockedTimeoutRef.current = null;
+    }
   };
 
   const overlay = (
@@ -1024,11 +1132,29 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             waypointMode={waypointMode}
             waypoint={waypoint}
             navPath={navPath}
+            fences={fences}
+            fenceEditMode={fenceEditMode}
+            draftFenceVertices={draftFenceVertices}
             onWaypointPlace={(wx, wy) => {
+              // Occupancy check: only place on a free cell. Occupied, unknown,
+              // or out-of-bounds targets show a transient blocked hint instead.
+              const cell = mapGrid ? cellAtWorld(mapGrid, wx, wy) : null;
+              if (cell !== CELL_FREE) {
+                setBlockedHint(true);
+                if (blockedTimeoutRef.current) clearTimeout(blockedTimeoutRef.current);
+                blockedTimeoutRef.current = setTimeout(() => {
+                  setBlockedHint(false);
+                  blockedTimeoutRef.current = null;
+                }, 2000);
+                return;
+              }
               setWaypoint({ wx, wy, heading: mapPose?.heading ?? 0 });
             }}
             onWaypointHeading={(h) => {
               setWaypoint((w) => (w ? { ...w, heading: h } : w));
+            }}
+            onFenceVertex={(wx, wy) => {
+              setDraftFenceVertices((prev) => [...prev, [wx, wy]]);
             }}
           />
           <button
@@ -1065,8 +1191,23 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             flexWrap: 'wrap',
             justifyContent: 'center',
             minHeight: 40,
+            alignItems: 'center',
           }}
         >
+          {blockedHint && waypointMode && (
+            <div
+              data-testid="waypoint-blocked-hint"
+              style={{
+                fontSize: 11,
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                color: '#ef4444',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Blocked — tap free space
+            </div>
+          )}
+
           {navState === 'idle' && !waypointMode && (
             <button
               data-testid="set-waypoint-btn"
@@ -1238,6 +1379,138 @@ export const MiniMap: React.FC<MiniMapProps> = ({
               </button>
             </>
           )}
+
+          {/* Geofence editing controls (idle state only, not in waypoint/fence mode) */}
+          {navState === 'idle' && !waypointMode && !fenceEditMode && (
+            <button
+              data-testid="edit-fence-btn"
+              disabled={!mapGrid || !mapPose || mapPose.frame !== 'map'}
+              onClick={() => {
+                setFenceEditMode(true);
+                setDraftFenceVertices([]);
+              }}
+              style={{
+                padding: '8px 14px',
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                letterSpacing: '0.05em',
+                borderRadius: 4,
+                border: 'none',
+                background: mapGrid && mapPose && mapPose.frame === 'map' ? '#ef4444' : 'rgba(239,68,68,0.3)',
+                color: mapGrid && mapPose && mapPose.frame === 'map' ? '#fff' : 'rgba(255,255,255,0.5)',
+                cursor: mapGrid && mapPose && mapPose.frame === 'map' ? 'pointer' : 'not-allowed',
+                opacity: mapGrid && mapPose && mapPose.frame === 'map' ? 1 : 0.6,
+                transition: 'all 200ms',
+              }}
+            >
+              Edit Fence
+            </button>
+          )}
+
+          {fenceEditMode && (
+            <>
+              <button
+                data-testid="close-fence-btn"
+                disabled={draftFenceVertices.length < 3}
+                onClick={() => {
+                  if (draftFenceVertices.length >= 3) {
+                    const newFence: FencePolygon = { vertices: draftFenceVertices };
+                    const updatedFences = [...fences, newFence];
+                    onSaveFences?.(updatedFences);
+                    setFenceEditMode(false);
+                    setDraftFenceVertices([]);
+                  }
+                }}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  letterSpacing: '0.05em',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: draftFenceVertices.length >= 3 ? '#22c55e' : 'rgba(34,197,94,0.3)',
+                  color: draftFenceVertices.length >= 3 ? '#000' : 'rgba(0,0,0,0.5)',
+                  cursor: draftFenceVertices.length >= 3 ? 'pointer' : 'not-allowed',
+                  opacity: draftFenceVertices.length >= 3 ? 1 : 0.6,
+                  transition: 'all 200ms',
+                }}
+              >
+                Close Fence
+              </button>
+              <button
+                data-testid="undo-point-btn"
+                disabled={draftFenceVertices.length === 0}
+                onClick={() => {
+                  setDraftFenceVertices((prev) => prev.slice(0, -1));
+                }}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  letterSpacing: '0.05em',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: draftFenceVertices.length > 0 ? '#f59e0b' : 'rgba(245,158,11,0.3)',
+                  color: draftFenceVertices.length > 0 ? '#000' : 'rgba(0,0,0,0.5)',
+                  cursor: draftFenceVertices.length > 0 ? 'pointer' : 'not-allowed',
+                  opacity: draftFenceVertices.length > 0 ? 1 : 0.6,
+                  transition: 'all 200ms',
+                }}
+              >
+                Undo Point
+              </button>
+              <button
+                data-testid="clear-fences-btn"
+                onClick={() => {
+                  onSaveFences?.([]);
+                  setFenceEditMode(false);
+                  setDraftFenceVertices([]);
+                }}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  letterSpacing: '0.05em',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: '#ef4444',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  opacity: 1,
+                  transition: 'all 200ms',
+                }}
+              >
+                Clear Fences
+              </button>
+              <button
+                data-testid="cancel-fence-btn"
+                onClick={() => {
+                  setFenceEditMode(false);
+                  setDraftFenceVertices([]);
+                }}
+                style={{
+                  padding: '8px 14px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                  letterSpacing: '0.05em',
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'rgba(139,139,139,0.5)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  opacity: 0.8,
+                  transition: 'all 200ms',
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1254,6 +1527,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({
         hidden={expandable && expanded}
         onTap={expandable ? () => setExpanded(true) : undefined}
         navPath={navPath}
+        fences={fences}
       />
 
       {/* Expanded overlay — portaled to <body> so it escapes any transformed/clipping
@@ -1576,6 +1850,77 @@ export const SignalBars: React.FC<SignalBarsProps> = ({
           );
         })}
       </div>
+    </div>
+  );
+};
+
+// ─── LatencySparkline ──────────────────────────────────────────────────────────
+
+export interface LatencySparklineProps {
+  history: number[];
+  width?: number;
+  height?: number;
+}
+
+export const LatencySparkline: React.FC<LatencySparklineProps> = ({
+  history,
+  width = 80,
+  height = 24,
+}) => {
+  // Return null if insufficient data
+  if (history.length < 2) {
+    return null;
+  }
+
+  // Determine color tier based on last value
+  const lastValue = history[history.length - 1];
+  const tier = lastValue < 100 ? 'ok' : lastValue < 300 ? 'warn' : 'danger';
+  const tierColors = {
+    ok: '#22c55e',
+    warn: '#f59e0b',
+    danger: '#ef4444',
+  };
+  const color = tierColors[tier];
+
+  // Scale Y-axis: use max of observed values or 300, whichever is larger
+  const maxObserved = Math.max(...history);
+  const yMax = Math.max(300, maxObserved);
+
+  // Build polyline points: x evenly distributed, y scaled with inversion (SVG y=0 at top)
+  const points = history.map((value, idx) => {
+    const x = (idx / (history.length - 1)) * width;
+    const y = height - (value / yMax) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div
+      data-testid="latency-sparkline"
+      data-tier={tier}
+      style={{
+        background: 'rgba(8,10,14,0.55)',
+        borderRadius: 2,
+        padding: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ display: 'block' }}
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
     </div>
   );
 };

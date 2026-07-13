@@ -5,6 +5,7 @@ import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildNavCancel, buildNavGoal, buildNavPause, buildNavResume, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
 import type { NetworkStats } from './network_quality.js';
+import { speedScale, type FencePolygon } from './geofence.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
 const PUBLISH_INTERVAL_MS = 50;
@@ -63,6 +64,7 @@ export interface TeleopClientOptions {
   onEstopState?: (engaged: boolean) => void;
   onNavState?: (state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed') => void;
   onNavPath?: (points: [number, number][]) => void;
+  onGeofenceLimit?: () => void;
   keepaliveIntervalMs?: number;
   /** Override the continuous-publish tick rate (default: PUBLISH_INTERVAL_MS). */
   publishIntervalMs?: number;
@@ -123,6 +125,11 @@ export class TeleopClient {
   private activeSource: InputSource | null = null;
   /** Timestamp of last input from the active source */
   private lastActiveAt = 0;
+
+  // Geofence state
+  private fences: FencePolygon[] = [];
+  private lastMapPose: { x: number; y: number } | null = null;
+  private wasGeofenceLimited = false;
 
   constructor(options: TeleopClientOptions = {}) {
     this.options = options;
@@ -261,6 +268,10 @@ export class TeleopClient {
     this.maxAngular = maxAngular;
   }
 
+  setFences(fences: FencePolygon[]): void {
+    this.fences = fences;
+  }
+
   getNetworkStats(): NetworkStats {
     const n = this.rttSamples.length;
     const rtt = n > 0 ? this.rttSamples[n - 1] : 0;
@@ -319,7 +330,7 @@ export class TeleopClient {
       return false;
     }
     // No connection: no-op
-    if (!this.connection) {
+    if (!this.connection.isOpen()) {
       return false;
     }
     this.connection.send(buildNavGoal(wx, wy, heading));
@@ -327,34 +338,37 @@ export class TeleopClient {
     return true;
   }
 
-  sendNavPause(): void {
-    // Always send (even if estop engaged)
-    if (!this.connection) {
-      return;
+  sendNavPause(): boolean {
+    // Always send (even if estop engaged), but check connection
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavPause());
     this.lastSentAt = Date.now();
+    return true;
   }
 
-  sendNavResume(): void {
+  sendNavResume(): boolean {
     // Estop engaged: no-op
     if (this.estopEngaged) {
-      return;
+      return false;
     }
-    if (!this.connection) {
-      return;
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavResume());
     this.lastSentAt = Date.now();
+    return true;
   }
 
-  sendNavCancel(): void {
-    // Always send (even if estop engaged)
-    if (!this.connection) {
-      return;
+  sendNavCancel(): boolean {
+    // Always send (even if estop engaged), but check connection
+    if (!this.connection.isOpen()) {
+      return false;
     }
     this.connection.send(buildNavCancel());
     this.lastSentAt = Date.now();
+    return true;
   }
 
   sendTwist(lx: number, ly: number, az: number, source: InputSource = 'touch'): void {
@@ -481,6 +495,10 @@ export class TeleopClient {
     } else if (msg.type === 'pose') {
       const frame = msg.frame === 'map' || msg.frame === 'odom' ? msg.frame : 'odom';
       this.options.onPose?.(frame, msg.x, msg.y, msg.heading);
+      // Store map-frame pose for geofence calculations
+      if (frame === 'map') {
+        this.lastMapPose = { x: msg.x, y: msg.y };
+      }
     } else if (msg.type === 'scan') {
       const scanData: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose } = {
         angle_min: msg.angle_min,
@@ -613,13 +631,33 @@ export class TeleopClient {
         ly: this.rampAxis(this.currentTwist.ly, this.targetTwist.ly),
         az: this.rampAxis(this.currentTwist.az, this.targetTwist.az),
       };
+
+      // Calculate geofence speed scale
+      let scale = 1;
+      if (this.fences.length > 0 && this.lastMapPose) {
+        scale = speedScale([this.lastMapPose.x, this.lastMapPose.y], this.fences);
+      }
+
       const isNonZero = this.currentTwist.lx !== 0 || this.currentTwist.ly !== 0 || this.currentTwist.az !== 0;
+
+      // Fire onGeofenceLimit when transitioning from non-zero to zero due to geofence
+      if (scale === 0 && !this.wasGeofenceLimited && isNonZero) {
+        this.wasGeofenceLimited = true;
+        this.options.onGeofenceLimit?.();
+      } else if (scale > 0 && isNonZero) {
+        this.wasGeofenceLimited = false;
+      }
+
       // Send while moving, and once more on the tick we settle to rest (terminal
       // zero). When both are zero we are idle — stay silent; keepalive pings.
       if (isNonZero || wasNonZero) {
-        this.sendScaledTwist(this.currentTwist.lx, this.currentTwist.ly, this.currentTwist.az);
+        // Apply geofence speed scale before sending
+        const scaledLx = this.currentTwist.lx * scale;
+        const scaledLy = this.currentTwist.ly * scale;
+        const scaledAz = this.currentTwist.az * scale;
+        this.sendScaledTwist(scaledLx, scaledLy, scaledAz);
         this.lastSentAt = Date.now();
-        this.options.onPublish?.(this.currentTwist.lx, this.currentTwist.ly, this.currentTwist.az, this.activeSource ?? 'idle');
+        this.options.onPublish?.(scaledLx, scaledLy, scaledAz, this.activeSource ?? 'idle');
       }
     }, this.publishIntervalMs);
   }

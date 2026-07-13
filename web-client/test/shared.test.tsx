@@ -12,6 +12,7 @@ import {
   Crosshair,
   JoystickZone,
   HudToast,
+  LatencySparkline,
 } from '../src/components/shared';
 
 // ─── Joystick Tests ──────────────────────────────────────────────────────────
@@ -1483,6 +1484,135 @@ describe('MiniMap', () => {
 
     expect(onNavCancel).toHaveBeenCalled();
   });
+
+  // ─── Waypoint occupancy check ───────────────────────────────────────────────
+  // 3×3 grid @ resolution 0.5, origin (0,0) → spans x,y ∈ [0, 1.5).
+  // jsdom window 1024×768 → expandedSize 628, clampedViewM = 1.5·1.2 = 1.8,
+  // so a tap at screen (100,100) → world ≈ (0.613, 0.613) → col 1, row 1 → cells[4].
+  const occupancyGrid = (centerCell: number) => {
+    const cells = new Uint8Array(9).fill(1); // all CELL_FREE
+    cells[4] = centerCell;
+    return { cells, width: 3, height: 3, resolution: 0.5, originX: 0, originY: 0 };
+  };
+  const occupancyPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+
+  // Expand, enter waypoint mode, and return the expanded MiniMapView container
+  // (the pointer-handler div wrapping the expanded canvas inside the portal).
+  const expandAndArm = (container: HTMLElement) => {
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+
+    const setBtn = document.querySelector('[data-testid="set-waypoint-btn"]') as HTMLButtonElement;
+    expect(setBtn).toBeTruthy();
+    fireEvent.click(setBtn);
+
+    const overlay = document.querySelector('[data-testid="minimap-expanded"]') as HTMLElement;
+    const canvas = overlay.querySelector('[data-testid="minimap-canvas"]') as HTMLElement;
+    return canvas.parentElement as HTMLElement;
+  };
+
+  it('waypoint tap on an occupied cell is rejected and shows the blocked hint', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={occupancyGrid(2) /* center cell occupied */}
+        mapPose={occupancyPose}
+      />
+    );
+
+    const mapEl = expandAndArm(container);
+    fireEvent.pointerDown(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+
+    // No waypoint placed → send stays disabled; blocked hint visible
+    const hint = document.querySelector('[data-testid="waypoint-blocked-hint"]');
+    expect(hint).toBeTruthy();
+    expect(hint?.textContent).toBe('Blocked — tap free space');
+    const sendBtn = document.querySelector('[data-testid="send-waypoint-btn"]') as HTMLButtonElement;
+    expect(sendBtn.disabled).toBe(true);
+    expect(document.querySelector('[data-testid="waypoint-marker"]')).toBeFalsy();
+  });
+
+  it('waypoint tap on an unknown cell is rejected and shows the blocked hint', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={occupancyGrid(0) /* center cell unknown */}
+        mapPose={occupancyPose}
+      />
+    );
+
+    const mapEl = expandAndArm(container);
+    fireEvent.pointerDown(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+
+    expect(document.querySelector('[data-testid="waypoint-blocked-hint"]')).toBeTruthy();
+    const sendBtn = document.querySelector('[data-testid="send-waypoint-btn"]') as HTMLButtonElement;
+    expect(sendBtn.disabled).toBe(true);
+  });
+
+  it('blocked hint auto-clears after 2 seconds', () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(
+        <MiniMap
+          pos={{ x: 0, y: 0 }}
+          heading={0}
+          expandable={true}
+          enableWaypoints={true}
+          navState="idle"
+          mapGrid={occupancyGrid(2)}
+          mapPose={occupancyPose}
+        />
+      );
+
+      const mapEl = expandAndArm(container);
+      fireEvent.pointerDown(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+      fireEvent.pointerUp(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+
+      expect(document.querySelector('[data-testid="waypoint-blocked-hint"]')).toBeTruthy();
+
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      expect(document.querySelector('[data-testid="waypoint-blocked-hint"]')).toBeFalsy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('waypoint tap on a free cell still places the waypoint (send enabled, no hint)', () => {
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={occupancyGrid(1) /* all free */}
+        mapPose={occupancyPose}
+      />
+    );
+
+    const mapEl = expandAndArm(container);
+    fireEvent.pointerDown(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+    fireEvent.pointerUp(mapEl, { pointerId: 2, clientX: 100, clientY: 100 });
+
+    expect(document.querySelector('[data-testid="waypoint-blocked-hint"]')).toBeFalsy();
+    const sendBtn = document.querySelector('[data-testid="send-waypoint-btn"]') as HTMLButtonElement;
+    expect(sendBtn.disabled).toBe(false);
+    expect(document.querySelector('[data-testid="waypoint-marker"]')).toBeTruthy();
+  });
 });
 
 // ─── Compass Tests ──────────────────────────────────────────────────────────
@@ -2035,5 +2165,63 @@ describe('HudToast', () => {
     expect(style).toContain('letter-spacing: 0.08em');
     expect(style).toContain('font-weight: 500');
     expect(style).toContain('font-size: 11');
+  });
+});
+
+// ─── LatencySparkline Tests ────────────────────────────────────────────────────
+
+describe('LatencySparkline', () => {
+  it('returns null when history has fewer than 2 values', () => {
+    const { container: c0 } = render(<LatencySparkline history={[]} />);
+    expect(c0.querySelector('[data-testid="latency-sparkline"]')).toBeNull();
+    const { container: c1 } = render(<LatencySparkline history={[50]} />);
+    expect(c1.querySelector('[data-testid="latency-sparkline"]')).toBeNull();
+  });
+
+  it('renders one polyline point per history sample', () => {
+    const { container } = render(
+      <LatencySparkline history={[50, 60, 70, 80]} width={80} height={24} />
+    );
+    const sparkline = container.querySelector('[data-testid="latency-sparkline"]');
+    expect(sparkline).toBeTruthy();
+    const points = sparkline?.querySelector('polyline')?.getAttribute('points') || '';
+    expect(points.split(' ').filter(Boolean).length).toBe(4);
+  });
+
+  it('sets data-tier from the last value: <100 ok, <300 warn, else danger', () => {
+    const tierOf = (history: number[]) => {
+      const { container } = render(<LatencySparkline history={history} />);
+      return container
+        .querySelector('[data-testid="latency-sparkline"]')
+        ?.getAttribute('data-tier');
+    };
+    expect(tierOf([250, 90])).toBe('ok');
+    expect(tierOf([50, 250])).toBe('warn');
+    expect(tierOf([50, 350])).toBe('danger');
+  });
+
+  it('scales y to max(300, observed max)', () => {
+    // All values <300: yMax=300, so value 150 maps to y = 24 - (150/300)*24 = 12
+    const { container: c1 } = render(
+      <LatencySparkline history={[150, 150]} width={80} height={24} />
+    );
+    const pts1 = c1.querySelector('polyline')?.getAttribute('points') || '';
+    expect(pts1.split(' ')[0]).toBe('0,12');
+    // Max 600 > 300: yMax=600, so 600 maps to y=0 (top) and 300 maps to y=12
+    const { container: c2 } = render(
+      <LatencySparkline history={[300, 600]} width={80} height={24} />
+    );
+    const pts2 = c2.querySelector('polyline')?.getAttribute('points') || '';
+    expect(pts2.split(' ')).toEqual(['0,12', '80,0']);
+  });
+
+  it('renders the dark readout-style container', () => {
+    const { container } = render(
+      <LatencySparkline history={[50, 100, 150]} width={80} height={24} />
+    );
+    const wrapper = container.querySelector('[data-testid="latency-sparkline"]') as HTMLElement;
+    const style = wrapper.getAttribute('style') || '';
+    expect(style).toContain('rgba(8, 10, 14, 0.55)');
+    expect(style).toContain('border-radius: 2');
   });
 });

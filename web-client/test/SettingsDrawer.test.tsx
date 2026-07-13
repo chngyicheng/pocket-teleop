@@ -167,7 +167,10 @@ describe('SettingsDrawer', () => {
 
   it('renders Video section with mode select and URL input', () => {
     render(<SettingsDrawer open={true} onClose={() => {}} />);
-    expect(screen.getByText('Video')).toBeTruthy();
+    // Find the Video section heading (h3 tag with uppercase "VIDEO")
+    const headings = screen.getAllByRole('heading');
+    const videoHeading = headings.find((h) => h.textContent === 'Video');
+    expect(videoHeading).toBeTruthy();
     const inputs = screen.getAllByRole('textbox');
     expect(inputs.length).toBeGreaterThanOrEqual(1);
   });
@@ -489,7 +492,7 @@ describe('SettingsDrawer', () => {
 
   // ─── Layout Tests ─────────────────────────────────────────────────────────
 
-  it('has three sections vertically stacked', async () => {
+  it('has four sections vertically stacked: Diagnostics, Gamepad, Video, Robot', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -506,6 +509,7 @@ describe('SettingsDrawer', () => {
     await screen.findByDisplayValue('Bot'); // Wait for Robot section to load
     const headings = screen.getAllByRole('heading');
     const titles = headings.map((h) => h.textContent);
+    expect(titles).toContain('Diagnostics');
     expect(titles).toContain('Gamepad');
     expect(titles).toContain('Video');
     expect(titles).toContain('Robot');
@@ -710,5 +714,164 @@ describe('SettingsDrawer', () => {
     await expect(
       screen.findByText('Invalid action format')
     ).resolves.toBeTruthy();
+  });
+
+  // ─── Diagnostics Section Tests ────────────────────────────────────────────
+
+  it('renders Diagnostics section when open', () => {
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+    expect(screen.getByText('Diagnostics')).toBeTruthy();
+  });
+
+  it('renders 7 diagnostic rows', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    const rows = [
+      screen.getByTestId('diag-row-websocket'),
+      screen.getByTestId('diag-row-video'),
+      screen.getByTestId('diag-row-odometry'),
+      screen.getByTestId('diag-row-pose'),
+      screen.getByTestId('diag-row-scan'),
+      screen.getByTestId('diag-row-map'),
+      screen.getByTestId('diag-row-battery'),
+    ];
+    expect(rows.length).toBe(7);
+  });
+
+  it('displays row names correctly', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    // Check for all the row names
+    expect(screen.getByTestId('diag-row-websocket')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-video')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-odometry')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-pose')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-scan')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-map')).toBeTruthy();
+    expect(screen.getByTestId('diag-row-battery')).toBeTruthy();
+  });
+
+  it('displays connection states correctly', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    expect(screen.getByText('Connected')).toBeTruthy();
+    expect(screen.getByText('live')).toBeTruthy();
+  });
+
+  it('displays telemetry age in seconds with one decimal place', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: 1234, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    const odomRow = screen.getByTestId('diag-row-odometry');
+    expect(odomRow.textContent).toContain('1.2');
+    expect(odomRow.textContent).toContain('s ago');
+  });
+
+  it('displays "no data" for null telemetry ages', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    const odomRow = screen.getByTestId('diag-row-odometry');
+    expect(odomRow.textContent).toContain('no data');
+  });
+
+  it('renders color dots for diagnostic levels (ok/warn/error/none)', () => {
+    const { container } = render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        wsState="live"
+        videoState="live"
+        telemetryAges={{ odom: 1000, pose: 3500, scan: 6000, map: null, battery: 2000 }}
+      />
+    );
+    // Each row should have a color dot (8x8 circle)
+    const dots = container.querySelectorAll('[style*="border-radius"]');
+    const circles = Array.from(dots).filter((d) => {
+      const style = (d as HTMLElement).getAttribute('style');
+      return style?.includes('50%');
+    });
+    expect(circles.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('defaults wsState to disconnected if not provided', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    const wsRow = screen.getByTestId('diag-row-websocket');
+    // disconnected → error level, so the detail should be "disconnected"
+    expect(wsRow.textContent).toContain('disconnected');
+  });
+
+  it('defaults videoState to error if not provided', () => {
+    render(
+      <SettingsDrawer
+        open={true}
+        onClose={() => {}}
+        telemetryAges={{ odom: null, pose: null, scan: null, map: null, battery: null }}
+      />
+    );
+    const videoRow = screen.getByTestId('diag-row-video');
+    expect(videoRow.textContent).toContain('error');
+  });
+
+  it('displays Diagnostics before Gamepad section (first section)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ROBOT_TYPE: 'diff_drive',
+        ROBOT_NAME: 'Bot',
+        ROBOT_NAMESPACE: '/r',
+        ROBOT_LENGTH_M: '0.5',
+        ROBOT_WIDTH_M: '0.4',
+        VIDEO_TOPIC: '/v',
+        VIDEO_TOPIC_TYPE: 'compressed',
+      }),
+    }));
+    render(<SettingsDrawer open={true} onClose={() => {}} />);
+
+    const headings = screen.getAllByRole('heading');
+    const titles = headings.map((h) => h.textContent);
+    // Diagnostics should come before Gamepad
+    const diagIndex = titles.indexOf('Diagnostics');
+    const gamepadIndex = titles.indexOf('Gamepad');
+    expect(diagIndex).toBeLessThan(gamepadIndex);
   });
 });

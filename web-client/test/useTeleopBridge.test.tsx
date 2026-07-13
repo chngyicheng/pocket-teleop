@@ -43,13 +43,15 @@ class FakeTeleopClient {
     this.maxAngular = maxAngular;
   }
 
+  setFences() {}
+
   setGamepadProfile() {}
   setGamepadEnabled() {}
 
-  sendNavGoal(wx: number, wy: number, heading: number) {}
-  sendNavPause() {}
-  sendNavResume() {}
-  sendNavCancel() {}
+  sendNavGoal(wx: number, wy: number, heading: number): boolean { return true; }
+  sendNavPause(): boolean { return true; }
+  sendNavResume(): boolean { return true; }
+  sendNavCancel(): boolean { return true; }
 
   getNetworkStats(): NetworkStats | null {
     return this.networkStats;
@@ -114,6 +116,15 @@ class FakeTeleopClient {
 
   triggerNavState(state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed') {
     this.opts.onNavState?.(state);
+  }
+
+  triggerBattery(percentage: number | null, voltage: number | null, current: number | null, charging: boolean) {
+    this.opts.onBattery?.({
+      percentage,
+      voltage,
+      current,
+      charging,
+    });
   }
 }
 
@@ -1100,6 +1111,11 @@ describe('useTeleopBridge', () => {
       })
     );
 
+    // Set estopEngaged to true to match the E-STOP case
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
     act(() => {
       result.current.sendNavGoal(1.0, 2.0, 0);
     });
@@ -1123,6 +1139,136 @@ describe('useTeleopBridge', () => {
     });
 
     expect(result.current.navNotice).toBeNull();
+  });
+
+  it('sendNavGoal returning false with estopEngaged shows E-STOP warning', () => {
+    const fake = createFakeClientWithMockNavGoal(false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
+    expect(result.current.estopEngaged).toBe(true);
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('E-STOP engaged — reset before navigating');
+  });
+
+  it('sendNavGoal returning false without estopEngaged shows Not connected warning', () => {
+    const fake = createFakeClientWithMockNavGoal(false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    // estopEngaged should be false
+    expect(result.current.estopEngaged).toBe(false);
+
+    act(() => {
+      result.current.sendNavGoal(1.0, 2.0, 0);
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavPause returning false shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavPause = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavPause();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavResume returning false with estopEngaged shows E-STOP warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavResume = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      fake.triggerEstopState(true);
+    });
+
+    expect(result.current.estopEngaged).toBe(true);
+
+    act(() => {
+      result.current.sendNavResume();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('E-STOP engaged — reset before navigating');
+  });
+
+  it('sendNavResume returning false without estopEngaged shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavResume = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    // estopEngaged should be false
+    expect(result.current.estopEngaged).toBe(false);
+
+    act(() => {
+      result.current.sendNavResume();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
+  });
+
+  it('sendNavCancel returning false shows Not connected warning', () => {
+    const fake = new FakeTeleopClient();
+    fake.sendNavCancel = vi.fn(() => false);
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fake.opts = opts; return fake; },
+      })
+    );
+
+    act(() => {
+      result.current.sendNavCancel();
+    });
+
+    expect(result.current.navNotice).not.toBeNull();
+    expect(result.current.navNotice!.tone).toBe('warn');
+    expect(result.current.navNotice!.text).toBe('Not connected');
   });
 
   it('navNotice auto-dismisses after 4 seconds', () => {
@@ -1223,5 +1369,174 @@ describe('useTeleopBridge', () => {
 
     clearTimeoutSpy.mockRestore();
     vi.useRealTimers();
+  });
+
+  it('latencyHistory starts empty', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    expect(result.current.latencyHistory).toEqual([]);
+  });
+
+  it('onLatency pushes values into latencyHistory', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerLatency(50);
+    });
+    expect(result.current.latencyHistory).toEqual([50]);
+
+    act(() => {
+      fakeClient.triggerLatency(60);
+    });
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    act(() => {
+      fakeClient.triggerLatency(55);
+    });
+    expect(result.current.latencyHistory).toEqual([50, 60, 55]);
+  });
+
+  it('latencyHistory caps at 60 items', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    // Push 61 values
+    act(() => {
+      for (let i = 0; i < 61; i++) {
+        fakeClient.triggerLatency(50 + i);
+      }
+    });
+
+    expect(result.current.latencyHistory.length).toBe(60);
+    // First value (50) should be gone, last value (110) should be present
+    expect(result.current.latencyHistory[0]).toBe(51);
+    expect(result.current.latencyHistory[59]).toBe(110);
+  });
+
+  it('latencyHistory persists across reconnect', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+
+    act(() => {
+      fakeClient.triggerLatency(50);
+      fakeClient.triggerLatency(60);
+    });
+
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    // Simulate reconnect: onClose then reconnecting
+    act(() => {
+      fakeClient.triggerClose(1000, 'Normal closure');
+      fakeClient.triggerReconnecting(1);
+    });
+
+    // History should still be there (not cleared on reconnect)
+    expect(result.current.latencyHistory).toEqual([50, 60]);
+
+    act(() => {
+      fakeClient.triggerLatency(70);
+    });
+
+    expect(result.current.latencyHistory).toEqual([50, 60, 70]);
+  });
+
+  // =========================================================================
+  // telemetryAges tests
+  // =========================================================================
+  describe('telemetryAges tracking', () => {
+    it('initializes telemetryAges to all null', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      expect(result.current.telemetryAges).toEqual({
+        odom: null,
+        pose: null,
+        scan: null,
+        map: null,
+        battery: null,
+      });
+    });
+
+    it('telemetryAges interface is present on bridge object', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Verify telemetryAges is an object with the right keys
+      expect(typeof result.current.telemetryAges).toBe('object');
+      expect(result.current.telemetryAges).toHaveProperty('odom');
+      expect(result.current.telemetryAges).toHaveProperty('pose');
+      expect(result.current.telemetryAges).toHaveProperty('scan');
+      expect(result.current.telemetryAges).toHaveProperty('map');
+      expect(result.current.telemetryAges).toHaveProperty('battery');
+    });
+
+    it('odom callback records timestamp for telemetry tracking', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Before trigger, odom age is null
+      expect(result.current.telemetryAges.odom).toBeNull();
+
+      act(() => {
+        fakeClient.triggerOdom(1, 2, 0.5);
+      });
+
+      // After trigger, odom data is set (separate from telemetryAges)
+      expect(result.current.odom).toEqual({ x: 1, y: 2, heading: 0.5 });
+    });
+
+    it('battery callback records timestamp for telemetry tracking', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Before trigger, battery age is null
+      expect(result.current.telemetryAges.battery).toBeNull();
+
+      act(() => {
+        fakeClient.triggerBattery(80, 48.0, 5.0, false);
+      });
+
+      // After trigger, battery data is set
+      expect(result.current.battery).toEqual({
+        percentage: 80,
+        voltage: 48.0,
+        current: 5.0,
+        charging: false,
+      });
+    });
   });
 });

@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
-import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
+import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular, loadFences, saveFences } from '../settings.js';
 import { computeQuality, type NetworkStats } from '../network_quality.js';
+import type { FencePolygon } from '../geofence.js';
 
 export interface MapGrid {
   cells: Uint8Array;
@@ -41,11 +42,20 @@ export interface BatteryData {
   charging: boolean;
 }
 
+export interface TelemetryAges {
+  odom: number | null;
+  pose: number | null;
+  scan: number | null;
+  map: number | null;
+  battery: number | null;
+}
+
 export interface TeleopBridge {
   connected: boolean;
   connectionState: ConnectionState;
   retryCount: number;
   latencyMs: number | null;
+  latencyHistory: number[];
   odom: { x: number; y: number; heading: number } | null;
   mapGrid: MapGrid | null;
   mapPose: MapPose | null;
@@ -79,6 +89,12 @@ export interface TeleopBridge {
   sendNavPause: () => void;
   sendNavResume: () => void;
   sendNavCancel: () => void;
+  /** Age of each telemetry type in milliseconds since last update, or null if never received. */
+  telemetryAges: TelemetryAges;
+  /** Active geofences (map coordinates, empty if none). */
+  fences: FencePolygon[];
+  /** Save and apply geofences: persists to localStorage and applies to client. */
+  saveFencesAndApply: (fences: FencePolygon[]) => void;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -95,6 +111,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
   const [retryCount, setRetryCount] = useState(0);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [latencyHistory, setLatencyHistory] = useState<number[]>([]);
   const [odom, setOdom] = useState<{ x: number; y: number; heading: number } | null>(null);
   const [mapGrid, setMapGrid] = useState<MapGrid | null>(null);
   const [mapPose, setMapPose] = useState<MapPose | null>(null);
@@ -116,8 +133,23 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [navState, setNavState] = useState<'idle' | 'active' | 'paused'>('idle');
   const [navPath, setNavPath] = useState<[number, number][]>([]);
   const [navNotice, setNavNotice] = useState<NavNotice | null>(null);
+  const [fences, setFencesState] = useState<FencePolygon[]>(loadFences());
+  const [telemetryAges, setTelemetryAges] = useState<TelemetryAges>({
+    odom: null,
+    pose: null,
+    scan: null,
+    map: null,
+    battery: null,
+  });
 
   const navNoticeTimerRef = useRef<number | null>(null);
+  const lastMsgAtRef = useRef<TelemetryAges>({
+    odom: null,
+    pose: null,
+    scan: null,
+    map: null,
+    battery: null,
+  });
 
   const initialMaxSpeed = loadMaxSpeed();
   const [maxLinear, setMaxLinearState] = useState(initialMaxSpeed.maxLinear);
@@ -145,10 +177,19 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onLatency: (ms) => {
         setLatencyMs(ms);
+        setLatencyHistory((prev) => {
+          const updated = [...prev, ms];
+          // Keep only the last 60 values
+          if (updated.length > 60) {
+            return updated.slice(-60);
+          }
+          return updated;
+        });
         hasNetworkDataRef.current = true;
       },
       onOdom: (x, y, heading) => {
         setOdom({ x, y, heading });
+        lastMsgAtRef.current.odom = Date.now();
       },
       onMap: (map) => {
         const decoded = decodeRle(map.cells, map.width, map.height);
@@ -163,9 +204,11 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
           });
         }
         // If decoding fails, keep previous mapGrid (don't set to null or partial state)
+        lastMsgAtRef.current.map = Date.now();
       },
       onPose: (frame, x, y, heading) => {
         setMapPose({ frame, x, y, heading });
+        lastMsgAtRef.current.pose = Date.now();
       },
       onScan: (scanRaw) => {
         const scanData: ScanData = {
@@ -178,6 +221,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
           scanData.pose = scanRaw.pose;
         }
         setScan(scanData);
+        lastMsgAtRef.current.scan = Date.now();
       },
       onEstopState: (engaged) => {
         setEstopEngaged(engaged);
@@ -212,6 +256,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
       },
       onBattery: (b) => {
         setBattery(b);
+        lastMsgAtRef.current.battery = Date.now();
       },
       onNavState: (state) => {
         // Handle nav state transitions
@@ -227,14 +272,20 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
         }
       },
       onNavPath: setNavPath,
+      onGeofenceLimit: () => {
+        setNavNotice({ text: 'Geofence limit — motion stopped', tone: 'warn' });
+      },
     });
 
     clientRef.current = client;
     client.connect(opts.url);
     // Apply persisted speed limits on connect
     client.setMaxSpeed(maxLinear, maxAngular);
+    // Load and apply geofences on connect
+    const loadedFences = loadFences();
+    client.setFences(loadedFences);
 
-    // Set up network quality stats polling interval
+    // Set up network quality stats polling interval (also updates telemetry ages)
     const networkStatsInterval = setInterval(() => {
       if (hasNetworkDataRef.current && clientRef.current?.getNetworkStats) {
         const stats = clientRef.current.getNetworkStats();
@@ -243,6 +294,16 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
           setNetworkQuality(computeQuality(stats));
         }
       }
+
+      // Update telemetry ages from last message times
+      const now = Date.now();
+      setTelemetryAges({
+        odom: lastMsgAtRef.current.odom !== null ? now - lastMsgAtRef.current.odom : null,
+        pose: lastMsgAtRef.current.pose !== null ? now - lastMsgAtRef.current.pose : null,
+        scan: lastMsgAtRef.current.scan !== null ? now - lastMsgAtRef.current.scan : null,
+        map: lastMsgAtRef.current.map !== null ? now - lastMsgAtRef.current.map : null,
+        battery: lastMsgAtRef.current.battery !== null ? now - lastMsgAtRef.current.battery : null,
+      });
     }, 1000);
 
     return () => {
@@ -346,27 +407,53 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     if (clientRef.current) {
       const success = clientRef.current.sendNavGoal(wx, wy, heading);
       if (success === false) {
-        // E-STOP is engaged
-        setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        // Determine if blocked due to E-STOP or disconnection
+        if (estopEngaged) {
+          setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        } else {
+          setNavNotice({ text: 'Not connected', tone: 'warn' });
+        }
       }
     }
   };
 
   const sendNavPause = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavPause();
+      const success = clientRef.current.sendNavPause();
+      if (success === false) {
+        setNavNotice({ text: 'Not connected', tone: 'warn' });
+      }
     }
   };
 
   const sendNavResume = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavResume();
+      const success = clientRef.current.sendNavResume();
+      if (success === false) {
+        // Determine if blocked due to E-STOP or disconnection
+        if (estopEngaged) {
+          setNavNotice({ text: 'E-STOP engaged — reset before navigating', tone: 'warn' });
+        } else {
+          setNavNotice({ text: 'Not connected', tone: 'warn' });
+        }
+      }
     }
   };
 
   const sendNavCancel = () => {
     if (clientRef.current) {
-      clientRef.current.sendNavCancel();
+      const success = clientRef.current.sendNavCancel();
+      if (success === false) {
+        setNavNotice({ text: 'Not connected', tone: 'warn' });
+      }
+    }
+  };
+
+  const saveFencesAndApply = (newFences: FencePolygon[]) => {
+    saveFences(newFences);
+    setFencesState(newFences);
+    if (clientRef.current) {
+      clientRef.current.setFences(newFences);
     }
   };
 
@@ -375,6 +462,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     connectionState,
     retryCount,
     latencyMs,
+    latencyHistory,
     odom,
     mapGrid,
     mapPose,
@@ -407,5 +495,8 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     sendNavPause,
     sendNavResume,
     sendNavCancel,
+    telemetryAges,
+    fences,
+    saveFencesAndApply,
   };
 }

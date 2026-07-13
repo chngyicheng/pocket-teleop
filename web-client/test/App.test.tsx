@@ -66,6 +66,10 @@ class FakeTeleopClient {
     // noop
   }
 
+  setFences() {
+    // noop
+  }
+
   /**
    * Test helper: trigger status callback
    */
@@ -208,8 +212,9 @@ describe('App', () => {
 
     // Connection chip shows "● Live" in phone-portrait (compact) and the
     // full "● Connected — <robotType>" in landscape. Either form is the
-    // "connected" indicator; assert one of them appears.
-    const connectedChip = screen.getByText(/Connected|Live/i);
+    // "connected" indicator. The "●" prefix distinguishes the chip from the
+    // diagnostics drawer's plain "Connected" detail row.
+    const connectedChip = screen.getByText(/● (Connected|Live)/i);
     expect(connectedChip).toBeTruthy();
 
     // The color style is inline on the chip element itself (not its parent).

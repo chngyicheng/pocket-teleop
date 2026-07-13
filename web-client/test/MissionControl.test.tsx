@@ -18,6 +18,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     connectionState: 'live',
     retryCount: 0,
     latencyMs: 42,
+    latencyHistory: [],
     odom: { x: 0, y: 0, heading: 0 },
     mapGrid: null,
     mapPose: null,
@@ -470,8 +471,9 @@ describe('MissionControl', () => {
     // STREAM title in left rail
     expect(screen.getByText('STREAM')).toBeTruthy();
 
-    // MAP title in right rail
-    expect(screen.getByText('MAP')).toBeTruthy();
+    // MAP title in right rail — look for right panel instead of tab to avoid ambiguity with toggle button
+    const rightPanel = container.querySelector('[data-testid="rail-panel-right"]');
+    expect(rightPanel?.textContent).toContain('MAP');
 
     // STREAM data should be visible (src, codec, fps, res)
     expect(screen.getByText('WebRTC')).toBeTruthy(); // src
@@ -1096,5 +1098,178 @@ describe('MissionControl', () => {
 
     const toast = document.querySelector('[data-testid="hud-toast"]');
     expect(toast?.getAttribute('data-tone')).toBe('ok');
+  });
+
+  // ─── Map View Toggle Tests ─────────────────────────────────────────────────
+
+  describe('Map view toggle (CAM/MAP)', () => {
+    it('landscape: view-toggle button is present in header', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('landscape: view-toggle disabled when no map data (mapGrid null)', () => {
+      const bridge = createFakeBridge({
+        mapGrid: null,
+        mapPose: null,
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      expect(toggle).toBeTruthy();
+      expect(toggle.disabled).toBe(true);
+    });
+
+    it('landscape: view-toggle enabled when mapGrid is present', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      expect(toggle).toBeTruthy();
+      expect(toggle.disabled).toBe(false);
+    });
+
+    it('landscape: toggle shows MAP text in cam mode, CAM text in map mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]');
+      expect(toggle?.textContent).toBe('MAP');
+    });
+
+    it('landscape: clicking toggle hides video and shows main map (display none)', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      const video = document.querySelector('video') as HTMLVideoElement;
+
+      // Initially video visible
+      expect(video.style.display).not.toBe('none');
+
+      fireEvent.click(toggle);
+
+      // After toggle, video display: none
+      expect(video.style.display).toBe('none');
+    });
+
+    it('landscape: clicking toggle twice returns to cam mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      const video = document.querySelector('video') as HTMLVideoElement;
+
+      fireEvent.click(toggle);
+      expect(video.style.display).toBe('none');
+      expect(toggle.textContent).toBe('CAM');
+
+      fireEvent.click(toggle);
+      expect(video.style.display).not.toBe('none');
+      expect(toggle.textContent).toBe('MAP');
+    });
+
+    it('landscape: main-map-view appears when in map mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      fireEvent.click(toggle);
+
+      const mainMap = document.querySelector('[data-testid="main-map-view"]');
+      expect(mainMap).toBeTruthy();
+    });
+
+    it('portrait: view-toggle button is present in header', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-portrait" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('portrait: clicking toggle hides video and shows map', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-portrait" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      const video = document.querySelector('video') as HTMLVideoElement;
+
+      fireEvent.click(toggle);
+      expect(video.style.display).toBe('none');
+
+      fireEvent.click(toggle);
+      expect(video.style.display).not.toBe('none');
+    });
+
+    it('landscape: loses map data auto-reverts to cam mode', () => {
+      const mapGrid = { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 };
+      const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+      let bridge = createFakeBridge({ mapGrid, mapPose });
+
+      const { rerender } = render(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      fireEvent.click(toggle);
+
+      // In map mode
+      expect(toggle.textContent).toBe('CAM');
+
+      // Map data disappears
+      bridge = createFakeBridge({ mapGrid: null, mapPose: null });
+      rerender(
+        <MissionControl bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} layout="phone-landscape" />
+      );
+
+      // Should auto-revert to cam mode
+      expect(toggle.textContent).toBe('MAP');
+    });
   });
 });

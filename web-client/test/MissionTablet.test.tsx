@@ -18,6 +18,7 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     connectionState: 'live',
     retryCount: 0,
     latencyMs: 42,
+    latencyHistory: [],
     odom: { x: 0, y: 0, heading: 0 },
     mapGrid: null,
     mapPose: null,
@@ -43,6 +44,13 @@ function createFakeBridge(overrides?: Partial<TeleopBridge>): TeleopBridge {
     setMaxAngular: vi.fn(),
     gamepadConnected: false,
     disconnectAction: 'stop',
+    navState: 'idle',
+    navPath: [],
+    navNotice: null,
+    sendNavGoal: vi.fn(),
+    sendNavPause: vi.fn(),
+    sendNavResume: vi.fn(),
+    sendNavCancel: vi.fn(),
     ...overrides,
   };
 }
@@ -72,7 +80,7 @@ describe('MissionTablet', () => {
       onMenu,
     };
 
-    render(<MissionTablet {...props} />);
+    const { container } = render(<MissionTablet {...props} />);
 
     // Check for header text
     expect(screen.getByText(/POCKET-TELEOP/i)).toBeTruthy();
@@ -92,8 +100,10 @@ describe('MissionTablet', () => {
     expect(screen.getByText('VELOCITY')).toBeTruthy();
     expect(screen.getByText('ODOMETRY')).toBeTruthy();
 
-    // Right rail panels: MAP, HEADING, HINT
-    expect(screen.getByText('MAP')).toBeTruthy();
+    // Right rail panels: MAP, HEADING, HINT — use more specific selector to avoid ambiguity with toggle button
+    // Check the right panel content contains MAP
+    const rightPanel = container.querySelector('[data-testid="rail-panel-right"]');
+    expect(rightPanel?.textContent).toContain('MAP');
     expect(screen.getByText('HEADING')).toBeTruthy();
     expect(screen.getByText('HINT')).toBeTruthy();
 
@@ -517,13 +527,15 @@ describe('MissionTablet', () => {
       const stream = createFakeStream();
       const onMenu = vi.fn();
 
-      render(
+      const { container } = render(
         <MissionTablet bridge={bridge} stream={stream} onMenu={onMenu} />
       );
 
       // Test 6: verify STREAM and MAP panels are visible
       expect(screen.getByText('STREAM')).toBeTruthy();
-      expect(screen.getByText('MAP')).toBeTruthy();
+      // MAP appears in the right rail panel, not just any MAP text (to avoid toggle button)
+      const rightPanel = container.querySelector('[data-testid="rail-panel-right"]');
+      expect(rightPanel?.textContent).toContain('MAP');
       // Also verify some content is visible
       expect(screen.getByText('WebRTC')).toBeTruthy();
       expect(screen.getByText('HEADING')).toBeTruthy();
@@ -868,5 +880,130 @@ describe('MissionTablet', () => {
 
     fireEvent.pointerUp(document.querySelector('[data-testid="minimap-backdrop"]')!);
     expect(root.style.gridTemplateColumns).toBe('220px 1fr 240px');
+  });
+
+  // ─── Map View Toggle Tests ─────────────────────────────────────────────────
+
+  describe('Map view toggle (CAM/MAP) - tablet', () => {
+    it('view-toggle button is present in header', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]');
+      expect(toggle).toBeTruthy();
+    });
+
+    it('view-toggle disabled when no map data', () => {
+      const bridge = createFakeBridge({
+        mapGrid: null,
+        mapPose: null,
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      expect(toggle).toBeTruthy();
+      expect(toggle.disabled).toBe(true);
+    });
+
+    it('view-toggle enabled when mapGrid is present', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      expect(toggle).toBeTruthy();
+      expect(toggle.disabled).toBe(false);
+    });
+
+    it('toggle shows MAP text in cam mode, CAM text in map mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]');
+      expect(toggle?.textContent).toBe('MAP');
+    });
+
+    it('clicking toggle hides video and shows main map (display none)', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      const video = document.querySelector('video') as HTMLVideoElement;
+
+      // Initially video visible
+      expect(video.style.display).not.toBe('none');
+
+      fireEvent.click(toggle);
+
+      // After toggle, video display: none
+      expect(video.style.display).toBe('none');
+    });
+
+    it('clicking toggle twice returns to cam mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      const video = document.querySelector('video') as HTMLVideoElement;
+
+      fireEvent.click(toggle);
+      expect(video.style.display).toBe('none');
+      expect(toggle.textContent).toBe('CAM');
+
+      fireEvent.click(toggle);
+      expect(video.style.display).not.toBe('none');
+      expect(toggle.textContent).toBe('MAP');
+    });
+
+    it('main-map-view appears when in map mode', () => {
+      const bridge = createFakeBridge({
+        mapGrid: { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 },
+        mapPose: { frame: 'map', x: 0, y: 0, heading: 0 },
+      });
+      render(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      fireEvent.click(toggle);
+
+      const mainMap = document.querySelector('[data-testid="main-map-view"]');
+      expect(mainMap).toBeTruthy();
+    });
+
+    it('loses map data auto-reverts to cam mode', () => {
+      const mapGrid = { cells: new Uint8Array(4), width: 2, height: 2, resolution: 0.05, originX: 0, originY: 0 };
+      const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+      let bridge = createFakeBridge({ mapGrid, mapPose });
+
+      const { rerender } = render(
+        <MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />
+      );
+
+      const toggle = document.querySelector('[data-testid="view-toggle"]') as HTMLButtonElement;
+      fireEvent.click(toggle);
+
+      // In map mode
+      expect(toggle.textContent).toBe('CAM');
+
+      // Map data disappears
+      bridge = createFakeBridge({ mapGrid: null, mapPose: null });
+      rerender(<MissionTablet bridge={bridge} stream={createFakeStream()} onMenu={vi.fn()} />);
+
+      // Should auto-revert to cam mode
+      expect(toggle.textContent).toBe('MAP');
+    });
   });
 });

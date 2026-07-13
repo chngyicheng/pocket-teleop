@@ -33,6 +33,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAllProfiles } from '../gamepad_profiles.js';
 import { VideoSourcePicker, type VideoSourceMode } from '../video_source.js';
+import { computeDiagnostics, type DiagLevel } from '../diagnostics.js';
+import type { TelemetryAges } from '../hooks/useTeleopBridge.js';
+import type { WhepState } from '../whep_client.js';
 
 export interface SettingsDrawerProps {
   open: boolean;
@@ -50,6 +53,18 @@ export interface SettingsDrawerProps {
    * Defaults to 'stop'.
    */
   disconnectAction?: string;
+  /**
+   * WebSocket connection state for diagnostics display.
+   */
+  wsState?: 'live' | 'reconnecting' | 'disconnected';
+  /**
+   * Video (WHEP) stream state for diagnostics display.
+   */
+  videoState?: WhepState;
+  /**
+   * Telemetry ages (odom/pose/scan/map/battery) in milliseconds for diagnostics.
+   */
+  telemetryAges?: TelemetryAges;
 }
 
 /** Mission palette — matches the dark industrial console used across the app. */
@@ -61,8 +76,10 @@ const P = {
   muted: '#8a92a3',
   accent: '#f0a92a', // amber
   bg: '#0c0e12',
-  ok: '#22c55e',
-  danger: '#ef4444',
+  ok: '#22c55e', // green
+  warn: '#f59e0b', // amber
+  danger: '#ef4444', // red
+  none: '#6b7280', // gray
 };
 const SANS = 'Inter, ui-sans-serif, system-ui, sans-serif';
 const MONO = '"JetBrains Mono", ui-monospace, monospace';
@@ -196,6 +213,15 @@ export default function SettingsDrawer({
   onGamepadProfileChange,
   topOffset = 0,
   disconnectAction = 'stop',
+  wsState = 'disconnected',
+  videoState = 'error',
+  telemetryAges = {
+    odom: null,
+    pose: null,
+    scan: null,
+    map: null,
+    battery: null,
+  },
 }: SettingsDrawerProps): JSX.Element {
   const [videoMode, setVideoMode] = useState<VideoSourceMode>('ros2');
   const [videoUrl, setVideoUrl] = useState('');
@@ -334,6 +360,22 @@ export default function SettingsDrawer({
     return P.text;
   };
 
+  /**
+   * Map diagnostic level to color hex.
+   */
+  const getDiagColor = (level: DiagLevel): string => {
+    switch (level) {
+      case 'ok':
+        return P.ok;
+      case 'warn':
+        return P.warn;
+      case 'error':
+        return P.danger;
+      case 'none':
+        return P.none;
+    }
+  };
+
   return (
     <>
       {/* Backdrop scrim — only when open. Starts below the top bar so the
@@ -435,6 +477,49 @@ export default function SettingsDrawer({
             gap: '18px',
           }}
         >
+          {/* Diagnostics Section */}
+          <section>
+            <h3 style={sectionHeading}>Diagnostics</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {computeDiagnostics({
+                wsState,
+                videoState,
+                ages: telemetryAges,
+              }).map((row) => (
+                <div
+                  key={row.name}
+                  data-testid={`diag-row-${row.name.toLowerCase()}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: 12,
+                  }}
+                >
+                  {/* Color dot indicator */}
+                  <div
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      backgroundColor: getDiagColor(row.level),
+                      flexShrink: 0,
+                    }}
+                  />
+                  {/* Name + detail */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+                    <div style={{ color: P.text, fontSize: 11, fontWeight: 500 }}>
+                      {row.name}
+                    </div>
+                    <div style={{ color: P.muted, fontSize: 10, wordBreak: 'break-word' }}>
+                      {row.detail}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Gamepad Section */}
           <section>
             <h3 style={sectionHeading}>Gamepad</h3>
