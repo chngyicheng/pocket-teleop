@@ -614,6 +614,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   enableWaypoints
                   navState={bridge.navState}
                   navPath={bridge.navPath}
+                  fences={bridge.fences}
+                  onSaveFences={bridge.saveFencesAndApply}
                   onSendWaypoint={bridge.sendNavGoal}
                   onNavPause={bridge.sendNavPause}
                   onNavResume={bridge.sendNavResume}
@@ -714,6 +716,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 enableWaypoints
                 navState={bridge.navState}
                 navPath={bridge.navPath}
+                fences={bridge.fences}
+                onSaveFences={bridge.saveFencesAndApply}
                 onSendWaypoint={bridge.sendNavGoal}
                 onNavPause={bridge.sendNavPause}
                 onNavResume={bridge.sendNavResume}
@@ -772,6 +776,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
+              fences={bridge.fences}
+              onSaveFences={bridge.saveFencesAndApply}
               onSendWaypoint={bridge.sendNavGoal}
               onNavPause={bridge.sendNavPause}
               onNavResume={bridge.sendNavResume}
@@ -839,6 +845,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
+              fences={bridge.fences}
+              onSaveFences={bridge.saveFencesAndApply}
               onSendWaypoint={bridge.sendNavGoal}
               onNavPause={bridge.sendNavPause}
               onNavResume={bridge.sendNavResume}
@@ -957,6 +965,8 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             enableWaypoints
             navState={bridge.navState}
             navPath={bridge.navPath}
+            fences={bridge.fences}
+            onSaveFences={bridge.saveFencesAndApply}
             onSendWaypoint={bridge.sendNavGoal}
             onNavPause={bridge.sendNavPause}
             onNavResume={bridge.sendNavResume}

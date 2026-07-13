@@ -43,6 +43,8 @@ class FakeTeleopClient {
     this.maxAngular = maxAngular;
   }
 
+  setFences() {}
+
   setGamepadProfile() {}
   setGamepadEnabled() {}
 

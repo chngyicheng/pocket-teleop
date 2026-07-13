@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { TeleopClient, type TeleopClientOptions } from '../teleop_client.js';
 import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
-import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular } from '../settings.js';
+import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular, loadFences, saveFences } from '../settings.js';
 import { computeQuality, type NetworkStats } from '../network_quality.js';
+import type { FencePolygon } from '../geofence.js';
 
 export interface MapGrid {
   cells: Uint8Array;
@@ -90,6 +91,10 @@ export interface TeleopBridge {
   sendNavCancel: () => void;
   /** Age of each telemetry type in milliseconds since last update, or null if never received. */
   telemetryAges: TelemetryAges;
+  /** Active geofences (map coordinates, empty if none). */
+  fences: FencePolygon[];
+  /** Save and apply geofences: persists to localStorage and applies to client. */
+  saveFencesAndApply: (fences: FencePolygon[]) => void;
 }
 
 // Factory function form lets tests inject fakes via closures without needing
@@ -128,6 +133,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
   const [navState, setNavState] = useState<'idle' | 'active' | 'paused'>('idle');
   const [navPath, setNavPath] = useState<[number, number][]>([]);
   const [navNotice, setNavNotice] = useState<NavNotice | null>(null);
+  const [fences, setFencesState] = useState<FencePolygon[]>(loadFences());
   const [telemetryAges, setTelemetryAges] = useState<TelemetryAges>({
     odom: null,
     pose: null,
@@ -266,12 +272,18 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
         }
       },
       onNavPath: setNavPath,
+      onGeofenceLimit: () => {
+        setNavNotice({ text: 'Geofence limit — motion stopped', tone: 'warn' });
+      },
     });
 
     clientRef.current = client;
     client.connect(opts.url);
     // Apply persisted speed limits on connect
     client.setMaxSpeed(maxLinear, maxAngular);
+    // Load and apply geofences on connect
+    const loadedFences = loadFences();
+    client.setFences(loadedFences);
 
     // Set up network quality stats polling interval (also updates telemetry ages)
     const networkStatsInterval = setInterval(() => {
@@ -437,6 +449,14 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     }
   };
 
+  const saveFencesAndApply = (newFences: FencePolygon[]) => {
+    saveFences(newFences);
+    setFencesState(newFences);
+    if (clientRef.current) {
+      clientRef.current.setFences(newFences);
+    }
+  };
+
   return {
     connected,
     connectionState,
@@ -476,5 +496,7 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     sendNavResume,
     sendNavCancel,
     telemetryAges,
+    fences,
+    saveFencesAndApply,
   };
 }

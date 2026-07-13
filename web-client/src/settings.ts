@@ -1,6 +1,7 @@
 // Settings routing state and video URL persistence (localStorage).
 const VIDEO_URL_KEY = 'pocket-teleop.video-url';
 const MAX_SPEED_KEY = 'pocket-teleop.max-speed';
+const GEOFENCES_KEY = 'pocket-teleop.geofences';
 
 export type SettingsPage = 'gamepad' | 'video' | 'connection' | 'account';
 
@@ -81,6 +82,40 @@ export function saveMaxSpeed(s: MaxSpeed): void {
       maxAngular: clampAngular(s.maxAngular),
     };
     localStorage.setItem(MAX_SPEED_KEY, JSON.stringify(clamped));
+  } catch {
+    // localStorage unavailable — silently ignore
+  }
+}
+
+/**
+ * Load geofences from localStorage.
+ * Returns empty array on error or missing data.
+ */
+export function loadFences(): Array<{ vertices: [number, number][] }> {
+  try {
+    const json = localStorage.getItem(GEOFENCES_KEY);
+    if (!json) {
+      return [];
+    }
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    // Validate each fence has vertices array
+    return parsed.filter(
+      (f) => f && typeof f === 'object' && Array.isArray(f.vertices)
+    );
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save geofences to localStorage.
+ */
+export function saveFences(fences: Array<{ vertices: [number, number][] }>): void {
+  try {
+    localStorage.setItem(GEOFENCES_KEY, JSON.stringify(fences));
   } catch {
     // localStorage unavailable — silently ignore
   }

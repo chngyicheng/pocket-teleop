@@ -66,6 +66,10 @@ class FakeTeleopClient {
     // noop
   }
 
+  setFences() {
+    // noop
+  }
+
   /**
    * Test helper: trigger status callback
    */

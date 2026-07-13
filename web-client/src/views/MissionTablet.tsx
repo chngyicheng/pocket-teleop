@@ -622,6 +622,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
+              fences={bridge.fences}
+              onSaveFences={bridge.saveFencesAndApply}
               onSendWaypoint={bridge.sendNavGoal}
               onNavPause={bridge.sendNavPause}
               onNavResume={bridge.sendNavResume}
@@ -737,6 +739,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             enableWaypoints
             navState={bridge.navState}
             navPath={bridge.navPath}
+            fences={bridge.fences}
+            onSaveFences={bridge.saveFencesAndApply}
             onSendWaypoint={bridge.sendNavGoal}
             onNavPause={bridge.sendNavPause}
             onNavResume={bridge.sendNavResume}
@@ -796,6 +800,8 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           enableWaypoints
           navState={bridge.navState}
           navPath={bridge.navPath}
+          fences={bridge.fences}
+          onSaveFences={bridge.saveFencesAndApply}
           onSendWaypoint={bridge.sendNavGoal}
           onNavPause={bridge.sendNavPause}
           onNavResume={bridge.sendNavResume}
