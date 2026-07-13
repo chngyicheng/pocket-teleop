@@ -1125,6 +1125,39 @@ describe('MiniMap', () => {
     expect(document.querySelector('[data-testid="minimap-expanded"]')).toBeTruthy();
   });
 
+  it('onEditingChange fires true entering waypoint mode, false on cancel', () => {
+    const cells = new Uint8Array(100); // all CELL_UNKNOWN=0? free=1 — fill free
+    cells.fill(1);
+    const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
+    const mapPose = { frame: 'map' as const, x: 0, y: 0, heading: 0 };
+    const onEditingChange = vi.fn();
+
+    const { container } = render(
+      <MiniMap
+        pos={{ x: 0, y: 0 }}
+        heading={0}
+        expandable={true}
+        enableWaypoints={true}
+        navState="idle"
+        mapGrid={mapGrid}
+        mapPose={mapPose}
+        onEditingChange={onEditingChange}
+      />
+    );
+    expect(onEditingChange).toHaveBeenLastCalledWith(false);
+
+    // Expand, enter waypoint mode
+    const collapsed = container.querySelector('div') as HTMLElement;
+    fireEvent.pointerDown(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.pointerUp(collapsed, { pointerId: 1, clientX: 50, clientY: 50 });
+    fireEvent.click(document.querySelector('[data-testid="set-waypoint-btn"]') as HTMLButtonElement);
+    expect(onEditingChange).toHaveBeenLastCalledWith(true);
+
+    // Cancel leaves editing
+    fireEvent.click(document.querySelector('[data-testid="cancel-waypoint-btn"]') as HTMLButtonElement);
+    expect(onEditingChange).toHaveBeenLastCalledWith(false);
+  });
+
   it('set-waypoint-btn enables send-waypoint-btn state transition via mock', () => {
     const cells = new Uint8Array(100);
     const mapGrid = { cells, width: 10, height: 10, resolution: 0.1, originX: 0, originY: 0 };
@@ -2215,13 +2248,22 @@ describe('LatencySparkline', () => {
     expect(pts2.split(' ')).toEqual(['0,12', '80,0']);
   });
 
-  it('renders the dark readout-style container', () => {
+  it('renders a bare svg (no wrapper box) so it nests inside a Readout pill', () => {
     const { container } = render(
       <LatencySparkline history={[50, 100, 150]} width={80} height={24} />
     );
-    const wrapper = container.querySelector('[data-testid="latency-sparkline"]') as HTMLElement;
-    const style = wrapper.getAttribute('style') || '';
-    expect(style).toContain('rgba(8, 10, 14, 0.55)');
-    expect(style).toContain('border-radius: 2');
+    const el = container.querySelector('[data-testid="latency-sparkline"]') as Element;
+    expect(el.tagName.toLowerCase()).toBe('svg');
+  });
+
+  it('renders inside a Readout as trailing content of the pill', () => {
+    const { container } = render(
+      <Readout label="LAT" value="42 ms">
+        <LatencySparkline history={[50, 100]} width={54} height={12} />
+      </Readout>
+    );
+    // Sparkline must be a child of the pill, not a sibling
+    const pill = container.firstElementChild as HTMLElement;
+    expect(pill.querySelector('[data-testid="latency-sparkline"]')).toBeTruthy();
   });
 });

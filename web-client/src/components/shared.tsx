@@ -68,6 +68,9 @@ export interface MiniMapProps {
   expandable?: boolean;
   /** Fires whenever the expanded state changes — lets the view raise the joysticks above the overlay. */
   onExpandedChange?: (expanded: boolean) => void;
+  /** Fires when waypoint/fence editing starts or ends — views drop the raised
+      joystick zones below the overlay so taps reach the editor buttons. */
+  onEditingChange?: (editing: boolean) => void;
   /** Enable waypoint placement UI in expanded view. */
   enableWaypoints?: boolean;
   /** Enable map panning (1-finger drag + 2-finger drag). Typically used in full-screen map view mode. */
@@ -120,6 +123,8 @@ export interface ReadoutProps {
   label: string;
   value: string;
   color?: string;
+  /** Optional trailing content rendered inside the pill (e.g. a sparkline). */
+  children?: ReactNode;
 }
 
 export interface ConnectionLabel {
@@ -1040,6 +1045,7 @@ const MiniMapView: React.FC<MiniMapViewProps> = ({
 export const MiniMap: React.FC<MiniMapProps> = ({
   expandable,
   onExpandedChange,
+  onEditingChange,
   enableWaypoints,
   navState = 'idle',
   navPath,
@@ -1065,6 +1071,13 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
+
+  // While placing a waypoint or editing a fence the operator is not driving —
+  // tell the view so it stops raising the joysticks above the overlay (their
+  // corner zones otherwise swallow taps meant for Save/Cancel buttons).
+  useEffect(() => {
+    onEditingChange?.(waypointMode || fenceEditMode);
+  }, [waypointMode, fenceEditMode, onEditingChange]);
 
   // Clear the top bar / E-STOP and leave room for the control buttons below, so
   // the expanded map never sits under the STOP button and scales to fit.
@@ -1761,6 +1774,7 @@ export const Readout: React.FC<ReadoutProps> = ({
   label,
   value,
   color,
+  children,
 }) => {
   return (
     <div
@@ -1770,7 +1784,9 @@ export const Readout: React.FC<ReadoutProps> = ({
         padding: '3px 8px',
         display: 'flex',
         gap: 6,
-        alignItems: 'baseline',
+        // center (not baseline) so trailing non-text content (sparkline)
+        // aligns with the text instead of stretching the pill.
+        alignItems: 'center',
         borderRadius: 2,
         border: '1px solid rgba(255,255,255,0.05)',
         whiteSpace: 'nowrap',
@@ -1786,6 +1802,7 @@ export const Readout: React.FC<ReadoutProps> = ({
       >
         {value}
       </span>
+      {children}
     </div>
   );
 };
@@ -1893,35 +1910,26 @@ export const LatencySparkline: React.FC<LatencySparklineProps> = ({
     return `${x},${y}`;
   }).join(' ');
 
+  // Bare SVG — no dark wrapper box. It renders inside an existing pill
+  // (Readout's trailing slot) so a nested box read as a "split" in the bar.
   return (
-    <div
+    <svg
       data-testid="latency-sparkline"
       data-tier={tier}
-      style={{
-        background: 'rgba(8,10,14,0.55)',
-        borderRadius: 2,
-        padding: 2,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      style={{ display: 'block' }}
     >
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        style={{ display: 'block' }}
-      >
-        <polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 };
 

@@ -144,7 +144,11 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   // raise the joysticks above it (zIndex 250) so the operator can keep driving while
   // viewing the map. Only while expanded — a static raise would paint over the drawer.
   const [mapExpanded, setMapExpanded] = useState(false);
-  const joystickZIndex = mapExpanded ? 250 : undefined;
+  // While the operator edits on the map (waypoint/fence), the joysticks must
+  // NOT be raised — their corner zones would swallow taps meant for the
+  // editor's Save/Cancel buttons (the overlay is z 200; raised sticks are 250).
+  const [mapEditing, setMapEditing] = useState(false);
+  const joystickZIndex = mapExpanded && !mapEditing ? 250 : undefined;
 
   // While the map is expanded (landscape only), temporarily close both rails so the video
   // goes fullscreen behind the translucent map; restore the prior open/closed state on exit.
@@ -515,14 +519,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
 
               {/* LAT/BAT/SIG readouts */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Readout
-                    label="LAT"
-                    value={latText}
-                    color={p.accent}
-                  />
-                  <LatencySparkline history={bridge.latencyHistory} />
-                </div>
+                <Readout label="LAT" value={latText} color={p.accent}>
+                  <LatencySparkline history={bridge.latencyHistory} width={54} height={12} />
+                </Readout>
                 <Readout label="BAT" value={batModel.value} color={batColor} />
                 <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
               </div>
@@ -611,6 +610,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                   pannable
                   expandable
                   onExpandedChange={setMapExpanded}
+                  onEditingChange={setMapEditing}
                   enableWaypoints
                   navState={bridge.navState}
                   navPath={bridge.navPath}
@@ -713,6 +713,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
                 robotWidth={bridge.robotWidth}
                 expandable
                 onExpandedChange={setMapExpanded}
+                onEditingChange={setMapEditing}
                 enableWaypoints
                 navState={bridge.navState}
                 navPath={bridge.navPath}
@@ -773,6 +774,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               robotWidth={bridge.robotWidth}
               expandable
               onExpandedChange={setMapExpanded}
+              onEditingChange={setMapEditing}
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
@@ -842,6 +844,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               pannable
               expandable
               onExpandedChange={setMapExpanded}
+              onEditingChange={setMapEditing}
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
@@ -962,6 +965,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             robotWidth={bridge.robotWidth}
             expandable
             onExpandedChange={setMapExpanded}
+            onEditingChange={setMapEditing}
             enableWaypoints
             navState={bridge.navState}
             navPath={bridge.navPath}

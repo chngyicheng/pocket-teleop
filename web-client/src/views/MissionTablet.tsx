@@ -113,6 +113,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // Raise the joysticks above the expanded-minimap overlay (zIndex 200) only while expanded,
   // so the operator can keep driving with the big map open.
   const [mapExpanded, setMapExpanded] = useState(false);
+  // While editing on the map (waypoint/fence) the raised joysticks would
+  // swallow taps meant for the editor buttons — keep them lowered.
+  const [mapEditing, setMapEditing] = useState(false);
 
   // Map view toggle (cam | map)
   const [viewMode, setViewMode] = useState<'cam' | 'map'>('cam');
@@ -365,15 +368,14 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         <Readout label="BAT" value={batModel.value} color={batColor} />
         <SignalBars quality={bridge.networkQuality} color={sigColor} title={sigTitle} />
 
-        {/* LAT readout pill */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Readout
-            label="LAT"
-            value={bridge.latencyMs !== null ? bridge.latencyMs + 'ms' : '—'}
-            color={p.accent}
-          />
-          <LatencySparkline history={bridge.latencyHistory} />
-        </div>
+        {/* LAT readout pill — sparkline rides inside so the bar stays one line */}
+        <Readout
+          label="LAT"
+          value={bridge.latencyMs !== null ? bridge.latencyMs + 'ms' : '—'}
+          color={p.accent}
+        >
+          <LatencySparkline history={bridge.latencyHistory} width={54} height={12} />
+        </Readout>
 
         {/* Connection state chip */}
         <div
@@ -619,6 +621,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
               pannable
               expandable
               onExpandedChange={setMapExpanded}
+              onEditingChange={setMapEditing}
               enableWaypoints
               navState={bridge.navState}
               navPath={bridge.navPath}
@@ -736,6 +739,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
             robotWidth={bridge.robotWidth}
             expandable
             onExpandedChange={setMapExpanded}
+            onEditingChange={setMapEditing}
             enableWaypoints
             navState={bridge.navState}
             navPath={bridge.navPath}
@@ -797,6 +801,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           robotWidth={bridge.robotWidth}
           expandable
           onExpandedChange={setMapExpanded}
+          onEditingChange={setMapEditing}
           enableWaypoints
           navState={bridge.navState}
           navPath={bridge.navPath}
@@ -813,7 +818,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="left"
         size={joySize}
-        zIndex={mapExpanded ? 250 : 5}
+        zIndex={mapExpanded && !mapEditing ? 250 : 5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         baseSize={joyBase}
@@ -832,7 +837,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
       <JoystickZone
         side="right"
         size={joySize}
-        zIndex={mapExpanded ? 250 : 5}
+        zIndex={mapExpanded && !mapEditing ? 250 : 5}
         controlsDisabled={controlsDisabled}
         variant="zone"
         axes="x"
