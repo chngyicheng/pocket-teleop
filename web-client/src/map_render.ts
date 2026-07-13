@@ -343,3 +343,32 @@ export function mapToRgba(
 
   return rgba;
 }
+
+/**
+ * Query the occupancy cell value at a world coordinate.
+ *
+ * Conventions:
+ * - Grid is row-major: cells[row * width + col]
+ * - col = (wx - originX) / resolution, row = (wy - originY) / resolution
+ * - origin (originX, originY) is the world corner of grid cell (0, 0)
+ *   (same convention as mapToScreenTransform: world = origin + pixel·resolution)
+ *
+ * @param mapGrid grid with cells, width, height, resolution, originX, originY
+ * @param wx world x coordinate
+ * @param wy world y coordinate
+ * @returns cell value (0 unknown / 1 free / 2 occupied) if in bounds, null if out of bounds
+ */
+export function cellAtWorld(
+  mapGrid: { cells: Uint8Array; width: number; height: number; resolution: number; originX: number; originY: number },
+  wx: number,
+  wy: number
+): number | null {
+  const col = Math.floor((wx - mapGrid.originX) / mapGrid.resolution);
+  const row = Math.floor((wy - mapGrid.originY) / mapGrid.resolution);
+
+  if (col < 0 || col >= mapGrid.width || row < 0 || row >= mapGrid.height) {
+    return null;
+  }
+
+  return mapGrid.cells[row * mapGrid.width + col];
+}

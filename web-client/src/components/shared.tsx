@@ -7,7 +7,8 @@
 import React, { useState, useEffect, useRef, useCallback, ReactNode, CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { WhepState } from '../whep_client.js';
-import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint, pointerToWorldHeading, worldHeadingToScreenDeg } from '../map_render.js';
+import { mapToScreenTransform, scanToScreenPoints, mapToRgba, footprintScreenRect, selectScanCapturePose, worldToScreenPoint, screenToWorldPoint, pointerToWorldHeading, worldHeadingToScreenDeg, cellAtWorld } from '../map_render.js';
+import { CELL_FREE } from '../map_codec.js';
 
 // Convert a hex color (#rgb or #rrggbb) to rgba() with the given alpha.
 // Used in place of 8-digit-hex alpha notation, which jsdom's CSSOM rejects.
@@ -959,6 +960,8 @@ export const MiniMap: React.FC<MiniMapProps> = ({
   const [expanded, setExpanded] = useState(false);
   const [waypointMode, setWaypointMode] = useState(false);
   const [waypoint, setWaypoint] = useState<{ wx: number; wy: number; heading: number } | null>(null);
+  const [blockedHint, setBlockedHint] = useState(false);
+  const blockedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notify the view so it can raise the joysticks above the overlay while expanded.
   useEffect(() => {
@@ -978,6 +981,11 @@ export const MiniMap: React.FC<MiniMapProps> = ({
     setExpanded(false);
     setWaypointMode(false);
     setWaypoint(null);
+    setBlockedHint(false);
+    if (blockedTimeoutRef.current) {
+      clearTimeout(blockedTimeoutRef.current);
+      blockedTimeoutRef.current = null;
+    }
   };
 
   const overlay = (
@@ -1025,6 +1033,18 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             waypoint={waypoint}
             navPath={navPath}
             onWaypointPlace={(wx, wy) => {
+              // Occupancy check: only place on a free cell. Occupied, unknown,
+              // or out-of-bounds targets show a transient blocked hint instead.
+              const cell = mapGrid ? cellAtWorld(mapGrid, wx, wy) : null;
+              if (cell !== CELL_FREE) {
+                setBlockedHint(true);
+                if (blockedTimeoutRef.current) clearTimeout(blockedTimeoutRef.current);
+                blockedTimeoutRef.current = setTimeout(() => {
+                  setBlockedHint(false);
+                  blockedTimeoutRef.current = null;
+                }, 2000);
+                return;
+              }
               setWaypoint({ wx, wy, heading: mapPose?.heading ?? 0 });
             }}
             onWaypointHeading={(h) => {
@@ -1065,8 +1085,23 @@ export const MiniMap: React.FC<MiniMapProps> = ({
             flexWrap: 'wrap',
             justifyContent: 'center',
             minHeight: 40,
+            alignItems: 'center',
           }}
         >
+          {blockedHint && waypointMode && (
+            <div
+              data-testid="waypoint-blocked-hint"
+              style={{
+                fontSize: 11,
+                fontFamily: '"JetBrains Mono", ui-monospace, monospace',
+                color: '#ef4444',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Blocked — tap free space
+            </div>
+          )}
+
           {navState === 'idle' && !waypointMode && (
             <button
               data-testid="set-waypoint-btn"

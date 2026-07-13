@@ -6,7 +6,9 @@ import {
   footprintScreenRect,
   worldToScreenPoint,
   selectScanCapturePose,
+  cellAtWorld,
 } from '../src/map_render';
+import { CELL_UNKNOWN, CELL_FREE, CELL_OCCUPIED } from '../src/map_codec';
 
 describe('mapToScreenTransform', () => {
   // Test vector 1: θ=0, pose(0,0), origin(0,0)
@@ -315,5 +317,69 @@ describe('mapToRgba', () => {
     expect(rgba[9]).toBe(240);
     expect(rgba[10]).toBe(245);
     expect(rgba[11]).toBe(230);
+  });
+});
+
+describe('cellAtWorld', () => {
+  // 3×2 grid, row-major:
+  //   row 0: [FREE, FREE, FREE]
+  //   row 1: [OCCUPIED, UNKNOWN, FREE]
+  // origin (0,0), resolution 0.5 → grid spans x ∈ [0, 1.5), y ∈ [0, 1.0)
+  const mapGrid = {
+    cells: new Uint8Array([CELL_FREE, CELL_FREE, CELL_FREE, CELL_OCCUPIED, CELL_UNKNOWN, CELL_FREE]),
+    width: 3,
+    height: 2,
+    resolution: 0.5,
+    originX: 0,
+    originY: 0,
+  };
+
+  it('center of free cell (col 0, row 0) at world (0.25, 0.25) → CELL_FREE', () => {
+    expect(cellAtWorld(mapGrid, 0.25, 0.25)).toBe(CELL_FREE);
+  });
+
+  it('center of occupied cell (col 0, row 1) at world (0.25, 0.75) → CELL_OCCUPIED', () => {
+    expect(cellAtWorld(mapGrid, 0.25, 0.75)).toBe(CELL_OCCUPIED);
+  });
+
+  it('center of unknown cell (col 1, row 1) at world (0.75, 0.75) → CELL_UNKNOWN', () => {
+    expect(cellAtWorld(mapGrid, 0.75, 0.75)).toBe(CELL_UNKNOWN);
+  });
+
+  it('origin point (0, 0) → cell (0,0) = CELL_FREE (origin is cell (0,0) world corner)', () => {
+    expect(cellAtWorld(mapGrid, 0, 0)).toBe(CELL_FREE);
+  });
+
+  it('four corners: inside near-corners resolve, outside far edges null', () => {
+    // bottom-left corner cell
+    expect(cellAtWorld(mapGrid, 0.01, 0.01)).toBe(CELL_FREE);
+    // bottom-right corner cell (col 2, row 0)
+    expect(cellAtWorld(mapGrid, 1.49, 0.01)).toBe(CELL_FREE);
+    // top-left corner cell (col 0, row 1)
+    expect(cellAtWorld(mapGrid, 0.01, 0.99)).toBe(CELL_OCCUPIED);
+    // top-right corner cell (col 2, row 1)
+    expect(cellAtWorld(mapGrid, 1.49, 0.99)).toBe(CELL_FREE);
+    // exact far edges are out of bounds (floor lands on width/height)
+    expect(cellAtWorld(mapGrid, 1.5, 0.5)).toBeNull();
+    expect(cellAtWorld(mapGrid, 0.5, 1.0)).toBeNull();
+  });
+
+  it('negative world coords → null', () => {
+    expect(cellAtWorld(mapGrid, -0.01, 0.25)).toBeNull();
+    expect(cellAtWorld(mapGrid, 0.25, -0.01)).toBeNull();
+    expect(cellAtWorld(mapGrid, -1, -1)).toBeNull();
+  });
+
+  it('far out of bounds → null', () => {
+    expect(cellAtWorld(mapGrid, 100, 0.25)).toBeNull();
+    expect(cellAtWorld(mapGrid, 0.25, 100)).toBeNull();
+  });
+
+  it('non-zero origin shifts the lookup', () => {
+    const shifted = { ...mapGrid, originX: -5, originY: 10 };
+    // world (-4.75, 10.75) → col 0, row 1 → CELL_OCCUPIED
+    expect(cellAtWorld(shifted, -4.75, 10.75)).toBe(CELL_OCCUPIED);
+    // world (0,0) is far outside the shifted grid
+    expect(cellAtWorld(shifted, 0, 0)).toBeNull();
   });
 });
