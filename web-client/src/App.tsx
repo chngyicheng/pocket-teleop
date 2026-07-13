@@ -105,6 +105,9 @@ export const App: React.FC<AppProps> = ({ TeleopClientCtor, WhepClientCtor }) =>
         onClose={() => setDrawerOpen(false)}
         topOffset={headerHeight}
         disconnectAction={bridge.disconnectAction}
+        wsState={bridge.connectionState}
+        videoState={stream.state}
+        telemetryAges={bridge.telemetryAges}
       />
       <SessionBanner
         remainingMs={session.remainingMs}

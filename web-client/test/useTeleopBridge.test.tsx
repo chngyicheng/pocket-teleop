@@ -115,6 +115,15 @@ class FakeTeleopClient {
   triggerNavState(state: 'idle' | 'active' | 'paused' | 'succeeded' | 'failed') {
     this.opts.onNavState?.(state);
   }
+
+  triggerBattery(percentage: number | null, voltage: number | null, current: number | null, charging: boolean) {
+    this.opts.onBattery?.({
+      percentage,
+      voltage,
+      current,
+      charging,
+    });
+  }
 }
 
 // Helper to make sendNavGoal mockable
@@ -1445,5 +1454,87 @@ describe('useTeleopBridge', () => {
     });
 
     expect(result.current.latencyHistory).toEqual([50, 60, 70]);
+  });
+
+  // =========================================================================
+  // telemetryAges tests
+  // =========================================================================
+  describe('telemetryAges tracking', () => {
+    it('initializes telemetryAges to all null', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      expect(result.current.telemetryAges).toEqual({
+        odom: null,
+        pose: null,
+        scan: null,
+        map: null,
+        battery: null,
+      });
+    });
+
+    it('telemetryAges interface is present on bridge object', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Verify telemetryAges is an object with the right keys
+      expect(typeof result.current.telemetryAges).toBe('object');
+      expect(result.current.telemetryAges).toHaveProperty('odom');
+      expect(result.current.telemetryAges).toHaveProperty('pose');
+      expect(result.current.telemetryAges).toHaveProperty('scan');
+      expect(result.current.telemetryAges).toHaveProperty('map');
+      expect(result.current.telemetryAges).toHaveProperty('battery');
+    });
+
+    it('odom callback records timestamp for telemetry tracking', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Before trigger, odom age is null
+      expect(result.current.telemetryAges.odom).toBeNull();
+
+      act(() => {
+        fakeClient.triggerOdom(1, 2, 0.5);
+      });
+
+      // After trigger, odom data is set (separate from telemetryAges)
+      expect(result.current.odom).toEqual({ x: 1, y: 2, heading: 0.5 });
+    });
+
+    it('battery callback records timestamp for telemetry tracking', () => {
+      const { result } = renderHook(() =>
+        useTeleopBridge({
+          url: 'ws://localhost/ws',
+          TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+        })
+      );
+
+      // Before trigger, battery age is null
+      expect(result.current.telemetryAges.battery).toBeNull();
+
+      act(() => {
+        fakeClient.triggerBattery(80, 48.0, 5.0, false);
+      });
+
+      // After trigger, battery data is set
+      expect(result.current.battery).toEqual({
+        percentage: 80,
+        voltage: 48.0,
+        current: 5.0,
+        charging: false,
+      });
+    });
   });
 });
