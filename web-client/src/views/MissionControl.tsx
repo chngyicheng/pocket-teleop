@@ -61,6 +61,9 @@ export const MissionControl: React.FC<MissionControlProps> = ({
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
+  // Map view toggle (cam | map)
+  const [viewMode, setViewMode] = useState<'cam' | 'map'>('cam');
+
   // Portrait: align the top-right minimap just below the SPEED/VELOCITY HUD
   // panel (measured, so it tracks the panel's real height instead of a guess).
   const speedPanelRef = useRef<HTMLDivElement>(null);
@@ -73,6 +76,13 @@ export const MissionControl: React.FC<MissionControlProps> = ({
     window.addEventListener('resize', measure);
     return () => window.removeEventListener('resize', measure);
   }, [layout]);
+
+  // Auto-revert to cam mode when map data disappears
+  useEffect(() => {
+    if (viewMode === 'map' && (!bridge.mapGrid || !bridge.mapPose)) {
+      setViewMode('cam');
+    }
+  }, [bridge.mapGrid, bridge.mapPose, viewMode]);
 
   // Video ref for streaming MediaStream
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -357,6 +367,29 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           {isLandscape ? connText : stateShort}
         </div>
 
+        {/* View toggle (CAM/MAP) */}
+        <button
+          data-testid="view-toggle"
+          onClick={() => setViewMode(viewMode === 'cam' ? 'map' : 'cam')}
+          disabled={!bridge.mapGrid || !bridge.mapPose}
+          style={{
+            fontFamily: monoFont,
+            fontSize: 10,
+            flex: '0 0 auto',
+            color: (!bridge.mapGrid || !bridge.mapPose) ? p.muted : p.text,
+            padding: '3px 7px',
+            border: `1px solid ${(!bridge.mapGrid || !bridge.mapPose) ? p.muted + '55' : p.border}`,
+            borderRadius: 2,
+            letterSpacing: '0.05em',
+            whiteSpace: 'nowrap',
+            background: 'transparent',
+            cursor: (!bridge.mapGrid || !bridge.mapPose) ? 'not-allowed' : 'pointer',
+            opacity: (!bridge.mapGrid || !bridge.mapPose) ? 0.5 : 1,
+          }}
+        >
+          {viewMode === 'cam' ? 'MAP' : 'CAM'}
+        </button>
+
         {/* Gamepad connected indicator — only show when connected */}
         {bridge.gamepadConnected && (
           <div
@@ -535,6 +568,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
               muted
               playsInline
               style={{
+                display: viewMode === 'map' ? 'none' : 'block',
                 position: 'absolute',
                 inset: 0,
                 width: '100%',
@@ -544,10 +578,49 @@ export const MissionControl: React.FC<MissionControlProps> = ({
             />
 
             {/* Video signal overlay */}
-            <VideoSignalOverlay state={stream.state} />
+            {viewMode === 'cam' && <VideoSignalOverlay state={stream.state} />}
 
             {/* Center crosshair reticle */}
-            <Crosshair accent={p.accent} />
+            {viewMode === 'cam' && <Crosshair accent={p.accent} />}
+
+            {/* Main map view (fills viewport when in map mode) */}
+            {viewMode === 'map' && (
+              <div
+                data-testid="main-map-view"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: p.bg,
+                }}
+              >
+                <MiniMap
+                  pos={navPose}
+                  heading={navPose.heading}
+                  size={Math.min(window.innerWidth, window.innerHeight) - 120}
+                  color={p.accent}
+                  bg="rgba(8,10,14,0.45)"
+                  border={p.border}
+                  mapGrid={bridge.mapGrid}
+                  mapPose={bridge.mapPose}
+                  scan={bridge.scan}
+                  robotLength={bridge.robotLength}
+                  robotWidth={bridge.robotWidth}
+                  pannable
+                  expandable
+                  onExpandedChange={setMapExpanded}
+                  enableWaypoints
+                  navState={bridge.navState}
+                  navPath={bridge.navPath}
+                  onSendWaypoint={bridge.sendNavGoal}
+                  onNavPause={bridge.sendNavPause}
+                  onNavResume={bridge.sendNavResume}
+                  onNavCancel={bridge.sendNavCancel}
+                />
+              </div>
+            )}
 
             {/* Mode chip */}
             <div
@@ -723,6 +796,7 @@ export const MissionControl: React.FC<MissionControlProps> = ({
           muted
           playsInline
           style={{
+            display: viewMode === 'map' ? 'none' : 'block',
             position: 'absolute',
             inset: 0,
             width: '100%',
@@ -732,7 +806,46 @@ export const MissionControl: React.FC<MissionControlProps> = ({
         />
 
         {/* Video signal overlay */}
-        <VideoSignalOverlay state={stream.state} />
+        {viewMode === 'cam' && <VideoSignalOverlay state={stream.state} />}
+
+        {/* Main map view (fills viewport when in map mode, portrait) */}
+        {viewMode === 'map' && (
+          <div
+            data-testid="main-map-view"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: p.bg,
+            }}
+          >
+            <MiniMap
+              pos={navPose}
+              heading={navPose.heading}
+              size={Math.min(window.innerWidth, window.innerHeight) - 120}
+              color={p.accent}
+              bg="rgba(8,10,14,0.45)"
+              border={p.border}
+              mapGrid={bridge.mapGrid}
+              mapPose={bridge.mapPose}
+              scan={bridge.scan}
+              robotLength={bridge.robotLength}
+              robotWidth={bridge.robotWidth}
+              pannable
+              expandable
+              onExpandedChange={setMapExpanded}
+              enableWaypoints
+              navState={bridge.navState}
+              navPath={bridge.navPath}
+              onSendWaypoint={bridge.sendNavGoal}
+              onNavPause={bridge.sendNavPause}
+              onNavResume={bridge.sendNavResume}
+              onNavCancel={bridge.sendNavCancel}
+            />
+          </div>
+        )}
 
         {/* Top-left vel bars + speed controls */}
         <div

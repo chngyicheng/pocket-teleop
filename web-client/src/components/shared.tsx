@@ -69,6 +69,8 @@ export interface MiniMapProps {
   onExpandedChange?: (expanded: boolean) => void;
   /** Enable waypoint placement UI in expanded view. */
   enableWaypoints?: boolean;
+  /** Enable map panning (1-finger drag + 2-finger drag). Typically used in full-screen map view mode. */
+  pannable?: boolean;
   /** Current nav2 action state: 'idle' (no nav goal), 'active' (navigating), 'paused' (paused). */
   navState?: 'idle' | 'active' | 'paused';
   /** Global path from nav2 (array of [x, y] world coords). */

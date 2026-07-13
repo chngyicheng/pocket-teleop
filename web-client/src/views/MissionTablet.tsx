@@ -114,6 +114,9 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
   // so the operator can keep driving with the big map open.
   const [mapExpanded, setMapExpanded] = useState(false);
 
+  // Map view toggle (cam | map)
+  const [viewMode, setViewMode] = useState<'cam' | 'map'>('cam');
+
   // While the map is expanded, temporarily close both rails so the video goes fullscreen
   // behind the translucent map; restore the prior open/closed state on exit. Keyed on
   // mapExpanded only (not leftOpen/rightOpen) so the snapshot isn't clobbered.
@@ -130,6 +133,13 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapExpanded]);
+
+  // Auto-revert to cam mode when map data disappears
+  useEffect(() => {
+    if (viewMode === 'map' && (!bridge.mapGrid || !bridge.mapPose)) {
+      setViewMode('cam');
+    }
+  }, [bridge.mapGrid, bridge.mapPose, viewMode]);
 
   // A long phone in landscape (very wide aspect) renders this tablet layout but
   // is short vertically, so the corner joystick zones overlap the side rails and
@@ -380,6 +390,27 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           {connText}
         </div>
 
+        {/* View toggle (CAM/MAP) */}
+        <button
+          data-testid="view-toggle"
+          onClick={() => setViewMode(viewMode === 'cam' ? 'map' : 'cam')}
+          disabled={!bridge.mapGrid || !bridge.mapPose}
+          style={{
+            fontFamily: monoFont,
+            fontSize: 10,
+            color: (!bridge.mapGrid || !bridge.mapPose) ? p.muted : p.text,
+            padding: '4px 8px',
+            border: `1px solid ${(!bridge.mapGrid || !bridge.mapPose) ? p.muted + '55' : p.border}`,
+            borderRadius: 2,
+            whiteSpace: 'nowrap',
+            background: 'transparent',
+            cursor: (!bridge.mapGrid || !bridge.mapPose) ? 'not-allowed' : 'pointer',
+            opacity: (!bridge.mapGrid || !bridge.mapPose) ? 0.5 : 1,
+          }}
+        >
+          {viewMode === 'cam' ? 'MAP' : 'CAM'}
+        </button>
+
         {/* Gamepad connected indicator — only show when connected */}
         {bridge.gamepadConnected && (
           <div
@@ -548,6 +579,7 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
           muted
           playsInline
           style={{
+            display: viewMode === 'map' ? 'none' : 'block',
             position: 'absolute',
             inset: 0,
             width: '100%',
@@ -557,29 +589,70 @@ export const MissionTablet: React.FC<MissionTabletProps> = ({ bridge, stream, on
         />
 
         {/* Video signal overlay */}
-        <VideoSignalOverlay state={stream.state} />
+        {viewMode === 'cam' && <VideoSignalOverlay state={stream.state} />}
+
+        {/* Main map view (fills viewport when in map mode, tablet) */}
+        {viewMode === 'map' && (
+          <div
+            data-testid="main-map-view"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: p.bg,
+            }}
+          >
+            <MiniMap
+              pos={navPose}
+              heading={navPose.heading}
+              size={Math.min(window.innerWidth, window.innerHeight) - 120}
+              color={p.accent}
+              bg="rgba(8,10,14,0.45)"
+              border={p.border}
+              mapGrid={bridge.mapGrid}
+              mapPose={bridge.mapPose}
+              scan={bridge.scan}
+              robotLength={bridge.robotLength}
+              robotWidth={bridge.robotWidth}
+              pannable
+              expandable
+              onExpandedChange={setMapExpanded}
+              enableWaypoints
+              navState={bridge.navState}
+              navPath={bridge.navPath}
+              onSendWaypoint={bridge.sendNavGoal}
+              onNavPause={bridge.sendNavPause}
+              onNavResume={bridge.sendNavResume}
+              onNavCancel={bridge.sendNavCancel}
+            />
+          </div>
+        )}
 
         {/* Center reticle */}
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 80,
-            height: 80,
-            pointerEvents: 'none',
-          }}
-        >
-          <svg viewBox="0 0 80 80" width="80" height="80">
-            <circle cx="40" cy="40" r="34" fill="none" stroke={p.accent} strokeOpacity="0.35" strokeWidth="0.5" strokeDasharray="2 3" />
-            <line x1="40" y1="20" x2="40" y2="32" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
-            <line x1="40" y1="48" x2="40" y2="60" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
-            <line x1="20" y1="40" x2="32" y2="40" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
-            <line x1="48" y1="40" x2="60" y2="40" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
-            <circle cx="40" cy="40" r="2" fill={p.accent} />
-          </svg>
-        </div>
+        {viewMode === 'cam' && (
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 80,
+              height: 80,
+              pointerEvents: 'none',
+            }}
+          >
+            <svg viewBox="0 0 80 80" width="80" height="80">
+              <circle cx="40" cy="40" r="34" fill="none" stroke={p.accent} strokeOpacity="0.35" strokeWidth="0.5" strokeDasharray="2 3" />
+              <line x1="40" y1="20" x2="40" y2="32" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
+              <line x1="40" y1="48" x2="40" y2="60" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
+              <line x1="20" y1="40" x2="32" y2="40" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
+              <line x1="48" y1="40" x2="60" y2="40" stroke={p.accent} strokeOpacity="0.7" strokeWidth="1" />
+              <circle cx="40" cy="40" r="2" fill={p.accent} />
+            </svg>
+          </div>
+        )}
 
         {/* Mode chip */}
         <div
