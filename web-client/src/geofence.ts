@@ -99,6 +99,91 @@ function distanceToSegment(
 }
 
 /**
+ * Find the closest point on a polygon's boundary to the given point.
+ * Used by escape mode: from inside a fence, the closest boundary point is
+ * the shortest way out.
+ */
+export function closestBoundaryPoint(
+  point: [number, number],
+  polygon: FencePolygon
+): [number, number] | null {
+  if (polygon.vertices.length < 3) return null;
+
+  const [px, py] = point;
+  let best: [number, number] | null = null;
+  let bestDist = Infinity;
+
+  const vertices = polygon.vertices;
+  for (let i = 0; i < vertices.length; i++) {
+    const [x1, y1] = vertices[i];
+    const [x2, y2] = vertices[(i + 1) % vertices.length];
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const cx = x1 + t * dx;
+    const cy = y1 + t * dy;
+    const d = Math.hypot(px - cx, py - cy);
+    if (d < bestDist) {
+      bestDist = d;
+      best = [cx, cy];
+    }
+  }
+  return best;
+}
+
+/** Crawl factor for escape motion while inside a fence. */
+export const ESCAPE_SPEED_SCALE = 0.3;
+
+/**
+ * Per-axis twist scaling with escape mode.
+ *
+ * Outside all fences: both scales follow the buffer ramp (same as speedScale).
+ * Inside a fence:
+ *  - rotation is always allowed (az scale 1) so the robot can turn toward the exit;
+ *  - linear motion is allowed at ESCAPE_SPEED_SCALE only when the commanded
+ *    body-frame direction (lx fwd, ly left), rotated into the world by
+ *    `heading`, points toward the nearest boundary point (dot > 0) — i.e. out;
+ *    motion deeper into the fence stays blocked (0).
+ *
+ * @param pose robot pose in map frame (heading in radians, ROS yaw)
+ * @param lin  commanded linear body-frame components (pre-scale)
+ */
+export function twistScale(
+  pose: { x: number; y: number; heading: number },
+  lin: { lx: number; ly: number },
+  fences: FencePolygon[],
+  bufferM: number = 0.5
+): { lin: number; az: number } {
+  const p: [number, number] = [pose.x, pose.y];
+
+  // Inside any fence → escape mode
+  for (const fence of fences) {
+    if (fence.vertices.length < 3) continue;
+    if (!pointInPolygon(p, fence)) continue;
+
+    const hasLinear = lin.lx !== 0 || lin.ly !== 0;
+    if (!hasLinear) return { lin: 0, az: 1 }; // rotate in place freely
+
+    const exit = closestBoundaryPoint(p, fence);
+    if (!exit) return { lin: 0, az: 1 };
+
+    // Body-frame (lx fwd, ly left) → world direction (ROS yaw convention)
+    const wx = lin.lx * Math.cos(pose.heading) - lin.ly * Math.sin(pose.heading);
+    const wy = lin.lx * Math.sin(pose.heading) + lin.ly * Math.cos(pose.heading);
+    const toExit: [number, number] = [exit[0] - p[0], exit[1] - p[1]];
+    const outward = wx * toExit[0] + wy * toExit[1] > 0;
+
+    return { lin: outward ? ESCAPE_SPEED_SCALE : 0, az: 1 };
+  }
+
+  // Outside: original buffer ramp on every axis
+  const s = speedScale(p, fences, bufferM);
+  return { lin: s, az: s };
+}
+
+/**
  * Calculate speed scale factor based on proximity to geofences.
  * - Inside any fence: 0
  * - Outside all fences: 1

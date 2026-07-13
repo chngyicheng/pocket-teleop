@@ -4,7 +4,7 @@ import type { ConnectionState } from '../components/shared.js';
 import { decodeRle } from '../map_codec.js';
 import { loadMaxSpeed, saveMaxSpeed, clampLinear, clampAngular, loadFences, saveFences } from '../settings.js';
 import { computeQuality, type NetworkStats } from '../network_quality.js';
-import type { FencePolygon } from '../geofence.js';
+import { pointInPolygon, type FencePolygon } from '../geofence.js';
 
 export interface MapGrid {
   cells: Uint8Array;
@@ -342,6 +342,23 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
     };
   }, [navNotice]);
 
+  // Geofence breach during autonomous nav: nav2 publishes its own cmd_vel and
+  // never sees the client-side fences, so if the robot crosses into one
+  // mid-run, cancel the goal and tell the operator. Once per breach episode.
+  const breachCancelledRef = useRef(false);
+  useEffect(() => {
+    if (navState !== 'active' || !mapPose || mapPose.frame !== 'map' || fences.length === 0) {
+      breachCancelledRef.current = false;
+      return;
+    }
+    const inside = fences.some((f) => pointInPolygon([mapPose.x, mapPose.y], f));
+    if (inside && !breachCancelledRef.current) {
+      breachCancelledRef.current = true;
+      clientRef.current?.sendNavCancel();
+      setNavNotice({ text: 'Geofence breach — navigation cancelled', tone: 'error' });
+    }
+  }, [mapPose, navState, fences]);
+
   // Handle tab visibility change and bfcache restoration
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -405,6 +422,12 @@ export function useTeleopBridge(opts: UseTeleopBridgeOpts): TeleopBridge {
 
   const sendNavGoal = (wx: number, wy: number, heading: number) => {
     if (clientRef.current) {
+      // Geofence guard: nav2 drives its own cmd_vel, so a goal inside a fence
+      // would be executed unchecked — reject it at Send time instead.
+      if (fences.some((f) => pointInPolygon([wx, wy], f))) {
+        setNavNotice({ text: 'Goal inside geofence — pick another spot', tone: 'warn' });
+        return;
+      }
       const success = clientRef.current.sendNavGoal(wx, wy, heading);
       if (success === false) {
         // Determine if blocked due to E-STOP or disconnection

@@ -119,7 +119,7 @@ Root owns project-wide rules, run stack, execution mode, handover state, and the
 >
 > **Robot config:** UI-tunable keys live in `config/robot.env` (gitignored; seed from `config/robot.env.example`), **not** `.env`. Edited from the web Settings drawer (partial PUT to `/auth/robot-config`); applies on next `up -d`. Upgrade: copy old `.env` tunables into `config/robot.env` once (TROUBLESHOOTING).
 >
-> **Test baseline:** webclient **1001** / auth **98** / video-bridge **20** / C++ **107** (TEST-macro count; `colcon test-result` says 111 — it also counts wrapper layers). Docker only; `--build` after edits. Known reds (not regressions): auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
+> **Test baseline:** webclient **1013** / auth **98** / video-bridge **20** / C++ **107** (TEST-macro count; `colcon test-result` says 111 — it also counts wrapper layers). Docker only; `--build` after edits. Known reds (not regressions): auth `mediamtx_integration.test.ts` (3, needs `--profile integration` + live MediaMTX); `integration.test.ts` self-skips without a live server.
 >
 > **Carry-forward:**
 > - Pre-existing `npx tsc --noEmit` red in `web-client/test/useTeleopBridge.test.tsx` (`FakeTeleopClient` missing members); vitest `npm test` is the green gate. Worth a cleanup.

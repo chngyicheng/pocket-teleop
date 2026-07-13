@@ -5,7 +5,7 @@ import type { GamepadProfile } from './gamepad_profiles.js';
 import { buildEstop, buildEstopReset, buildNavCancel, buildNavGoal, buildNavPause, buildNavResume, buildPing, buildTwist, parseMessage, type ScanPose } from './protocol.js';
 import { shapeAxis } from './input_shaping.js';
 import type { NetworkStats } from './network_quality.js';
-import { speedScale, type FencePolygon } from './geofence.js';
+import { twistScale, type FencePolygon } from './geofence.js';
 
 /** Continuous publish rate: one packet every 50 ms → 20 Hz. */
 const PUBLISH_INTERVAL_MS = 50;
@@ -128,7 +128,7 @@ export class TeleopClient {
 
   // Geofence state
   private fences: FencePolygon[] = [];
-  private lastMapPose: { x: number; y: number } | null = null;
+  private lastMapPose: { x: number; y: number; heading: number } | null = null;
   private wasGeofenceLimited = false;
 
   constructor(options: TeleopClientOptions = {}) {
@@ -497,7 +497,7 @@ export class TeleopClient {
       this.options.onPose?.(frame, msg.x, msg.y, msg.heading);
       // Store map-frame pose for geofence calculations
       if (frame === 'map') {
-        this.lastMapPose = { x: msg.x, y: msg.y };
+        this.lastMapPose = { x: msg.x, y: msg.y, heading: msg.heading };
       }
     } else if (msg.type === 'scan') {
       const scanData: { angle_min: number; angle_increment: number; range_max: number; ranges: number[]; pose?: ScanPose } = {
@@ -632,29 +632,37 @@ export class TeleopClient {
         az: this.rampAxis(this.currentTwist.az, this.targetTwist.az),
       };
 
-      // Calculate geofence speed scale
-      let scale = 1;
+      // Geofence per-axis scaling. Outside: buffer ramp on all axes. Inside:
+      // escape mode — rotation free, linear crawl only toward the nearest
+      // boundary (so a robot that noses in can always back/turn its way out).
+      let scale = { lin: 1, az: 1 };
       if (this.fences.length > 0 && this.lastMapPose) {
-        scale = speedScale([this.lastMapPose.x, this.lastMapPose.y], this.fences);
+        scale = twistScale(
+          this.lastMapPose,
+          { lx: this.currentTwist.lx, ly: this.currentTwist.ly },
+          this.fences,
+        );
       }
 
       const isNonZero = this.currentTwist.lx !== 0 || this.currentTwist.ly !== 0 || this.currentTwist.az !== 0;
+      const hasLinear = this.currentTwist.lx !== 0 || this.currentTwist.ly !== 0;
 
-      // Fire onGeofenceLimit when transitioning from non-zero to zero due to geofence
-      if (scale === 0 && !this.wasGeofenceLimited && isNonZero) {
+      // Fire onGeofenceLimit once when commanded linear motion gets blocked
+      // (fully outside-ramp zero, or inward while inside); re-arm on release.
+      if (scale.lin === 0 && !this.wasGeofenceLimited && hasLinear) {
         this.wasGeofenceLimited = true;
         this.options.onGeofenceLimit?.();
-      } else if (scale > 0 && isNonZero) {
+      } else if ((scale.lin > 0 || !hasLinear) && isNonZero) {
         this.wasGeofenceLimited = false;
       }
 
       // Send while moving, and once more on the tick we settle to rest (terminal
       // zero). When both are zero we are idle — stay silent; keepalive pings.
       if (isNonZero || wasNonZero) {
-        // Apply geofence speed scale before sending
-        const scaledLx = this.currentTwist.lx * scale;
-        const scaledLy = this.currentTwist.ly * scale;
-        const scaledAz = this.currentTwist.az * scale;
+        // Apply geofence scales before sending
+        const scaledLx = this.currentTwist.lx * scale.lin;
+        const scaledLy = this.currentTwist.ly * scale.lin;
+        const scaledAz = this.currentTwist.az * scale.az;
         this.sendScaledTwist(scaledLx, scaledLy, scaledAz);
         this.lastSentAt = Date.now();
         this.options.onPublish?.(scaledLx, scaledLy, scaledAz, this.activeSource ?? 'idle');

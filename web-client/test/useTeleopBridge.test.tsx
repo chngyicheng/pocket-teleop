@@ -1540,3 +1540,103 @@ describe('useTeleopBridge', () => {
     });
   });
 });
+
+describe('useTeleopBridge geofence nav guards', () => {
+  let fakeClient: FakeTeleopClient;
+  const square = { vertices: [[0, 0], [10, 0], [10, 10], [0, 10]] as [number, number][] };
+
+  beforeEach(() => {
+    localStorage.clear();
+    fakeClient = new FakeTeleopClient();
+  });
+
+  it('rejects a nav goal inside a fence with a warn notice, without sending', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+    const goalSpy = vi.spyOn(fakeClient, 'sendNavGoal');
+
+    act(() => {
+      result.current.saveFencesAndApply([square]);
+    });
+    act(() => {
+      result.current.sendNavGoal(5, 5, 0);
+    });
+
+    expect(goalSpy).not.toHaveBeenCalled();
+    expect(result.current.navNotice?.text).toBe('Goal inside geofence — pick another spot');
+    expect(result.current.navNotice?.tone).toBe('warn');
+  });
+
+  it('goal outside all fences still sends', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+    const goalSpy = vi.spyOn(fakeClient, 'sendNavGoal');
+
+    act(() => {
+      result.current.saveFencesAndApply([square]);
+    });
+    act(() => {
+      result.current.sendNavGoal(20, 20, 0);
+    });
+
+    expect(goalSpy).toHaveBeenCalledWith(20, 20, 0);
+  });
+
+  it('cancels navigation once when the robot breaches a fence mid-run', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+    const cancelSpy = vi.spyOn(fakeClient, 'sendNavCancel');
+
+    act(() => {
+      result.current.saveFencesAndApply([square]);
+    });
+    act(() => {
+      fakeClient.triggerNavState('active');
+    });
+    // Robot pose crosses into the fence
+    act(() => {
+      fakeClient.triggerPose('map', 5, 5, 0);
+    });
+
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+    expect(result.current.navNotice?.text).toBe('Geofence breach — navigation cancelled');
+    expect(result.current.navNotice?.tone).toBe('error');
+
+    // Further pose updates inside the fence do not spam cancel
+    act(() => {
+      fakeClient.triggerPose('map', 5.1, 5, 0);
+    });
+    expect(cancelSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('no cancel while nav is idle even if pose is inside a fence', () => {
+    const { result } = renderHook(() =>
+      useTeleopBridge({
+        url: 'ws://localhost/ws',
+        TeleopClientCtor: (opts) => { fakeClient.opts = opts; return fakeClient; },
+      })
+    );
+    const cancelSpy = vi.spyOn(fakeClient, 'sendNavCancel');
+
+    act(() => {
+      result.current.saveFencesAndApply([square]);
+    });
+    act(() => {
+      fakeClient.triggerPose('map', 5, 5, 0);
+    });
+
+    expect(cancelSpy).not.toHaveBeenCalled();
+  });
+});

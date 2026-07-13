@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pointInPolygon, distanceToBoundary, speedScale, type FencePolygon } from '../src/geofence';
+import { pointInPolygon, distanceToBoundary, speedScale, twistScale, closestBoundaryPoint, ESCAPE_SPEED_SCALE, type FencePolygon } from '../src/geofence';
 
 describe('geofence module', () => {
   // Test case 1: Point inside convex polygon
@@ -127,5 +127,62 @@ describe('geofence module', () => {
     };
     const scale = speedScale([2.5, 2.5], [invalidFence]);
     expect(scale).toBe(1); // Ignored, behaves as if no fence
+  });
+});
+
+// ─── Escape mode (twistScale) ─────────────────────────────────────────────────
+
+describe('twistScale escape mode', () => {
+  const square: FencePolygon = { vertices: [[0, 0], [10, 0], [10, 10], [0, 10]] };
+
+  it('outside all fences: both axes follow the buffer ramp', () => {
+    const far = twistScale({ x: 20, y: 20, heading: 0 }, { lx: 1, ly: 0 }, [square]);
+    expect(far).toEqual({ lin: 1, az: 1 });
+    const near = twistScale({ x: 10.25, y: 5, heading: 0 }, { lx: 1, ly: 0 }, [square]);
+    expect(near.lin).toBeCloseTo(0.5, 5);
+    expect(near.az).toBeCloseTo(0.5, 5);
+  });
+
+  it('inside: rotation in place is always allowed', () => {
+    const s = twistScale({ x: 5, y: 5, heading: 0 }, { lx: 0, ly: 0 }, [square]);
+    expect(s).toEqual({ lin: 0, az: 1 });
+  });
+
+  it('inside near the right edge, facing +x: forward (toward exit) crawls out', () => {
+    const s = twistScale({ x: 9, y: 5, heading: 0 }, { lx: 1, ly: 0 }, [square]);
+    expect(s.lin).toBe(ESCAPE_SPEED_SCALE);
+    expect(s.az).toBe(1);
+  });
+
+  it('inside near the right edge, facing +x: reverse (deeper in) is blocked', () => {
+    const s = twistScale({ x: 9, y: 5, heading: 0 }, { lx: -1, ly: 0 }, [square]);
+    expect(s.lin).toBe(0);
+    expect(s.az).toBe(1);
+  });
+
+  it('nosed in head-first (facing away from exit): backing out is allowed', () => {
+    // Robot entered through the right edge facing -x (heading = π).
+    // Reverse (lx < 0) moves +x in the world — toward the nearest boundary.
+    const s = twistScale({ x: 9, y: 5, heading: Math.PI }, { lx: -1, ly: 0 }, [square]);
+    expect(s.lin).toBe(ESCAPE_SPEED_SCALE);
+    expect(s.az).toBe(1);
+  });
+
+  it('nosed in head-first: pushing further forward stays blocked', () => {
+    const s = twistScale({ x: 9, y: 5, heading: Math.PI }, { lx: 1, ly: 0 }, [square]);
+    expect(s.lin).toBe(0);
+  });
+
+  it('strafe toward the exit counts as outward', () => {
+    // Facing +y (heading π/2) near the right edge; strafe right (ly < 0) is
+    // world +x → toward the boundary.
+    const s = twistScale({ x: 9, y: 5, heading: Math.PI / 2 }, { lx: 0, ly: -1 }, [square]);
+    expect(s.lin).toBe(ESCAPE_SPEED_SCALE);
+  });
+
+  it('closestBoundaryPoint finds the nearest edge point', () => {
+    const p = closestBoundaryPoint([9, 5], square);
+    expect(p?.[0]).toBeCloseTo(10, 5);
+    expect(p?.[1]).toBeCloseTo(5, 5);
   });
 });
